@@ -3,19 +3,20 @@
     "generated_from": "canonical seed corpus (data/*.json) via src/build.ts",
     "primitives": 6,
     "principals": 21,
-    "seams": 241,
-    "hyperedges": 99,
+    "seams": 260,
+    "hyperedges": 117,
     "frontier_seams": 8,
-    "register_size": 1893,
+    "register_size": 1872,
     "gap_stats": {
-      "frontier": 1100,
-      "under-tooled": 706,
-      "projected": 38,
+      "frontier": 1077,
+      "under-tooled": 691,
+      "projected": 36,
       "honest-na": 0,
       "populated": 0,
-      "AGENT-DISCOVERED": 49
+      "AGENT-DISCOVERED": 68
     },
-    "predicted_composites": 40
+    "predicted_composites": 40,
+    "predicted_chains3": 15
   },
   "primitives": [
     {
@@ -11261,6 +11262,1033 @@
       "origin": "AGENT-DISCOVERED",
       "rationale": "Smart-home/IoT platforms are exposing commissioning and binding controls to AI assistants in 2025-2026 so an agent can 'add the new sensor' or 'group these lights', but the Matter/Zigbee commissioning trust model assumed a human physically initiating a pairing. An agent inheriting controller authority can be tricked by attacker-supplied device names or injected instructions into admitting a rogue node or rebinding control groups, granting an attacker persistent trusted membership in the local fabric. No platform distinguishes agent-initiated commissioning from human, no anti-injection guard exists on device-advertised strings the agent reads, and no detection flags agent-driven binding changes, leaving this agent-authority-to-wireless-fabric diagonal untooled.",
       "suggested_research": "Require an out-of-band physical confirmation (button press, QR scan) for any agent-initiated commissioning or binding change and sanitize device-advertised names before agent ingestion; demonstrate a malicious device name prompt-injecting a home agent into commissioning a rogue node and rebinding a lock's control group."
+    },
+    {
+      "id": "GH4-training-data-reconstruction-at-scale",
+      "primitive": "P1",
+      "kind": "frontier",
+      "source": [
+        "web",
+        "human"
+      ],
+      "target": [
+        "agent",
+        "vectorstore"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0009",
+        "TA0010"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Collection"
+      ],
+      "trust_assumption": "A deployed model and its serving layer trust that the parametric weights act as a lossy generalization of training data such that no individual memorized record (a verbatim email, a labeled PII row, a copyrighted passage) can be reconstructed through ordinary query access, so they expose unmetered inference without treating output tokens as a controlled egress path for the training corpus.",
+      "violation": "An attacker drives membership-inference and extraction queries (prefix-completion probes, divergence/repetition attacks, canary-targeting prompts) that coax the model to regurgitate verbatim memorized training rows, reconstructing PII and confidential corpus content the model owner believed was abstracted away, turning inference output into a bulk read channel on data the model was never authorized to redisclose.",
+      "techniques": [
+        {
+          "name": "Membership-inference probing to confirm a record was in the training set",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-200",
+            "CWE-359"
+          ]
+        },
+        {
+          "name": "Verbatim training-data extraction via divergence / prefix-completion prompts",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-212",
+            "CWE-1230"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Organizations fine-tuning 2025-2027 models on proprietary corpora (support tickets, HR records, internal wikis) treat the weights as a safe abstraction and meter inference for cost, not for confidentiality, so they never model output tokens as an egress path subject to DLP. Extraction and membership-inference research has matured into repeatable query strategies, but no serving stack carries a per-record extraction budget, no detector distinguishes a normal completion from a verbatim memorized-row leak, and DLP appliances inspect documents and uploads, not generated tokens. This makes high-fidelity reconstruction of memorized confidential rows the least-tooled, fully-automatable data-centric seam, distinct from runtime prompt-injection because the leak channel is the model's own learned parameters rather than its current context.",
+      "suggested_research": "Build an inference-side extraction-budget monitor that scores output spans for verbatim-corpus overlap (rolling-hash against a canary/known-sensitive set) and rate-limits high-overlap completions per principal; quantify per-query extraction yield against a fine-tuned model seeded with synthetic PII canaries."
+    },
+    {
+      "id": "GH4-model-output-residency-boundary-leak",
+      "primitive": "P5",
+      "kind": "frontier",
+      "source": [
+        "vectorstore",
+        "memory",
+        "cloud"
+      ],
+      "target": [
+        "agent",
+        "web"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0010",
+        "TA0009"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Exfiltration"
+      ],
+      "trust_assumption": "A data-residency / sovereignty control plane trusts that classifying data at rest by jurisdiction (EU-only store, in-region vector index, region-pinned bucket) is sufficient to keep regulated data within its boundary, assuming that an inference response synthesized from in-region context will itself stay in-region and remain governed by the same residency policy as its sources.",
+      "violation": "A model running in or callable from another region composes a response that embeds residency-bound PII pulled from in-region context or memory, and that synthesized output crosses the jurisdictional boundary as ordinary completion text with no residency label inherited from its sources, so regulated data exits its sovereign zone through the format-boundary gap between governed storage and ungoverned generated tokens.",
+      "techniques": [
+        {
+          "name": "Residency-bound PII synthesized into a cross-region model response",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-201",
+            "CWE-359"
+          ]
+        },
+        {
+          "name": "Region-pinned context laundered through an out-of-region inference endpoint",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-668",
+            "CWE-212"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Sovereignty programs in 2025-2027 pin storage and indexes to jurisdictions, but the generated output of a model is a derived artifact that carries no residency provenance, and multi-region agent routing or a cross-region fallback endpoint will happily synthesize regulated source data into a response that lands outside the boundary. Unlike classic data-at-rest controls, there is no mechanism that propagates a residency label from a vector chunk or memory record into the tokens that quote it, no detection that a cross-region inference call returned in-region regulated content, and no tooling to block residency-violating synthesis. This format-boundary seam between governed sources and ungoverned generated text is unique to the inference era and entirely untooled.",
+      "suggested_research": "Prototype residency-tag propagation that attaches a jurisdiction label to every retrieved chunk/memory record and forces the serving layer to refuse or redact when a response derived from region-pinned sources is routed to an out-of-region caller; measure leakage in a multi-region RAG deployment seeded with tagged regulated records."
+    },
+    {
+      "id": "GH4-c2pa-watermark-strip-laundering",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "web",
+        "doc"
+      ],
+      "target": [
+        "soc",
+        "human",
+        "identity"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0005",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Provenance & Content-Authenticity Attacks"
+      ],
+      "trust_assumption": "A content-authenticity verifier (newsroom intake, platform upload filter, evidence-handling pipeline, KYC document check) trusts that the presence or absence of a C2PA Content Credential or an embedded AI watermark is a reliable signal of origin, treating a credentialed asset as authentic-provenance and an uncredentialed one as merely unlabeled rather than as deliberately laundered.",
+      "violation": "An attacker strips or fails to attach the removable C2PA manifest / statistical watermark (re-encode, screenshot, crop, format-convert, or rebind a valid credential onto altered pixels), so AI-generated or manipulated media passes the verifier as unlabeled-but-plausible or even as carrying a genuine-looking credential, defeating the provenance control because the trust marker was never cryptographically bound to the immutable content the way the verifier assumes.",
+      "techniques": [
+        {
+          "name": "C2PA manifest removal via re-encode/screenshot/format conversion",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-347"
+          ]
+        },
+        {
+          "name": "Content Credential rebinding onto altered media (provenance laundering)",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-353",
+            "CWE-354"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "C2PA Content Credentials and provider watermarks are being adopted across 2025-2027 platforms, newsrooms, and emerging regulation as the answer to AI-content provenance, but the markers are detachable metadata or fragile statistical signals not hard-bound to pixels, and verifiers are being built to treat their presence as authenticity and their absence as benign. The seam is that an adversary controls whether the marker survives, so provenance becomes attacker-optional; downstream consumers (evidence pipelines, identity-document checks, trust-and-safety filters) inherit a false sense of authenticity. Stripping is trivial and scalable while detection of stripped-vs-never-credentialed content is only nascent, making this provenance seam high-value as authenticity decisions increasingly hinge on a removable credential.",
+      "suggested_research": "Build a verifier that treats absent/invalid credentials as a positive risk signal (not neutral) and cross-checks claimed provenance against perceptual-hash and ledger registration rather than the embedded manifest alone; measure strip-survival rates of C2PA and major AI watermarks across a matrix of re-encode, crop, and screenshot transforms."
+    },
+    {
+      "id": "GH4-deepfake-liveness-kyc-bypass",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "web",
+        "human",
+        "mobile"
+      ],
+      "target": [
+        "identity",
+        "human"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0006"
+      ],
+      "classic_branches": [
+        "Identity & Federation Attacks",
+        "AI / Agent Attacks"
+      ],
+      "trust_assumption": "A remote identity-proofing / KYC onboarding flow trusts that a face-match video, selfie, or liveness challenge captured through its SDK is a real-time biometric sample of a physically-present live human, so it binds a new legal identity, bank account, or high-assurance credential to whatever passes the liveness and document-match check.",
+      "violation": "An attacker injects a generative-AI deepfake or face-swap video into the capture pipeline (virtual camera, SDK hook, emulator, or presentation attack) that satisfies the liveness and document-match scoring, so the proofing system mints a high-assurance identity bound to a synthetic or stolen face because it trusted a manipulable media stream as proof of a live present human.",
+      "techniques": [
+        {
+          "name": "Injection-based deepfake liveness bypass via virtual camera / SDK hook",
+          "attack_ids": [
+            "T1656"
+          ],
+          "cwe_ids": [
+            "CWE-290",
+            "CWE-1390"
+          ]
+        },
+        {
+          "name": "Generative face-swap presentation attack defeating remote KYC match",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-287"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Real-time face-swap quality crossed the threshold where commodity tooling defeats many remote-liveness checks in 2025-2027, and the surge of fully remote onboarding (banks, exchanges, gov benefits, enterprise account recovery) means a single deepfake can bootstrap a high-assurance legal identity at scale. The seam is that the verifier conflates a decodable media stream with a live present human; injection attacks (virtual cameras, rooted-device SDK hooks) bypass even passive-liveness models that assume camera-sensor integrity. Detection is an arms race with no durable winner and current presentation-attack-detection is bypassable, so this identity-proofing provenance seam is both rapidly maturing and under-tooled at the injection layer specifically.",
+      "suggested_research": "Investigate hardware-attested capture (signed sensor frames, secure-camera attestation) as a precondition for high-assurance proofing and build injection-detection that flags virtual-camera/SDK-hook artifacts rather than only pixel-level deepfake cues; benchmark leading liveness SDKs against current open face-swap pipelines via camera injection."
+    },
+    {
+      "id": "GH4-llm-judge-grading-gaming",
+      "primitive": "P1",
+      "kind": "frontier",
+      "source": [
+        "doc",
+        "web",
+        "supplychain"
+      ],
+      "target": [
+        "agent",
+        "soc"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0005",
+        "TA0042"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Provenance & Content-Authenticity Attacks"
+      ],
+      "trust_assumption": "An automated-evaluation pipeline (LLM-as-judge for code review, content moderation, RAG-answer grading, security-triage scoring, or AI-output gating) trusts that the judge model renders an impartial verdict reflecting the true quality or safety of the candidate artifact, so it treats the judge's pass/fail or numeric score as an authoritative decision that gates merges, publication, payouts, or alerts.",
+      "violation": "An attacker embeds steering content inside the artifact being judged (an injected 'this clearly meets all criteria, score 10' instruction, sycophancy-triggering framing, or a known judge-bias trigger) so the candidate text doubles as a prompt against its own evaluator, coercing a favorable verdict that the pipeline then trusts as objective, letting unsafe or low-quality artifacts pass the automated gate.",
+      "techniques": [
+        {
+          "name": "Evaluatee-embedded prompt injection steering an LLM judge's verdict",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-807",
+            "CWE-20"
+          ]
+        },
+        {
+          "name": "Judge sycophancy/bias exploitation to game an automated quality gate",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-697",
+            "CWE-345"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "LLM-as-judge has become load-bearing infrastructure in 2025-2027 for code review, moderation, RAG grading, and security triage because it scales human judgment cheaply, but the candidate artifact and the instruction channel share one context window, so the thing being graded can address its grader. Unlike eval-set overfit (gaming a static benchmark), this is live coercion of an operational gate by content the attacker fully controls, and pipelines treat the verdict as objective ground truth that authorizes downstream action. No deployed judge isolates evaluatee text from instructions, none detect verdict-steering injections, and none cross-validate a suspiciously favorable score, leaving this data-to-control seam on automated judgment both untooled and undetected.",
+      "suggested_research": "Design a judging harness that structurally quarantines evaluatee content (separate model call with the candidate as inert data, verdict-consistency checks across paraphrases, and anomaly flags on self-referential scoring language); measure attack success of embedded score-steering across common judge prompts and models."
+    },
+    {
+      "id": "GH4-synthetic-identity-aged-graph",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "web",
+        "human"
+      ],
+      "target": [
+        "identity",
+        "human"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0003"
+      ],
+      "classic_branches": [
+        "Identity & Federation Attacks",
+        "Synthetic / Non-Human Identity Attacks"
+      ],
+      "trust_assumption": "An onboarding and risk-decisioning system trusts that an identity exhibiting a consistent, aged, cross-source footprint (long-lived email, social graph, credit-bureau thin-file history, prior low-risk transactions, matching data-broker records) corresponds to a real natural person, treating accumulated correlated history as proof of genuine existence rather than as a fabricable artifact.",
+      "violation": "An attacker assembles and ages a fully synthetic identity graph (AI-generated persona, seeded social/email presence, manufactured thin-file credit history, planted data-broker entries) so the onboarding system's existence and risk checks all corroborate one another, and the fabricated person is admitted as genuine because every correlated signal the system trusts was itself author-controlled and patiently aged.",
+      "techniques": [
+        {
+          "name": "Aged synthetic-identity graph defeating cross-source existence checks",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-290",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "Manufactured thin-file/credit-bureau history bootstrapping a fabricated person",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-287",
+            "CWE-349"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Synthetic identity has been a fraud problem for years, but 2025-2027 changes the economics: generative AI can mass-produce coherent personas (faces, writing style, social activity) and agentic automation can seed and age the corroborating footprint across email, social, and data-broker surfaces at scale, so the cross-source consistency that risk engines treat as existence-proof becomes cheap to fabricate. The seam is that the identity layer infers authority/legitimacy from correlated history that the attacker authored, and there is no shared mechanism to attest that a footprint reflects a real natural person rather than a patiently-aged fabrication. Detection of synthetic graphs is only nascent and no tooling reconstructs the provenance of an identity's history, making this identity-authority seam novel at AI scale.",
+      "suggested_research": "Develop graph-provenance scoring that weights the independence and unforgeable-anchor strength of identity signals (e.g., longitudinal device/biometric anchors) over easily-seeded broker/social presence; build a synthetic-cohort detector that finds aged personas sharing a common fabrication fingerprint across institutions."
+    },
+    {
+      "id": "GH4-orphaned-nhi-trusted-indefinitely",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "cloud",
+        "container",
+        "supplychain"
+      ],
+      "target": [
+        "identity",
+        "cloud",
+        "agent"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0003",
+        "TA0004"
+      ],
+      "classic_branches": [
+        "Identity & Federation Attacks",
+        "Synthetic / Non-Human Identity Attacks"
+      ],
+      "trust_assumption": "An authorization plane trusts that every non-human identity it honors (service account, API key, OAuth app, CI token, agent credential, workload identity) maps to a currently-owned, actively-governed workload with an accountable human owner, so it keeps granting that credential's standing entitlements indefinitely because non-human identities have no login cadence, expiry pressure, or joiner-mover-leaver lifecycle to trigger review.",
+      "violation": "An attacker takes over or quietly reuses an orphaned NHI whose owning workload, project, or employee is long gone but whose credential and broad entitlements were never revoked, and the authorization plane honors it as a legitimate trusted workload because nothing ever questioned a non-human identity that simply kept working, granting persistent privileged access with no owner to notice.",
+      "techniques": [
+        {
+          "name": "Orphaned service-account / API-key reuse with intact standing entitlements",
+          "attack_ids": [
+            "T1078.004",
+            "T1098.001"
+          ],
+          "cwe_ids": [
+            "CWE-1392",
+            "CWE-672"
+          ]
+        },
+        {
+          "name": "Ungoverned agent/workload identity sprawl outliving its workload",
+          "attack_ids": [
+            "T1136.003"
+          ],
+          "cwe_ids": [
+            "CWE-266",
+            "CWE-1393"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Non-human identities already outnumber humans by large multiples and the 2025-2027 explosion of agent and workload credentials accelerates sprawl, yet IAM lifecycle governance (JML, recert, expiry) was built around human accounts that log in, change roles, and leave. NHIs have none of those natural review triggers, so orphaned service accounts and agent credentials with broad standing entitlements persist indefinitely with no owner watching, becoming durable trusted footholds. The seam is the authorization plane's assumption of continuous ownership behind every NHI; tooling to discover, attribute ownership, and right-size or expire NHIs is only nascent, and detection of an orphaned-credential reuse is weak because the identity 'belongs' there. This identity-sprawl seam is distinct from workload-federation misbinding because the failure is lifecycle abandonment, not trust-relationship configuration.",
+      "suggested_research": "Build an NHI lifecycle engine that binds every non-human credential to a live workload heartbeat and an accountable human owner, auto-expiring or quarantining credentials whose workload/owner disappears; measure entitlement-decay and orphan rates across a cloud estate and demonstrate silent reuse of an abandoned CI token."
+    },
+    {
+      "id": "GH4-context-window-secret-persistence-export",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "memory",
+        "human",
+        "doc"
+      ],
+      "target": [
+        "agent",
+        "cloud",
+        "web"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0009",
+        "TA0010"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Collection"
+      ],
+      "trust_assumption": "An assistant/agent platform trusts that secrets and sensitive data pasted into a long context window, persistent conversation, or agent memory are ephemeral working state that lives only for the task, so it freely retains, logs, syncs, and exports chat history and memory without treating those stores as a credential vault subject to secret-scanning, redaction, or rotation policy.",
+      "violation": "Secrets (API keys, tokens, PII, internal URLs) that a user or tool dropped into a long-lived context window or agent memory are persisted into transcripts, vendor logs, training-feedback stores, or exportable chat history, and an attacker or over-broad integration later reads them from those secondary stores long after the task, because the platform never treated conversational/memory state as a durable secret-bearing data store.",
+      "techniques": [
+        {
+          "name": "Secret regurgitation from persisted long-context / agent memory",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-312",
+            "CWE-532"
+          ]
+        },
+        {
+          "name": "Chat-history / transcript export exposing retained credentials",
+          "attack_ids": [
+            "T1552.001"
+          ],
+          "cwe_ids": [
+            "CWE-200",
+            "CWE-359"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Million-token context windows and persistent agent memory in 2025-2027 mean users and tools routinely place secrets and PII into conversational state that the platform treats as transient, but that state is in fact persisted into transcripts, observability logs, feedback datasets, and exportable history that live far beyond the task and are reachable by integrations, support staff, or attackers. The seam is a time/state mismatch: the data is assumed ephemeral but is durably retained, and unlike the known prompt-cache timing leak this concerns long-lived storage of the cleartext itself, not a side channel. No platform runs secret-scanning/redaction over context and memory the way it would over a code repo, secrets in transcripts are never rotated, and detection of credential persistence in conversational stores is only nascent.",
+      "suggested_research": "Build a context/memory secret-scanner that detects and redacts credentials and PII before persistence, transcript export, or feedback capture, and triggers rotation on detected secrets; quantify secret-leak rates into transcript and observability stores across major assistant platforms."
+    },
+    {
+      "id": "GH4-agent-action-nonrepudiation-gap",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "agent",
+        "mcp"
+      ],
+      "target": [
+        "soc",
+        "cloud",
+        "identity"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0005",
+        "TA0040"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Provenance & Content-Authenticity Attacks"
+      ],
+      "trust_assumption": "An audit / accountability layer trusts that the actor field on a logged action faithfully attributes that action to the principal who authorized it, so when an agent performs a tool call or API write the resulting log entry is treated as non-repudiable evidence of who decided to do it, even though the entry is just an assertion with no signed binding among the human authorizer, the agent identity, and the specific action.",
+      "violation": "Because no cryptographic provenance binds the authorizing human, the acting agent, and the exact action together, an action taken by a compromised or prompt-injected agent (or replayed/forged after the fact) is logged with a plausible actor and is indistinguishable from a legitimately-authorized one, so the accountability layer attributes it to an innocent principal and the true cause is unrecoverable and deniable.",
+      "techniques": [
+        {
+          "name": "Unsigned agent action lacking authorizer-to-action provenance binding",
+          "attack_ids": [
+            "T1070",
+            "T1565.001"
+          ],
+          "cwe_ids": [
+            "CWE-778",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "Forged/replayed actor attribution in agent audit trail",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-346",
+            "CWE-347"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "As agents perform consequential writes across cloud, identity, and SaaS in 2025-2027, organizations rely on audit logs for accountability, but those logs record an unsigned actor assertion rather than a verifiable chain linking the human who approved a goal, the agent that executed it, and the precise action emitted. There is no provenance primitive that makes an agent action non-repudiable, so a compromised or injected agent's actions are forensically indistinguishable from authorized ones, blame lands on the wrong principal, and incident response cannot reconstruct true causation. This provenance seam is distinct from sub-agent context inheritance (which concerns authority flow) because it concerns after-the-fact attribution integrity; no agent framework signs an authorizer->agent->action triple and no detection flags missing or forged provenance.",
+      "suggested_research": "Define a signed action-provenance token that cryptographically binds the human authorization, the agent identity, the tool/parameters, and a nonce, emitted with every consequential action and verifiable by the audit layer; prototype a broker that rejects unprovenanced agent writes and demonstrate forensic attribution under a simulated agent compromise."
+    },
+    {
+      "id": "GH4-enrichment-api-identity-poisoning",
+      "primitive": "P1",
+      "kind": "frontier",
+      "source": [
+        "web",
+        "supplychain"
+      ],
+      "target": [
+        "identity",
+        "soc",
+        "agent"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0006"
+      ],
+      "classic_branches": [
+        "Identity & Federation Attacks",
+        "AI / Agent Attacks"
+      ],
+      "trust_assumption": "An identity-decisioning or risk pipeline trusts that third-party data-broker and enrichment-API responses (firmographic lookups, email-reputation, device/IP intelligence, sanction/PEP screening, fraud-score augmentation) are authoritative external facts about a subject, so it feeds them directly into automated approve/deny/escalate decisions without treating the enrichment provider as an attacker-influenceable input.",
+      "violation": "An attacker poisons the upstream enrichment source (seeds false broker records, manipulates a reputation/scoring feed, or registers misleading device/IP attributes) so the enrichment API returns attacker-favorable 'facts,' and the identity pipeline ingests them as authoritative truth and makes the wrong trust decision, converting a data-feed manipulation into an identity-authority outcome the pipeline cannot trace back to the poisoned source.",
+      "techniques": [
+        {
+          "name": "Data-broker record seeding to bias an enrichment-API verdict",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-807"
+          ]
+        },
+        {
+          "name": "Reputation/risk-feed poisoning feeding automated identity decisions",
+          "attack_ids": [
+            "T1583"
+          ],
+          "cwe_ids": [
+            "CWE-349",
+            "CWE-20"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Identity and fraud pipelines in 2025-2027 increasingly outsource ground truth to data-broker and enrichment APIs and let agents auto-consume those verdicts, but the enrichment supply chain is loosely governed and partly attacker-influenceable (seeded broker entries, manipulable reputation feeds, declared device attributes), so a manipulated upstream fact silently steers a downstream authority decision. The seam is the pipeline's treatment of enrichment output as authoritative rather than as untrusted attacker-reachable data; this is a data-to-control violation on the identity plane distinct from synthetic-identity aging because here the attacker targets the institution's external truth source rather than building a persona. No pipeline carries provenance/confidence on enrichment facts, cross-validates conflicting providers, or detects feed poisoning, leaving this seam untooled and undetected.",
+      "suggested_research": "Build an enrichment-provenance layer that attaches source, freshness, and corroboration confidence to every third-party fact and requires multi-provider agreement before it can move an identity decision past a risk threshold; demonstrate broker-record seeding that flips an automated KYC/fraud verdict and measure detectability."
+    },
+    {
+      "id": "GH5-pqc-hybrid-negotiation-downgrade",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "network"
+      ],
+      "target": [
+        "host",
+        "identity"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0006",
+        "TA0009"
+      ],
+      "classic_branches": [
+        "Cryptography & PKI",
+        "Network Attacks"
+      ],
+      "trust_assumption": "A relying party that has been provisioned a hybrid post-quantum certificate or hybrid key-exchange group (classical+ML-KEM/ML-DSA) trusts that because the peer is PQC-capable, the negotiated session inherited the quantum-resistant half of the hybrid, so it records the connection as 'PQC-protected' in its posture and compliance state even when only the classical component actually established the shared secret.",
+      "violation": "An on-path attacker strips or fails the PQC half of the hybrid (drops the ML-KEM keyshare, forces a classical-only group, or presents the classical-only fallback chain a dual-stack deployment still accepts for legacy reach), and the relying party silently completes a purely classical session while its telemetry, audit log, and crypto-agility dashboard still report a quantum-safe handshake — leaving a harvestable session mislabeled as protected.",
+      "techniques": [
+        {
+          "name": "Hybrid keyshare strip forcing classical-only PQC fallback",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-757",
+            "CWE-300"
+          ]
+        },
+        {
+          "name": "PQC posture mislabeling of a downgraded hybrid session",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-326",
+            "CWE-636"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "The 2025-2027 migration wave deploys hybrid certs and hybrid key exchange in dual-stack mode precisely so that PQC-incapable peers still connect, which means a classical-only outcome is a designed-in success, not an error. The dangerous seam is not the downgrade itself but that the relying party's posture/compliance accounting credits the connection as quantum-safe based on the cert's hybrid *capability* rather than the session's actual negotiated *outcome*, so an attacker who forces the classical path also forges the organization's record of being PQC-protected. This is distinct from generic TLS downgrade because the violated trust is the PQC-readiness bookkeeping layer that migration programs rely on to declare risk retired; no scanner today reconciles 'hybrid cert present' against 'PQC component actually used per session', and no IDS flags a hybrid-capable peer that settled on classical.",
+      "suggested_research": "Build a session-level reconciler that parses negotiated KEM groups and signature algorithms from live handshakes and diffs them against the hybrid capability advertised in the served certificate, alerting when a PQC-capable endpoint completes classical-only; red-team a dual-stack hybrid deployment by selectively dropping ML-KEM keyshares and confirming the compliance dashboard still reports quantum-safe."
+    },
+    {
+      "id": "GH5-crypto-agility-policy-rollback-race",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "cloud",
+        "supplychain"
+      ],
+      "target": [
+        "host",
+        "network"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0005",
+        "TA0006"
+      ],
+      "classic_branches": [
+        "Cryptography & PKI",
+        "Cloud Attacks"
+      ],
+      "trust_assumption": "A crypto-agility control plane (centralized cipher-policy service, KMS algorithm profile, or fleet crypto-policy CRD) is trusted by every workload that reads it to only ratchet algorithm strength forward, so workloads cache and apply the distributed policy without re-validating that a newly fetched 'allowed algorithms' set is not weaker than the one they were already enforcing.",
+      "violation": "An attacker with write access to the agility policy store (or who replays an older signed policy version) pushes a policy revision that re-enables a deprecated suite or lowers the minimum negotiated group, and the fleet's workloads apply it as an authoritative forward update because the agility mechanism designed to make algorithms changeable has no monotonic floor — making the very lever built to strengthen crypto into a one-command fleet-wide weakening primitive.",
+      "techniques": [
+        {
+          "name": "Crypto-agility policy rollback to deprecated suite",
+          "attack_ids": [
+            "T1562.001"
+          ],
+          "cwe_ids": [
+            "CWE-757",
+            "CWE-1188"
+          ]
+        },
+        {
+          "name": "Signed-policy replay reintroducing weak algorithm floor",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-294",
+            "CWE-326"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Crypto-agility is the headline answer to PQC migration: orgs are standing up central policy planes in 2025-2027 so they can swap algorithms without redeploying code. But agility is bidirectional by construction, and the deployment model is 'workloads trust the latest policy the plane hands them.' Nobody is treating the algorithm-strength dimension as a monotonic counter the way anti-rollback treats firmware versions, so a compromised or replayed policy revision quietly relaxes the entire fleet at once and looks like a normal config push. This is a new seam distinct from per-connection downgrade and from the excluded crypto-agility-rollback hint's framing of negotiation: here the trust violated is the distribution channel's implicit monotonicity, landing on every workload that treats centralized crypto policy as authoritative. No policy plane enforces a strength floor or signs a non-decreasing version, and SIEMs do not parse policy diffs for strength regressions.",
+      "suggested_research": "Prototype a monotonic-strength guard that ranks each pushed crypto policy on a partial order of algorithm strength and refuses or quarantines any revision below the highest previously-applied floor, with attestation that the floor counter is tamper-evident; demonstrate fleet weakening via a replayed older signed policy against a KMS-driven cipher profile."
+    },
+    {
+      "id": "GH5-hndl-keylog-export-archival-bridge",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "network",
+        "cloud"
+      ],
+      "target": [
+        "doc",
+        "cloud"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0009",
+        "TA0010"
+      ],
+      "classic_branches": [
+        "Cryptography & PKI",
+        "Network Attacks",
+        "Cloud Attacks"
+      ],
+      "trust_assumption": "An organization that enables TLS session-key export (SSLKEYLOGFILE-style decryption for observability, WAF, DLP, or eBPF middleboxes) trusts that the exported per-session keys are ephemeral operational artifacts that live only as long as the flow inspection needs them, so it pipes them into the same log/observability and long-term storage pipeline as ordinary telemetry without a separate confidentiality lifecycle.",
+      "violation": "The exported session keys are aggregated into centralized observability/SIEM and cold archival storage alongside passively-captured ciphertext flows, so an attacker (or a future quantum adversary) who reaches the archive obtains both the long-lived stored ciphertext and the very keys to decrypt it — collapsing the harvest-now-decrypt-later defense organizations think PQC migration gives them, because the plaintext-equivalent keys were retained next to the data the whole time.",
+      "techniques": [
+        {
+          "name": "Exported TLS session keys co-archived with captured ciphertext",
+          "attack_ids": [
+            "T1530"
+          ],
+          "cwe_ids": [
+            "CWE-312",
+            "CWE-522"
+          ]
+        },
+        {
+          "name": "Observability keylog pipeline as long-lived decryption oracle",
+          "attack_ids": [
+            "T1602"
+          ],
+          "cwe_ids": [
+            "CWE-532",
+            "CWE-200"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Enterprises increasingly export TLS keys to inspect their own encrypted traffic (eBPF observability, cloud-native WAFs, DLP), and separately are migrating to PQC to defend against harvest-now-decrypt-later. The overlooked seam is that the keylog export pipeline and the packet/flow capture pipeline both feed the same SIEM and the same multi-year cold storage, so an org that believes PQC has retired its HNDL exposure has actually been co-locating plaintext-equivalent keys with the ciphertext in long-lived storage — no quantum computer required, just archive access. This is distinct from the passive-capture HNDL hint because the violated trust is the assumption that exported keys are ephemeral; the danger is the archival co-location bridge, which no DLP/observability product treats as a confidentiality boundary and no retention policy isolates. There is no tooling that detects session keys and ciphertext sharing a retention tier and no detection for keylog material leaking into long-term stores.",
+      "suggested_research": "Map real observability/WAF stacks for where SSLKEYLOG-equivalent material lands and whether it shares a retention class with captured flows; build a storage-classifier that flags any tier holding both decryption keys and corresponding ciphertext, and propose an ephemeral key-escrow with enforced short TTL distinct from the telemetry lake."
+    },
+    {
+      "id": "GH5-edge-worker-cold-isolate-state-bleed",
+      "primitive": "P4",
+      "kind": "frontier",
+      "source": [
+        "cloud"
+      ],
+      "target": [
+        "container",
+        "web"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0006",
+        "TA0009"
+      ],
+      "classic_branches": [
+        "Cloud Attacks",
+        "Container & Orchestration"
+      ],
+      "trust_assumption": "An edge-compute platform (V8-isolate Workers, functions-at-edge) trusts that the per-request isolate it hands a tenant's code starts from a clean, request-scoped global state, so tenant code freely caches secrets, decrypted tokens, and per-user context in module-level globals on the assumption that reuse only ever serves the same tenant's subsequent requests on the same warmed isolate.",
+      "violation": "The platform's isolate-reuse / cross-request global persistence (warm isolates kept alive across requests, or a module-scope variable surviving between invocations) is observed by a co-resident or follow-on request from a different tenant or user routed to the same warmed isolate, so module-level secrets and decrypted context from request N leak into the execution context of request N+1 that the tenant never intended to share — a serverless analog of cold-start bleed but at the isolate-global granularity edge platforms uniquely expose.",
+      "techniques": [
+        {
+          "name": "Edge isolate module-global secret bleed across requests",
+          "attack_ids": [
+            "T1212"
+          ],
+          "cwe_ids": [
+            "CWE-488",
+            "CWE-526"
+          ]
+        },
+        {
+          "name": "Warm-isolate context inheritance across tenants",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-668",
+            "CWE-200"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Edge platforms aggressively reuse warm V8 isolates and reused execution contexts to kill cold-start latency, and their developer guidance does warn against global state — but in 2025-2027 the explosion of edge code that decrypts tokens, holds KV-fetched secrets, and caches per-user auth context in module globals turns that performance optimization into a confidentiality seam. The trust violated is context-scoping: developers and the platform implicitly assume request isolation, while the isolate model actually grants request N+1 inherited access to whatever request N left in scope. This is a distinct gap from serverless cold-start bleed framed for VM/container functions because edge isolates share a single process and reuse globals at far finer granularity and far higher reuse rates, with no per-request scrubbing. There is no tooling that detects module-global secret retention across edge invocations and no platform-side or detection signal for cross-request context inheritance.",
+      "suggested_research": "Build a static/dynamic analyzer for edge Worker code that flags secrets or decrypted context persisting in module scope across the request boundary, plus a runtime probe that measures whether warmed isolates leak prior-request globals to a differently-keyed follow-on request; quantify reuse rates on a major edge platform."
+    },
+    {
+      "id": "GH5-cdn-edge-cache-key-confused-deputy",
+      "primitive": "P5",
+      "kind": "frontier",
+      "source": [
+        "web"
+      ],
+      "target": [
+        "cloud",
+        "web"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0009",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "Cloud Attacks",
+        "Web / Application Attacks"
+      ],
+      "trust_assumption": "A CDN/edge cache trusts that its computed cache key (the normalized subset of request attributes it hashes) fully captures every input the origin used to authorize and personalize a response, so a cache hit for a given key is safe to serve to any subsequent requester that produces the same key, regardless of headers, tenancy claims, or edge-function transforms not folded into the key.",
+      "violation": "An attacker crafts requests where an authorization- or tenant-determining input (an edge-function-injected header, a tenant token, a Vary-omitted field) influences the personalized/authorized origin response but is excluded from the cache key, so the edge caches a victim-scoped or differently-tenanted response and serves it cross-tenant to attacker requests — a confused-deputy disclosure born from the mismatch between what authorizes the response and what keys the cache.",
+      "techniques": [
+        {
+          "name": "Cache-key/authorization-input mismatch cross-tenant serve",
+          "attack_ids": [
+            "T1213"
+          ],
+          "cwe_ids": [
+            "CWE-525",
+            "CWE-639"
+          ]
+        },
+        {
+          "name": "Edge-function-injected header excluded from cache key",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-444",
+            "CWE-348"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Modern edge stacks let functions-at-edge mutate requests (inject identity headers, rewrite tenancy) and personalize responses before and after the cache, while the cache key is a separately-configured normalized hash. In 2025-2027 deployments the set of inputs that authorize a response has drifted away from the set folded into the cache key, especially when edge middleware adds tenant context the cache config never learned about. The violated trust is the cache's assumption that its key is a complete authorization fingerprint; the result is a confused deputy that serves one tenant's authorized content to another. This is broader and more current than classic web-cache-deception/poisoning because the divergence is now manufactured by programmable edge functions rather than just header quirks. Cache-key auditing tooling is only nascent and there is no detection that correlates an authorization-relevant input the origin honored against the keying config the edge actually used.",
+      "suggested_research": "Develop a differential probe that enumerates request attributes, classifies which ones change the authorized/personalized origin response, and diffs that set against the live cache-key and Vary configuration to surface unkeyed authorization inputs; demonstrate cross-tenant cache serve through an edge-function-injected tenant header excluded from the key."
+    },
+    {
+      "id": "GH5-secrets-lease-rotation-window-race",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "cloud",
+        "identity"
+      ],
+      "target": [
+        "container",
+        "cloud"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0008",
+        "TA0005"
+      ],
+      "classic_branches": [
+        "Cloud Attacks",
+        "Identity & Federation Attacks"
+      ],
+      "trust_assumption": "A workload that pulls short-lived credentials from a secrets manager (dynamic DB creds, leased cloud tokens) trusts that a credential it successfully cached is valid and authoritative for its full advertised TTL, and the issuing manager trusts that revoking/rotating the old secret at rotation time atomically retires it everywhere — so neither side accounts for the window in which a rotated-out credential is still accepted by a downstream resource that has not yet refreshed its trust material.",
+      "violation": "An attacker who captured a leased credential continues to use it during the rotation overlap window, because the secrets manager's rotation marks a new secret active but the downstream datastore/service still honors the prior one until its own cache or grace period expires, and the client meanwhile keeps presenting a cached lease past its real revocation — turning the rotation seam into a live re-use window where a credential is simultaneously 'rotated out' at the manager and 'still good' at the resource.",
+      "techniques": [
+        {
+          "name": "Rotated-out lease accepted during downstream grace overlap",
+          "attack_ids": [
+            "T1552.005"
+          ],
+          "cwe_ids": [
+            "CWE-613",
+            "CWE-672"
+          ]
+        },
+        {
+          "name": "Client cache honoring credential past real revocation",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-324",
+            "CWE-298"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Dynamic secrets and short-TTL leases are sold as the answer to credential theft, but the operational reality in 2025-2027 is that rotation is never atomic across the three parties: the manager (Vault/cloud secrets), the client cache, and the downstream resource that validates the credential each maintain independent notions of validity, and rotation deliberately overlaps old and new to avoid outages. The violated trust is the assumption that 'rotated' means 'no longer accepted'; the overlap window is a designed-in re-use opportunity that a captured credential exploits with no anomaly because both old and new are momentarily legitimate. This is distinct from generic credential theft and from the excluded workload-identity-federation gap because the seam is the temporal non-atomicity of revocation across a distributed trust set, not the federation binding. Detection is only nascent (some managers log lease use) and no tooling reconciles 'manager says rotated' against 'resource still accepts' to expose the live overlap.",
+      "suggested_research": "Instrument a Vault-or-cloud dynamic-secret pipeline to measure the real revocation-overlap window across manager, client cache, and downstream resource, and build a detector that flags use of a lease the manager already rotated but the resource still honors; prototype a rotation protocol that proves downstream retirement before marking a secret rotated."
+    },
+    {
+      "id": "GH5-esim-rsp-profile-provenance-gap",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "wireless",
+        "network"
+      ],
+      "target": [
+        "mobile",
+        "hardware"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0003"
+      ],
+      "classic_branches": [
+        "Mobile Attacks",
+        "Wireless / RF Attacks",
+        "Identity & Federation Attacks"
+      ],
+      "trust_assumption": "An eUICC/eSIM consumer device trusts that an operational profile delivered through the GSMA remote-SIM-provisioning (RSP) flow — once the activation code / QR / carrier-app handoff completes — was authorized by the legitimate subscriber for the legitimate operator, so the modem installs the profile and binds the device's network identity to it without independently re-verifying who actually initiated the provisioning.",
+      "violation": "An attacker who hijacks the provisioning initiation (a phished activation code, a malicious carrier-app deep link, or an SM-DP+ address swap) drives the RSP flow to install an attacker-chosen profile or download a profile onto an attacker-controlled eUICC, so the subscriber's mobile network identity is silently bound to a profile the genuine subscriber never authorized — an eSIM-swap that needs no physical SIM and leaves the provenance of the provisioning request unverified at the device.",
+      "techniques": [
+        {
+          "name": "RSP activation-code/QR hijack installing unauthorized profile",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-290",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "SM-DP+ address swap redirecting profile download",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-346",
+            "CWE-441"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "eSIM is becoming default on flagship phones and IoT in 2025-2027 (carrier-only US iPhones, eSIM-only IoT modules), and the RSP trust chain authenticates the SM-DP+ server and the eUICC chip cryptographically but does not bind the provisioning *initiation* to verified subscriber intent — the activation code or carrier-app handoff is the soft seam. The violated trust is provenance of the request: the device treats a completed RSP handshake as proof the right human asked for this profile, when an attacker who captures the initiation can swap identity without ever touching hardware, defeating the physical-possession assumption that made classic SIM-swap need an insider. This is a fresh, lightly-tooled telecom seam distinct from generic SIM-swap because it lives in the remote-provisioning protocol layer and the device-side initiation binding, where no consumer detection exists and no tooling verifies initiation provenance.",
+      "suggested_research": "Analyze the consumer RSP initiation path (activation codes, carrier-app deep links, default SM-DP+ resolution) for points where request provenance is unverified, and prototype a subscriber-bound initiation token plus a device-side prompt that surfaces the requesting operator identity and a fraud signal for out-of-band profile downloads; demonstrate profile redirection via a swapped SM-DP+ address."
+    },
+    {
+      "id": "GH5-fiveg-suci-reidentification-bridge",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "wireless",
+        "network"
+      ],
+      "target": [
+        "mobile",
+        "identity"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0043",
+        "TA0009"
+      ],
+      "classic_branches": [
+        "Wireless / RF Attacks",
+        "Mobile Attacks",
+        "Identity & Federation Attacks"
+      ],
+      "trust_assumption": "A 5G subscriber trusts that SUCI concealment (encrypting the SUPI/IMSI with the home network's public key before it ever leaves the device) makes their permanent identity unlinkable on the radio interface, so the privacy guarantee of the standard is treated as protecting against the IMSI-catcher tracking that plagued earlier generations.",
+      "violation": "An attacker correlates the side-channel and protocol residue that SUCI does not conceal — stable per-device parameters, fixed home-network routing identifiers, deterministic SUCI re-computation patterns under a misconfigured null-scheme or reused randomness, and timing/capability fingerprints — to re-link successive concealed identifiers back to one subscriber across sessions, defeating the unlinkability the SUCI design is trusted to provide without ever recovering the cleartext SUPI.",
+      "techniques": [
+        {
+          "name": "SUCI cross-session linkability via unconcealed routing/capability residue",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-200",
+            "CWE-203"
+          ]
+        },
+        {
+          "name": "Null-scheme / reused-randomness SUCI re-identification",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-330",
+            "CWE-326"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "5G SUCI is marketed as the cure for IMSI-catchers, and standalone 5G deployment ramps through 2025-2027, so operators and regulators increasingly treat the radio-layer identity-privacy box as checked. The seam is that SUCI conceals the SUPI but leaves a constellation of unconcealed or weakly-randomized fields (routing indicator, home-network PKI key id, device capability fingerprints, and — where operators ship the null scheme or weak randomness — recomputable concealed values) that an analytic adversary fuses to re-establish linkability across sessions. The violated trust is the unlinkability provenance of the concealed identifier itself. This is a current, untooled privacy gap distinct from classic IMSI-catching because the attack is correlation against the metadata the privacy scheme does not cover, not interception of cleartext. No tooling measures real-world SUCI linkability and no detection flags re-identification campaigns.",
+      "suggested_research": "Capture SUCI exchanges across a controlled 5G SA testbed and measure cross-session linkability from routing indicators, capability fingerprints, and randomness quality, including operator configurations that fall back to the null scheme; build a linkability-scoring tool operators can run to validate that their SUCI deployment actually delivers unlinkability."
+    },
+    {
+      "id": "GH5-keyless-signing-identity-binding-gap",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "supplychain",
+        "identity"
+      ],
+      "target": [
+        "container",
+        "supplychain"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0003"
+      ],
+      "classic_branches": [
+        "CI/CD & Build Pipeline",
+        "Cryptography & PKI",
+        "Container & Orchestration"
+      ],
+      "trust_assumption": "A verifier of a keyless-signed OCI artifact (Sigstore/Fulcio short-lived cert tying a signature to an OIDC identity) trusts that the OIDC identity baked into the signing certificate corresponds to a legitimately-controlled, human- or pipeline-owned account, so an artifact whose transparency-log entry maps to a recognizable identity string is accepted as authentically published by that party.",
+      "violation": "An attacker who controls a phishable, typosquatted, dormant, or workflow-impersonating OIDC identity (a compromised CI workflow ref, a look-alike email/GitHub identity, a reused org account) obtains a valid Fulcio certificate and signs a malicious artifact, and the verifier's policy admits it because the identity *string* matches an allowed pattern even though the binding from that OIDC identity to a trustworthy real-world publisher was never itself validated — the keyless model moved the trust to an OIDC identity that the verifier never authenticated the provenance of.",
+      "techniques": [
+        {
+          "name": "Phishable/typosquatted OIDC identity yielding valid keyless signature",
+          "attack_ids": [
+            "T1195.002"
+          ],
+          "cwe_ids": [
+            "CWE-290",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "Workflow-ref impersonation in keyless cert identity claim",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-287",
+            "CWE-863"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Keyless signing (Sigstore/Fulcio/Rekor) is the fast-spreading 2025-2027 answer to 'no more long-lived signing keys,' and verifiers increasingly gate artifact admission on the OIDC identity embedded in the short-lived cert. The overlooked seam is that the security now rests entirely on the trustworthiness of that OIDC identity binding, which was itself phishable, typosquattable, or impersonable at the CI-workflow level — the verifier authenticates that *a* valid OIDC identity signed, not that the identity legitimately represents the publisher it claims. This is explicitly distinct from CA mis-issuance (no rogue CA needed; Fulcio behaves correctly) and from SLSA provenance scope: the violated trust is the identity-binding semantics of keyless signatures and the verifier's pattern-matching policy. Identity-allowlist tooling is only nascent and brittle to look-alikes, and there is no detection for keyless signatures from newly-seen, dormant, or impersonating identities.",
+      "suggested_research": "Build an identity-binding risk scorer for keyless-signature policies that flags look-alike, newly-registered, dormant, or workflow-ref-mismatched OIDC identities and requires reputation/age evidence before admission; demonstrate admitting a malicious artifact via a typosquatted OIDC identity that satisfies a naive identity-pattern verification policy."
     }
   ],
   "scored": [
@@ -14008,6 +15036,253 @@
         "wireless",
         "hardware"
       ]
+    },
+    {
+      "id": "GH4-training-data-reconstruction-at-scale",
+      "cls": 2.7,
+      "egq": 2,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "web",
+        "human",
+        "agent",
+        "vectorstore"
+      ]
+    },
+    {
+      "id": "GH4-model-output-residency-boundary-leak",
+      "cls": 1.35,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "vectorstore",
+        "memory",
+        "cloud",
+        "agent",
+        "web"
+      ]
+    },
+    {
+      "id": "GH4-c2pa-watermark-strip-laundering",
+      "cls": 2.4,
+      "egq": 2,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "web",
+        "doc",
+        "soc",
+        "human",
+        "identity"
+      ]
+    },
+    {
+      "id": "GH4-deepfake-liveness-kyc-bypass",
+      "cls": 1.8,
+      "egq": 2,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "web",
+        "human",
+        "mobile",
+        "identity"
+      ]
+    },
+    {
+      "id": "GH4-llm-judge-grading-gaming",
+      "cls": 1.35,
+      "egq": 2,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "doc",
+        "web",
+        "supplychain",
+        "agent",
+        "soc"
+      ]
+    },
+    {
+      "id": "GH4-synthetic-identity-aged-graph",
+      "cls": 0.9,
+      "egq": 1.5,
+      "egq_candidate": false,
+      "hyper": true,
+      "frame": [
+        "web",
+        "human",
+        "identity"
+      ]
+    },
+    {
+      "id": "GH4-orphaned-nhi-trusted-indefinitely",
+      "cls": 1.8,
+      "egq": 1.5,
+      "egq_candidate": false,
+      "hyper": true,
+      "frame": [
+        "cloud",
+        "container",
+        "supplychain",
+        "identity",
+        "agent"
+      ]
+    },
+    {
+      "id": "GH4-context-window-secret-persistence-export",
+      "cls": 0.9,
+      "egq": 2,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "memory",
+        "human",
+        "doc",
+        "agent",
+        "cloud",
+        "web"
+      ]
+    },
+    {
+      "id": "GH4-agent-action-nonrepudiation-gap",
+      "cls": 1.8,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "agent",
+        "mcp",
+        "soc",
+        "cloud",
+        "identity"
+      ]
+    },
+    {
+      "id": "GH4-enrichment-api-identity-poisoning",
+      "cls": 2.4,
+      "egq": 2,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "web",
+        "supplychain",
+        "identity",
+        "soc",
+        "agent"
+      ]
+    },
+    {
+      "id": "GH5-pqc-hybrid-negotiation-downgrade",
+      "cls": 1.2,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "network",
+        "host",
+        "identity"
+      ]
+    },
+    {
+      "id": "GH5-crypto-agility-policy-rollback-race",
+      "cls": 1.2,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "cloud",
+        "supplychain",
+        "host",
+        "network"
+      ]
+    },
+    {
+      "id": "GH5-hndl-keylog-export-archival-bridge",
+      "cls": 1.2,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "network",
+        "cloud",
+        "doc"
+      ]
+    },
+    {
+      "id": "GH5-edge-worker-cold-isolate-state-bleed",
+      "cls": 1.2,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "cloud",
+        "container",
+        "web"
+      ]
+    },
+    {
+      "id": "GH5-cdn-edge-cache-key-confused-deputy",
+      "cls": 3.6,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": false,
+      "frame": [
+        "web",
+        "cloud"
+      ]
+    },
+    {
+      "id": "GH5-secrets-lease-rotation-window-race",
+      "cls": 0.3,
+      "egq": 2,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "cloud",
+        "identity",
+        "container"
+      ]
+    },
+    {
+      "id": "GH5-esim-rsp-profile-provenance-gap",
+      "cls": 0.6,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "wireless",
+        "network",
+        "mobile",
+        "hardware"
+      ]
+    },
+    {
+      "id": "GH5-fiveg-suci-reidentification-bridge",
+      "cls": 1.2,
+      "egq": 4,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "wireless",
+        "network",
+        "mobile",
+        "identity"
+      ]
+    },
+    {
+      "id": "GH5-keyless-signing-identity-binding-gap",
+      "cls": 3.6,
+      "egq": 3,
+      "egq_candidate": true,
+      "hyper": true,
+      "frame": [
+        "supplychain",
+        "identity",
+        "container"
+      ]
     }
   ],
   "frontier_seams": [
@@ -14693,6 +15968,215 @@
       "seam_id": "GH3-poisoned-sensor-into-ai-actuation-model"
     },
     {
+      "id": "disc:GH4-agent-action-nonrepudiation-gap",
+      "source": "agent",
+      "target": "identity",
+      "primitive": "P3",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "As agents perform consequential writes across cloud, identity, and SaaS in 2025-2027, organizations rely on audit logs for accountability, but those logs record an unsigned actor assertion rather than a verifiable chain linking the human who approved a goal, the agent that executed it, and the precise action emitted. There is no provenance primitive that makes an agent action non-repudiable, so a compromised or injected agent's actions are forensically indistinguishable from authorized ones, blame lands on the wrong principal, and incident response cannot reconstruct true causation. This provenance seam is distinct from sub-agent context inheritance (which concerns authority flow) because it concerns after-the-fact attribution integrity; no agent framework signs an authorizer->agent->action triple and no detection flags missing or forged provenance.",
+      "suggested_research": "Define a signed action-provenance token that cryptographically binds the human authorization, the agent identity, the tool/parameters, and a nonce, emitted with every consequential action and verifiable by the audit layer; prototype a broker that rejects unprovenanced agent writes and demonstrate forensic attribution under a simulated agent compromise.",
+      "seam_id": "GH4-agent-action-nonrepudiation-gap"
+    },
+    {
+      "id": "disc:GH4-c2pa-watermark-strip-laundering",
+      "source": "web",
+      "target": "identity",
+      "primitive": "P3",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "C2PA Content Credentials and provider watermarks are being adopted across 2025-2027 platforms, newsrooms, and emerging regulation as the answer to AI-content provenance, but the markers are detachable metadata or fragile statistical signals not hard-bound to pixels, and verifiers are being built to treat their presence as authenticity and their absence as benign. The seam is that an adversary controls whether the marker survives, so provenance becomes attacker-optional; downstream consumers (evidence pipelines, identity-document checks, trust-and-safety filters) inherit a false sense of authenticity. Stripping is trivial and scalable while detection of stripped-vs-never-credentialed content is only nascent, making this provenance seam high-value as authenticity decisions increasingly hinge on a removable credential.",
+      "suggested_research": "Build a verifier that treats absent/invalid credentials as a positive risk signal (not neutral) and cross-checks claimed provenance against perceptual-hash and ledger registration rather than the embedded manifest alone; measure strip-survival rates of C2PA and major AI watermarks across a matrix of re-encode, crop, and screenshot transforms.",
+      "seam_id": "GH4-c2pa-watermark-strip-laundering"
+    },
+    {
+      "id": "disc:GH4-context-window-secret-persistence-export",
+      "source": "memory",
+      "target": "web",
+      "primitive": "P6",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Million-token context windows and persistent agent memory in 2025-2027 mean users and tools routinely place secrets and PII into conversational state that the platform treats as transient, but that state is in fact persisted into transcripts, observability logs, feedback datasets, and exportable history that live far beyond the task and are reachable by integrations, support staff, or attackers. The seam is a time/state mismatch: the data is assumed ephemeral but is durably retained, and unlike the known prompt-cache timing leak this concerns long-lived storage of the cleartext itself, not a side channel. No platform runs secret-scanning/redaction over context and memory the way it would over a code repo, secrets in transcripts are never rotated, and detection of credential persistence in conversational stores is only nascent.",
+      "suggested_research": "Build a context/memory secret-scanner that detects and redacts credentials and PII before persistence, transcript export, or feedback capture, and triggers rotation on detected secrets; quantify secret-leak rates into transcript and observability stores across major assistant platforms.",
+      "seam_id": "GH4-context-window-secret-persistence-export"
+    },
+    {
+      "id": "disc:GH4-deepfake-liveness-kyc-bypass",
+      "source": "web",
+      "target": "human",
+      "primitive": "P3",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Real-time face-swap quality crossed the threshold where commodity tooling defeats many remote-liveness checks in 2025-2027, and the surge of fully remote onboarding (banks, exchanges, gov benefits, enterprise account recovery) means a single deepfake can bootstrap a high-assurance legal identity at scale. The seam is that the verifier conflates a decodable media stream with a live present human; injection attacks (virtual cameras, rooted-device SDK hooks) bypass even passive-liveness models that assume camera-sensor integrity. Detection is an arms race with no durable winner and current presentation-attack-detection is bypassable, so this identity-proofing provenance seam is both rapidly maturing and under-tooled at the injection layer specifically.",
+      "suggested_research": "Investigate hardware-attested capture (signed sensor frames, secure-camera attestation) as a precondition for high-assurance proofing and build injection-detection that flags virtual-camera/SDK-hook artifacts rather than only pixel-level deepfake cues; benchmark leading liveness SDKs against current open face-swap pipelines via camera injection.",
+      "seam_id": "GH4-deepfake-liveness-kyc-bypass"
+    },
+    {
+      "id": "disc:GH4-enrichment-api-identity-poisoning",
+      "source": "web",
+      "target": "agent",
+      "primitive": "P1",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Identity and fraud pipelines in 2025-2027 increasingly outsource ground truth to data-broker and enrichment APIs and let agents auto-consume those verdicts, but the enrichment supply chain is loosely governed and partly attacker-influenceable (seeded broker entries, manipulable reputation feeds, declared device attributes), so a manipulated upstream fact silently steers a downstream authority decision. The seam is the pipeline's treatment of enrichment output as authoritative rather than as untrusted attacker-reachable data; this is a data-to-control violation on the identity plane distinct from synthetic-identity aging because here the attacker targets the institution's external truth source rather than building a persona. No pipeline carries provenance/confidence on enrichment facts, cross-validates conflicting providers, or detects feed poisoning, leaving this seam untooled and undetected.",
+      "suggested_research": "Build an enrichment-provenance layer that attaches source, freshness, and corroboration confidence to every third-party fact and requires multi-provider agreement before it can move an identity decision past a risk threshold; demonstrate broker-record seeding that flips an automated KYC/fraud verdict and measure detectability.",
+      "seam_id": "GH4-enrichment-api-identity-poisoning"
+    },
+    {
+      "id": "disc:GH4-llm-judge-grading-gaming",
+      "source": "doc",
+      "target": "soc",
+      "primitive": "P1",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "LLM-as-judge has become load-bearing infrastructure in 2025-2027 for code review, moderation, RAG grading, and security triage because it scales human judgment cheaply, but the candidate artifact and the instruction channel share one context window, so the thing being graded can address its grader. Unlike eval-set overfit (gaming a static benchmark), this is live coercion of an operational gate by content the attacker fully controls, and pipelines treat the verdict as objective ground truth that authorizes downstream action. No deployed judge isolates evaluatee text from instructions, none detect verdict-steering injections, and none cross-validate a suspiciously favorable score, leaving this data-to-control seam on automated judgment both untooled and undetected.",
+      "suggested_research": "Design a judging harness that structurally quarantines evaluatee content (separate model call with the candidate as inert data, verdict-consistency checks across paraphrases, and anomaly flags on self-referential scoring language); measure attack success of embedded score-steering across common judge prompts and models.",
+      "seam_id": "GH4-llm-judge-grading-gaming"
+    },
+    {
+      "id": "disc:GH4-model-output-residency-boundary-leak",
+      "source": "vectorstore",
+      "target": "web",
+      "primitive": "P5",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Sovereignty programs in 2025-2027 pin storage and indexes to jurisdictions, but the generated output of a model is a derived artifact that carries no residency provenance, and multi-region agent routing or a cross-region fallback endpoint will happily synthesize regulated source data into a response that lands outside the boundary. Unlike classic data-at-rest controls, there is no mechanism that propagates a residency label from a vector chunk or memory record into the tokens that quote it, no detection that a cross-region inference call returned in-region regulated content, and no tooling to block residency-violating synthesis. This format-boundary seam between governed sources and ungoverned generated text is unique to the inference era and entirely untooled.",
+      "suggested_research": "Prototype residency-tag propagation that attaches a jurisdiction label to every retrieved chunk/memory record and forces the serving layer to refuse or redact when a response derived from region-pinned sources is routed to an out-of-region caller; measure leakage in a multi-region RAG deployment seeded with tagged regulated records.",
+      "seam_id": "GH4-model-output-residency-boundary-leak"
+    },
+    {
+      "id": "disc:GH4-orphaned-nhi-trusted-indefinitely",
+      "source": "cloud",
+      "target": "agent",
+      "primitive": "P2",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Non-human identities already outnumber humans by large multiples and the 2025-2027 explosion of agent and workload credentials accelerates sprawl, yet IAM lifecycle governance (JML, recert, expiry) was built around human accounts that log in, change roles, and leave. NHIs have none of those natural review triggers, so orphaned service accounts and agent credentials with broad standing entitlements persist indefinitely with no owner watching, becoming durable trusted footholds. The seam is the authorization plane's assumption of continuous ownership behind every NHI; tooling to discover, attribute ownership, and right-size or expire NHIs is only nascent, and detection of an orphaned-credential reuse is weak because the identity 'belongs' there. This identity-sprawl seam is distinct from workload-federation misbinding because the failure is lifecycle abandonment, not trust-relationship configuration.",
+      "suggested_research": "Build an NHI lifecycle engine that binds every non-human credential to a live workload heartbeat and an accountable human owner, auto-expiring or quarantining credentials whose workload/owner disappears; measure entitlement-decay and orphan rates across a cloud estate and demonstrate silent reuse of an abandoned CI token.",
+      "seam_id": "GH4-orphaned-nhi-trusted-indefinitely"
+    },
+    {
+      "id": "disc:GH4-synthetic-identity-aged-graph",
+      "source": "web",
+      "target": "human",
+      "primitive": "P2",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Synthetic identity has been a fraud problem for years, but 2025-2027 changes the economics: generative AI can mass-produce coherent personas (faces, writing style, social activity) and agentic automation can seed and age the corroborating footprint across email, social, and data-broker surfaces at scale, so the cross-source consistency that risk engines treat as existence-proof becomes cheap to fabricate. The seam is that the identity layer infers authority/legitimacy from correlated history that the attacker authored, and there is no shared mechanism to attest that a footprint reflects a real natural person rather than a patiently-aged fabrication. Detection of synthetic graphs is only nascent and no tooling reconstructs the provenance of an identity's history, making this identity-authority seam novel at AI scale.",
+      "suggested_research": "Develop graph-provenance scoring that weights the independence and unforgeable-anchor strength of identity signals (e.g., longitudinal device/biometric anchors) over easily-seeded broker/social presence; build a synthetic-cohort detector that finds aged personas sharing a common fabrication fingerprint across institutions.",
+      "seam_id": "GH4-synthetic-identity-aged-graph"
+    },
+    {
+      "id": "disc:GH4-training-data-reconstruction-at-scale",
+      "source": "web",
+      "target": "vectorstore",
+      "primitive": "P1",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Organizations fine-tuning 2025-2027 models on proprietary corpora (support tickets, HR records, internal wikis) treat the weights as a safe abstraction and meter inference for cost, not for confidentiality, so they never model output tokens as an egress path subject to DLP. Extraction and membership-inference research has matured into repeatable query strategies, but no serving stack carries a per-record extraction budget, no detector distinguishes a normal completion from a verbatim memorized-row leak, and DLP appliances inspect documents and uploads, not generated tokens. This makes high-fidelity reconstruction of memorized confidential rows the least-tooled, fully-automatable data-centric seam, distinct from runtime prompt-injection because the leak channel is the model's own learned parameters rather than its current context.",
+      "suggested_research": "Build an inference-side extraction-budget monitor that scores output spans for verbatim-corpus overlap (rolling-hash against a canary/known-sensitive set) and rate-limits high-overlap completions per principal; quantify per-query extraction yield against a fine-tuned model seeded with synthetic PII canaries.",
+      "seam_id": "GH4-training-data-reconstruction-at-scale"
+    },
+    {
+      "id": "disc:GH5-cdn-edge-cache-key-confused-deputy",
+      "source": "web",
+      "target": "web",
+      "primitive": "P5",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Modern edge stacks let functions-at-edge mutate requests (inject identity headers, rewrite tenancy) and personalize responses before and after the cache, while the cache key is a separately-configured normalized hash. In 2025-2027 deployments the set of inputs that authorize a response has drifted away from the set folded into the cache key, especially when edge middleware adds tenant context the cache config never learned about. The violated trust is the cache's assumption that its key is a complete authorization fingerprint; the result is a confused deputy that serves one tenant's authorized content to another. This is broader and more current than classic web-cache-deception/poisoning because the divergence is now manufactured by programmable edge functions rather than just header quirks. Cache-key auditing tooling is only nascent and there is no detection that correlates an authorization-relevant input the origin honored against the keying config the edge actually used.",
+      "suggested_research": "Develop a differential probe that enumerates request attributes, classifies which ones change the authorized/personalized origin response, and diffs that set against the live cache-key and Vary configuration to surface unkeyed authorization inputs; demonstrate cross-tenant cache serve through an edge-function-injected tenant header excluded from the key.",
+      "seam_id": "GH5-cdn-edge-cache-key-confused-deputy"
+    },
+    {
+      "id": "disc:GH5-crypto-agility-policy-rollback-race",
+      "source": "cloud",
+      "target": "network",
+      "primitive": "P6",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Crypto-agility is the headline answer to PQC migration: orgs are standing up central policy planes in 2025-2027 so they can swap algorithms without redeploying code. But agility is bidirectional by construction, and the deployment model is 'workloads trust the latest policy the plane hands them.' Nobody is treating the algorithm-strength dimension as a monotonic counter the way anti-rollback treats firmware versions, so a compromised or replayed policy revision quietly relaxes the entire fleet at once and looks like a normal config push. This is a new seam distinct from per-connection downgrade and from the excluded crypto-agility-rollback hint's framing of negotiation: here the trust violated is the distribution channel's implicit monotonicity, landing on every workload that treats centralized crypto policy as authoritative. No policy plane enforces a strength floor or signs a non-decreasing version, and SIEMs do not parse policy diffs for strength regressions.",
+      "suggested_research": "Prototype a monotonic-strength guard that ranks each pushed crypto policy on a partial order of algorithm strength and refuses or quarantines any revision below the highest previously-applied floor, with attestation that the floor counter is tamper-evident; demonstrate fleet weakening via a replayed older signed policy against a KMS-driven cipher profile.",
+      "seam_id": "GH5-crypto-agility-policy-rollback-race"
+    },
+    {
+      "id": "disc:GH5-edge-worker-cold-isolate-state-bleed",
+      "source": "cloud",
+      "target": "web",
+      "primitive": "P4",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Edge platforms aggressively reuse warm V8 isolates and reused execution contexts to kill cold-start latency, and their developer guidance does warn against global state — but in 2025-2027 the explosion of edge code that decrypts tokens, holds KV-fetched secrets, and caches per-user auth context in module globals turns that performance optimization into a confidentiality seam. The trust violated is context-scoping: developers and the platform implicitly assume request isolation, while the isolate model actually grants request N+1 inherited access to whatever request N left in scope. This is a distinct gap from serverless cold-start bleed framed for VM/container functions because edge isolates share a single process and reuse globals at far finer granularity and far higher reuse rates, with no per-request scrubbing. There is no tooling that detects module-global secret retention across edge invocations and no platform-side or detection signal for cross-request context inheritance.",
+      "suggested_research": "Build a static/dynamic analyzer for edge Worker code that flags secrets or decrypted context persisting in module scope across the request boundary, plus a runtime probe that measures whether warmed isolates leak prior-request globals to a differently-keyed follow-on request; quantify reuse rates on a major edge platform.",
+      "seam_id": "GH5-edge-worker-cold-isolate-state-bleed"
+    },
+    {
+      "id": "disc:GH5-esim-rsp-profile-provenance-gap",
+      "source": "wireless",
+      "target": "hardware",
+      "primitive": "P3",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "eSIM is becoming default on flagship phones and IoT in 2025-2027 (carrier-only US iPhones, eSIM-only IoT modules), and the RSP trust chain authenticates the SM-DP+ server and the eUICC chip cryptographically but does not bind the provisioning *initiation* to verified subscriber intent — the activation code or carrier-app handoff is the soft seam. The violated trust is provenance of the request: the device treats a completed RSP handshake as proof the right human asked for this profile, when an attacker who captures the initiation can swap identity without ever touching hardware, defeating the physical-possession assumption that made classic SIM-swap need an insider. This is a fresh, lightly-tooled telecom seam distinct from generic SIM-swap because it lives in the remote-provisioning protocol layer and the device-side initiation binding, where no consumer detection exists and no tooling verifies initiation provenance.",
+      "suggested_research": "Analyze the consumer RSP initiation path (activation codes, carrier-app deep links, default SM-DP+ resolution) for points where request provenance is unverified, and prototype a subscriber-bound initiation token plus a device-side prompt that surfaces the requesting operator identity and a fraud signal for out-of-band profile downloads; demonstrate profile redirection via a swapped SM-DP+ address.",
+      "seam_id": "GH5-esim-rsp-profile-provenance-gap"
+    },
+    {
+      "id": "disc:GH5-fiveg-suci-reidentification-bridge",
+      "source": "wireless",
+      "target": "identity",
+      "primitive": "P3",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "5G SUCI is marketed as the cure for IMSI-catchers, and standalone 5G deployment ramps through 2025-2027, so operators and regulators increasingly treat the radio-layer identity-privacy box as checked. The seam is that SUCI conceals the SUPI but leaves a constellation of unconcealed or weakly-randomized fields (routing indicator, home-network PKI key id, device capability fingerprints, and — where operators ship the null scheme or weak randomness — recomputable concealed values) that an analytic adversary fuses to re-establish linkability across sessions. The violated trust is the unlinkability provenance of the concealed identifier itself. This is a current, untooled privacy gap distinct from classic IMSI-catching because the attack is correlation against the metadata the privacy scheme does not cover, not interception of cleartext. No tooling measures real-world SUCI linkability and no detection flags re-identification campaigns.",
+      "suggested_research": "Capture SUCI exchanges across a controlled 5G SA testbed and measure cross-session linkability from routing indicators, capability fingerprints, and randomness quality, including operator configurations that fall back to the null scheme; build a linkability-scoring tool operators can run to validate that their SUCI deployment actually delivers unlinkability.",
+      "seam_id": "GH5-fiveg-suci-reidentification-bridge"
+    },
+    {
+      "id": "disc:GH5-hndl-keylog-export-archival-bridge",
+      "source": "network",
+      "target": "cloud",
+      "primitive": "P3",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Enterprises increasingly export TLS keys to inspect their own encrypted traffic (eBPF observability, cloud-native WAFs, DLP), and separately are migrating to PQC to defend against harvest-now-decrypt-later. The overlooked seam is that the keylog export pipeline and the packet/flow capture pipeline both feed the same SIEM and the same multi-year cold storage, so an org that believes PQC has retired its HNDL exposure has actually been co-locating plaintext-equivalent keys with the ciphertext in long-lived storage — no quantum computer required, just archive access. This is distinct from the passive-capture HNDL hint because the violated trust is the assumption that exported keys are ephemeral; the danger is the archival co-location bridge, which no DLP/observability product treats as a confidentiality boundary and no retention policy isolates. There is no tooling that detects session keys and ciphertext sharing a retention tier and no detection for keylog material leaking into long-term stores.",
+      "suggested_research": "Map real observability/WAF stacks for where SSLKEYLOG-equivalent material lands and whether it shares a retention class with captured flows; build a storage-classifier that flags any tier holding both decryption keys and corresponding ciphertext, and propose an ephemeral key-escrow with enforced short TTL distinct from the telemetry lake.",
+      "seam_id": "GH5-hndl-keylog-export-archival-bridge"
+    },
+    {
+      "id": "disc:GH5-keyless-signing-identity-binding-gap",
+      "source": "supplychain",
+      "target": "supplychain",
+      "primitive": "P2",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Keyless signing (Sigstore/Fulcio/Rekor) is the fast-spreading 2025-2027 answer to 'no more long-lived signing keys,' and verifiers increasingly gate artifact admission on the OIDC identity embedded in the short-lived cert. The overlooked seam is that the security now rests entirely on the trustworthiness of that OIDC identity binding, which was itself phishable, typosquattable, or impersonable at the CI-workflow level — the verifier authenticates that *a* valid OIDC identity signed, not that the identity legitimately represents the publisher it claims. This is explicitly distinct from CA mis-issuance (no rogue CA needed; Fulcio behaves correctly) and from SLSA provenance scope: the violated trust is the identity-binding semantics of keyless signatures and the verifier's pattern-matching policy. Identity-allowlist tooling is only nascent and brittle to look-alikes, and there is no detection for keyless signatures from newly-seen, dormant, or impersonating identities.",
+      "suggested_research": "Build an identity-binding risk scorer for keyless-signature policies that flags look-alike, newly-registered, dormant, or workflow-ref-mismatched OIDC identities and requires reputation/age evidence before admission; demonstrate admitting a malicious artifact via a typosquatted OIDC identity that satisfies a naive identity-pattern verification policy.",
+      "seam_id": "GH5-keyless-signing-identity-binding-gap"
+    },
+    {
+      "id": "disc:GH5-pqc-hybrid-negotiation-downgrade",
+      "source": "network",
+      "target": "identity",
+      "primitive": "P6",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "The 2025-2027 migration wave deploys hybrid certs and hybrid key exchange in dual-stack mode precisely so that PQC-incapable peers still connect, which means a classical-only outcome is a designed-in success, not an error. The dangerous seam is not the downgrade itself but that the relying party's posture/compliance accounting credits the connection as quantum-safe based on the cert's hybrid *capability* rather than the session's actual negotiated *outcome*, so an attacker who forces the classical path also forges the organization's record of being PQC-protected. This is distinct from generic TLS downgrade because the violated trust is the PQC-readiness bookkeeping layer that migration programs rely on to declare risk retired; no scanner today reconciles 'hybrid cert present' against 'PQC component actually used per session', and no IDS flags a hybrid-capable peer that settled on classical.",
+      "suggested_research": "Build a session-level reconciler that parses negotiated KEM groups and signature algorithms from live handshakes and diffs them against the hybrid capability advertised in the served certificate, alerting when a PQC-capable endpoint completes classical-only; red-team a dual-stack hybrid deployment by selectively dropping ML-KEM keyshares and confirming the compliance dashboard still reports quantum-safe.",
+      "seam_id": "GH5-pqc-hybrid-negotiation-downgrade"
+    },
+    {
+      "id": "disc:GH5-secrets-lease-rotation-window-race",
+      "source": "cloud",
+      "target": "cloud",
+      "primitive": "P6",
+      "gap_type": "frontier",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Dynamic secrets and short-TTL leases are sold as the answer to credential theft, but the operational reality in 2025-2027 is that rotation is never atomic across the three parties: the manager (Vault/cloud secrets), the client cache, and the downstream resource that validates the credential each maintain independent notions of validity, and rotation deliberately overlaps old and new to avoid outages. The violated trust is the assumption that 'rotated' means 'no longer accepted'; the overlap window is a designed-in re-use opportunity that a captured credential exploits with no anomaly because both old and new are momentarily legitimate. This is distinct from generic credential theft and from the excluded workload-identity-federation gap because the seam is the temporal non-atomicity of revocation across a distributed trust set, not the federation binding. Detection is only nascent (some managers log lease use) and no tooling reconciles 'manager says rotated' against 'resource still accepts' to expose the live overlap.",
+      "suggested_research": "Instrument a Vault-or-cloud dynamic-secret pipeline to measure the real revocation-overlap window across manager, client cache, and downstream resource, and build a detector that flags use of a lease the manager already rotated but the resource still honors; prototype a rotation protocol that proves downstream retirement before marking a secret rotated.",
+      "seam_id": "GH5-secrets-lease-rotation-window-race"
+    },
+    {
       "id": "disc:X-cloud-memory-arn-confusion",
       "source": "memory",
       "target": "cloud",
@@ -15197,14 +16681,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:agent>cloud:P3",
-      "source": "agent",
-      "target": "cloud",
-      "primitive": "P3",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:agent>cloud:P4",
       "source": "agent",
       "target": "cloud",
@@ -15521,14 +16997,6 @@
       "source": "agent",
       "target": "soc",
       "primitive": "P2",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:agent>soc:P3",
-      "source": "agent",
-      "target": "soc",
-      "primitive": "P3",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -16549,14 +18017,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:cloud>agent:P2",
-      "source": "cloud",
-      "target": "agent",
-      "primitive": "P2",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:cloud>agent:P3",
       "source": "cloud",
       "target": "agent",
@@ -16569,14 +18029,6 @@
       "source": "cloud",
       "target": "agent",
       "primitive": "P4",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:cloud>agent:P5",
-      "source": "cloud",
-      "target": "agent",
-      "primitive": "P5",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -16857,14 +18309,6 @@
       "source": "container",
       "target": "agent",
       "primitive": "P1",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:container>agent:P2",
-      "source": "container",
-      "target": "agent",
-      "primitive": "P2",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -17213,14 +18657,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:doc>identity:P3",
-      "source": "doc",
-      "target": "identity",
-      "primitive": "P3",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:doc>identity:P5",
       "source": "doc",
       "target": "identity",
@@ -17273,22 +18709,6 @@
       "source": "doc",
       "target": "memory",
       "primitive": "P5",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:doc>soc:P1",
-      "source": "doc",
-      "target": "soc",
-      "primitive": "P1",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:doc>soc:P3",
-      "source": "doc",
-      "target": "soc",
-      "primitive": "P3",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -18037,14 +19457,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:human>agent:P1",
-      "source": "human",
-      "target": "agent",
-      "primitive": "P1",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:human>agent:P4",
       "source": "human",
       "target": "agent",
@@ -18253,14 +19665,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:human>vectorstore:P1",
-      "source": "human",
-      "target": "vectorstore",
-      "primitive": "P1",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:human>vectorstore:P2",
       "source": "human",
       "target": "vectorstore",
@@ -18449,14 +19853,6 @@
       "source": "identity",
       "target": "container",
       "primitive": "P5",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:identity>container:P6",
-      "source": "identity",
-      "target": "container",
-      "primitive": "P6",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -18845,14 +20241,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:identity>supplychain:P2",
-      "source": "identity",
-      "target": "supplychain",
-      "primitive": "P2",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:identity>supplychain:P3",
       "source": "identity",
       "target": "supplychain",
@@ -19069,14 +20457,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:mcp>cloud:P3",
-      "source": "mcp",
-      "target": "cloud",
-      "primitive": "P3",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:mcp>cloud:P4",
       "source": "mcp",
       "target": "cloud",
@@ -19277,14 +20657,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:mcp>identity:P3",
-      "source": "mcp",
-      "target": "identity",
-      "primitive": "P3",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:mcp>identity:P4",
       "source": "mcp",
       "target": "identity",
@@ -19457,14 +20829,6 @@
       "source": "mcp",
       "target": "soc",
       "primitive": "P2",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:mcp>soc:P3",
-      "source": "mcp",
-      "target": "soc",
-      "primitive": "P3",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -19761,14 +21125,6 @@
       "source": "memory",
       "target": "cloud",
       "primitive": "P5",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:memory>cloud:P6",
-      "source": "memory",
-      "target": "cloud",
-      "primitive": "P6",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -22061,22 +23417,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:supplychain>agent:P1",
-      "source": "supplychain",
-      "target": "agent",
-      "primitive": "P1",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:supplychain>agent:P2",
-      "source": "supplychain",
-      "target": "agent",
-      "primitive": "P2",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:supplychain>agent:P5",
       "source": "supplychain",
       "target": "agent",
@@ -22137,14 +23477,6 @@
       "source": "supplychain",
       "target": "auto",
       "primitive": "P6",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:supplychain>identity:P1",
-      "source": "supplychain",
-      "target": "identity",
-      "primitive": "P1",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -22265,14 +23597,6 @@
       "source": "supplychain",
       "target": "memory",
       "primitive": "P6",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:supplychain>soc:P1",
-      "source": "supplychain",
-      "target": "soc",
-      "primitive": "P1",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -22409,14 +23733,6 @@
       "source": "vectorstore",
       "target": "agent",
       "primitive": "P2",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:vectorstore>agent:P5",
-      "source": "vectorstore",
-      "target": "agent",
-      "primitive": "P5",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -23261,14 +24577,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:web>vectorstore:P1",
-      "source": "web",
-      "target": "vectorstore",
-      "primitive": "P1",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
       "id": "gap:web>vectorstore:P5",
       "source": "web",
       "target": "vectorstore",
@@ -23353,14 +24661,6 @@
       "source": "wireless",
       "target": "identity",
       "primitive": "P2",
-      "gap_type": "frontier",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:wireless>identity:P3",
-      "source": "wireless",
-      "target": "identity",
-      "primitive": "P3",
       "gap_type": "frontier",
       "origin": "seed"
     },
@@ -24133,26 +25433,10 @@
       "origin": "seed"
     },
     {
-      "id": "gap:cloud>container:P4",
-      "source": "cloud",
-      "target": "container",
-      "primitive": "P4",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
       "id": "gap:cloud>container:P5",
       "source": "cloud",
       "target": "container",
       "primitive": "P5",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:cloud>container:P6",
-      "source": "cloud",
-      "target": "container",
-      "primitive": "P6",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -24233,14 +25517,6 @@
       "source": "cloud",
       "target": "host",
       "primitive": "P5",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:cloud>host:P6",
-      "source": "cloud",
-      "target": "host",
-      "primitive": "P6",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -24377,14 +25653,6 @@
       "source": "cloud",
       "target": "network",
       "primitive": "P5",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:cloud>network:P6",
-      "source": "cloud",
-      "target": "network",
-      "primitive": "P6",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -25097,14 +26365,6 @@
       "source": "doc",
       "target": "human",
       "primitive": "P1",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:doc>human:P3",
-      "source": "doc",
-      "target": "human",
-      "primitive": "P3",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -26997,14 +28257,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:mobile>human:P3",
-      "source": "mobile",
-      "target": "human",
-      "primitive": "P3",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
       "id": "gap:mobile>human:P4",
       "source": "mobile",
       "target": "human",
@@ -27293,14 +28545,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:network>cloud:P3",
-      "source": "network",
-      "target": "cloud",
-      "primitive": "P3",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
       "id": "gap:network>cloud:P5",
       "source": "network",
       "target": "cloud",
@@ -27353,14 +28597,6 @@
       "source": "network",
       "target": "hardware",
       "primitive": "P2",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:network>hardware:P3",
-      "source": "network",
-      "target": "hardware",
-      "primitive": "P3",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -27449,14 +28685,6 @@
       "source": "network",
       "target": "mobile",
       "primitive": "P2",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:network>mobile:P3",
-      "source": "network",
-      "target": "mobile",
-      "primitive": "P3",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -28197,14 +29425,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:supplychain>container:P2",
-      "source": "supplychain",
-      "target": "container",
-      "primitive": "P2",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
       "id": "gap:supplychain>container:P5",
       "source": "supplychain",
       "target": "container",
@@ -28281,14 +29501,6 @@
       "source": "supplychain",
       "target": "host",
       "primitive": "P2",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:supplychain>host:P6",
-      "source": "supplychain",
-      "target": "host",
-      "primitive": "P6",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -28429,14 +29641,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:supplychain>network:P6",
-      "source": "supplychain",
-      "target": "network",
-      "primitive": "P6",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
       "id": "gap:supplychain>ot:P1",
       "source": "supplychain",
       "target": "ot",
@@ -28489,14 +29693,6 @@
       "source": "supplychain",
       "target": "supplychain",
       "primitive": "P1",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:supplychain>supplychain:P2",
-      "source": "supplychain",
-      "target": "supplychain",
-      "primitive": "P2",
       "gap_type": "under-tooled",
       "origin": "seed"
     },
@@ -28584,14 +29780,6 @@
       "id": "gap:web>ad:P5",
       "source": "web",
       "target": "ad",
-      "primitive": "P5",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:web>cloud:P5",
-      "source": "web",
-      "target": "cloud",
       "primitive": "P5",
       "gap_type": "under-tooled",
       "origin": "seed"
@@ -29029,14 +30217,6 @@
       "origin": "seed"
     },
     {
-      "id": "gap:wireless>mobile:P3",
-      "source": "wireless",
-      "target": "mobile",
-      "primitive": "P3",
-      "gap_type": "under-tooled",
-      "origin": "seed"
-    },
-    {
       "id": "gap:wireless>mobile:P4",
       "source": "wireless",
       "target": "mobile",
@@ -29417,22 +30597,6 @@
       "source": "memory",
       "target": "agent",
       "primitive": "P2",
-      "gap_type": "projected",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:memory>agent:P5",
-      "source": "memory",
-      "target": "agent",
-      "primitive": "P5",
-      "gap_type": "projected",
-      "origin": "seed"
-    },
-    {
-      "id": "gap:memory>agent:P6",
-      "source": "memory",
-      "target": "agent",
-      "primitive": "P6",
       "gap_type": "projected",
       "origin": "seed"
     },
@@ -30475,6 +31639,18 @@
           "label": "Screenshots / clipboard capture",
           "primitive": "P2",
           "kind": "classic"
+        },
+        {
+          "seam_id": "GH4-training-data-reconstruction-at-scale",
+          "label": "Membership-inference probing to confirm a record was in the training set / Verbatim training-data extraction via divergence / prefix-completion prompts",
+          "primitive": "P1",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-context-window-secret-persistence-export",
+          "label": "Secret regurgitation from persisted long-context / agent memory / Chat-history / transcript export exposing retained credentials",
+          "primitive": "P6",
+          "kind": "frontier"
         }
       ]
     },
@@ -30581,6 +31757,12 @@
           "label": "Exfiltration over removable / physical media",
           "primitive": "P4",
           "kind": "classic"
+        },
+        {
+          "seam_id": "GH4-model-output-residency-boundary-leak",
+          "label": "Residency-bound PII synthesized into a cross-region model response / Region-pinned context laundered through an out-of-region inference endpoint",
+          "primitive": "P5",
+          "kind": "frontier"
         }
       ]
     },
@@ -30699,6 +31881,48 @@
           "label": "Agent as confused deputy in cert request/approval (mis-issuance) / Agent-driven rogue intermediate / trust-anchor installation",
           "primitive": "P2",
           "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-deepfake-liveness-kyc-bypass",
+          "label": "Injection-based deepfake liveness bypass via virtual camera / SDK hook / Generative face-swap presentation attack defeating remote KYC match",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-synthetic-identity-aged-graph",
+          "label": "Aged synthetic-identity graph defeating cross-source existence checks / Manufactured thin-file/credit-bureau history bootstrapping a fabricated person",
+          "primitive": "P2",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-orphaned-nhi-trusted-indefinitely",
+          "label": "Orphaned service-account / API-key reuse with intact standing entitlements / Ungoverned agent/workload identity sprawl outliving its workload",
+          "primitive": "P2",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-enrichment-api-identity-poisoning",
+          "label": "Data-broker record seeding to bias an enrichment-API verdict / Reputation/risk-feed poisoning feeding automated identity decisions",
+          "primitive": "P1",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-secrets-lease-rotation-window-race",
+          "label": "Rotated-out lease accepted during downstream grace overlap / Client cache honoring credential past real revocation",
+          "primitive": "P6",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-esim-rsp-profile-provenance-gap",
+          "label": "RSP activation-code/QR hijack installing unauthorized profile / SM-DP+ address swap redirecting profile download",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-fiveg-suci-reidentification-bridge",
+          "label": "SUCI cross-session linkability via unconcealed routing/capability residue / Null-scheme / reused-randomness SUCI re-identification",
+          "primitive": "P3",
+          "kind": "frontier"
         }
       ]
     },
@@ -30800,6 +32024,36 @@
           "label": "JIT elevation self-approval / auto-approval path and approver social engineering / Activation-window race / residual-session abuse after JIT grant expiry",
           "primitive": "P2",
           "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-crypto-agility-policy-rollback-race",
+          "label": "Crypto-agility policy rollback to deprecated suite / Signed-policy replay reintroducing weak algorithm floor",
+          "primitive": "P6",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-hndl-keylog-export-archival-bridge",
+          "label": "Exported TLS session keys co-archived with captured ciphertext / Observability keylog pipeline as long-lived decryption oracle",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-edge-worker-cold-isolate-state-bleed",
+          "label": "Edge isolate module-global secret bleed across requests / Warm-isolate context inheritance across tenants",
+          "primitive": "P4",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-cdn-edge-cache-key-confused-deputy",
+          "label": "Cache-key/authorization-input mismatch cross-tenant serve / Edge-function-injected header excluded from cache key",
+          "primitive": "P5",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-secrets-lease-rotation-window-race",
+          "label": "Rotated-out lease accepted during downstream grace overlap / Client cache honoring credential past real revocation",
+          "primitive": "P6",
+          "kind": "frontier"
         }
       ]
     },
@@ -30877,6 +32131,18 @@
           "label": "Authenticated-peer to L7 authz confusion (privileged path/method abuse inside the mesh) / Forwarded-identity / propagated-JWT header spoof between meshed services",
           "primitive": "P4",
           "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-edge-worker-cold-isolate-state-bleed",
+          "label": "Edge isolate module-global secret bleed across requests / Warm-isolate context inheritance across tenants",
+          "primitive": "P4",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-keyless-signing-identity-binding-gap",
+          "label": "Phishable/typosquatted OIDC identity yielding valid keyless signature / Workflow-ref impersonation in keyless cert identity claim",
+          "primitive": "P2",
+          "kind": "frontier"
         }
       ]
     },
@@ -30941,6 +32207,12 @@
           "seam_id": "GH2-slsa-provenance-scope-gap",
           "label": "Provenance scope gap (attested build step != exploited step) passing verification / Subject/predicate digest-binding mismatch letting an unattested artifact ride a valid attestation",
           "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-keyless-signing-identity-binding-gap",
+          "label": "Phishable/typosquatted OIDC identity yielding valid keyless signature / Workflow-ref impersonation in keyless cert identity claim",
+          "primitive": "P2",
           "kind": "frontier"
         }
       ]
@@ -31118,6 +32390,30 @@
           "seam_id": "GH2-tee-attestation-freshness-tcb-gap",
           "label": "Stale TEE attestation replay against a verifier missing freshness/nonce binding / TCB-recovery / minimum-SVN downgrade accepted by lax appraisal policy",
           "primitive": "P6",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-pqc-hybrid-negotiation-downgrade",
+          "label": "Hybrid keyshare strip forcing classical-only PQC fallback / PQC posture mislabeling of a downgraded hybrid session",
+          "primitive": "P6",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-crypto-agility-policy-rollback-race",
+          "label": "Crypto-agility policy rollback to deprecated suite / Signed-policy replay reintroducing weak algorithm floor",
+          "primitive": "P6",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-hndl-keylog-export-archival-bridge",
+          "label": "Exported TLS session keys co-archived with captured ciphertext / Observability keylog pipeline as long-lived decryption oracle",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-keyless-signing-identity-binding-gap",
+          "label": "Phishable/typosquatted OIDC identity yielding valid keyless signature / Workflow-ref impersonation in keyless cert identity claim",
+          "primitive": "P2",
           "kind": "frontier"
         }
       ]
@@ -31472,6 +32768,54 @@
           "label": "Agent-driven rogue device commissioning into Matter/Zigbee fabric / Agent-issued group/binding reassignment to attacker node",
           "primitive": "P2",
           "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-training-data-reconstruction-at-scale",
+          "label": "Membership-inference probing to confirm a record was in the training set / Verbatim training-data extraction via divergence / prefix-completion prompts",
+          "primitive": "P1",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-model-output-residency-boundary-leak",
+          "label": "Residency-bound PII synthesized into a cross-region model response / Region-pinned context laundered through an out-of-region inference endpoint",
+          "primitive": "P5",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-c2pa-watermark-strip-laundering",
+          "label": "C2PA manifest removal via re-encode/screenshot/format conversion / Content Credential rebinding onto altered media (provenance laundering)",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-deepfake-liveness-kyc-bypass",
+          "label": "Injection-based deepfake liveness bypass via virtual camera / SDK hook / Generative face-swap presentation attack defeating remote KYC match",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-llm-judge-grading-gaming",
+          "label": "Evaluatee-embedded prompt injection steering an LLM judge's verdict / Judge sycophancy/bias exploitation to game an automated quality gate",
+          "primitive": "P1",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-context-window-secret-persistence-export",
+          "label": "Secret regurgitation from persisted long-context / agent memory / Chat-history / transcript export exposing retained credentials",
+          "primitive": "P6",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-agent-action-nonrepudiation-gap",
+          "label": "Unsigned agent action lacking authorizer-to-action provenance binding / Forged/replayed actor attribution in agent audit trail",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH4-enrichment-api-identity-poisoning",
+          "label": "Data-broker record seeding to bias an enrichment-API verdict / Reputation/risk-feed poisoning feeding automated identity decisions",
+          "primitive": "P1",
+          "kind": "frontier"
         }
       ]
     },
@@ -31547,6 +32891,18 @@
           "seam_id": "GH3-agent-mdm-mass-wipe-policy",
           "label": "Agent-driven mass MDM remote wipe / policy push / Agent-installed rogue MDM trust CA / config profile",
           "primitive": "P2",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-esim-rsp-profile-provenance-gap",
+          "label": "RSP activation-code/QR hijack installing unauthorized profile / SM-DP+ address swap redirecting profile download",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-fiveg-suci-reidentification-bridge",
+          "label": "SUCI cross-session linkability via unconcealed routing/capability residue / Null-scheme / reused-randomness SUCI re-identification",
+          "primitive": "P3",
           "kind": "frontier"
         }
       ]
@@ -31700,6 +33056,18 @@
           "seam_id": "GH3-agent-zigbee-matter-fleet-pairing",
           "label": "Agent-driven rogue device commissioning into Matter/Zigbee fabric / Agent-issued group/binding reassignment to attacker node",
           "primitive": "P2",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-esim-rsp-profile-provenance-gap",
+          "label": "RSP activation-code/QR hijack installing unauthorized profile / SM-DP+ address swap redirecting profile download",
+          "primitive": "P3",
+          "kind": "frontier"
+        },
+        {
+          "seam_id": "GH5-fiveg-suci-reidentification-bridge",
+          "label": "SUCI cross-session linkability via unconcealed routing/capability residue / Null-scheme / reused-randomness SUCI re-identification",
+          "primitive": "P3",
           "kind": "frontier"
         }
       ]
@@ -31963,7 +33331,8 @@
             "GH2-edr-cloud-baseline-driftpoison",
             "GH2-device-posture-attestation-spoof",
             "GH2-tee-attestation-freshness-tcb-gap",
-            "GH2-ebpf-blindspot-and-rootkit"
+            "GH2-ebpf-blindspot-and-rootkit",
+            "GH5-crypto-agility-policy-rollback-race"
           ]
         },
         "TA0006": {
@@ -31980,7 +33349,9 @@
             "XC-ca-misissuance-trust",
             "XC-padding-oracle-nonce-reuse",
             "XC-tls-downgrade-rollback",
-            "GH2-tee-attestation-freshness-tcb-gap"
+            "GH2-tee-attestation-freshness-tcb-gap",
+            "GH5-pqc-hybrid-negotiation-downgrade",
+            "GH5-crypto-agility-policy-rollback-race"
           ]
         },
         "TA0007": {
@@ -32015,7 +33386,8 @@
             "C-collection",
             "R-share-mailbox-staging",
             "R-datastore-bulk-export",
-            "R-session-surface-capture"
+            "R-session-surface-capture",
+            "GH5-pqc-hybrid-negotiation-downgrade"
           ]
         },
         "TA0011": {
@@ -32151,7 +33523,8 @@
           "seam_ids": [
             "C-recon-infoleak",
             "R-dns-zone-axfr",
-            "R-dns-domain-footprint"
+            "R-dns-domain-footprint",
+            "GH5-fiveg-suci-reidentification-bridge"
           ]
         },
         "TA0042": {
@@ -32169,7 +33542,8 @@
             "DOM-telematics-ota-remote",
             "DOM-wpa-handshake-crack",
             "XC-weak-signature-collision",
-            "XC-ca-misissuance-trust"
+            "XC-ca-misissuance-trust",
+            "GH5-esim-rsp-profile-provenance-gap"
           ]
         },
         "TA0002": {
@@ -32182,8 +33556,10 @@
           ]
         },
         "TA0003": {
-          "gap_type": "under-tooled",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH5-esim-rsp-profile-provenance-gap"
+          ]
         },
         "TA0004": {
           "gap_type": "populated",
@@ -32200,7 +33576,8 @@
             "PE-doh-domain-fronting",
             "CO-tls-cert-provenance-ct-blindspot",
             "CO-residential-proxy-egress-reputation",
-            "GH2-edr-cloud-baseline-driftpoison"
+            "GH2-edr-cloud-baseline-driftpoison",
+            "GH5-crypto-agility-policy-rollback-race"
           ]
         },
         "TA0006": {
@@ -32213,7 +33590,9 @@
             "XC-ca-misissuance-trust",
             "XC-padding-oracle-nonce-reuse",
             "XC-tls-downgrade-rollback",
-            "CO-imdsv1-token-vs-network"
+            "CO-imdsv1-token-vs-network",
+            "GH5-pqc-hybrid-negotiation-downgrade",
+            "GH5-crypto-agility-policy-rollback-race"
           ]
         },
         "TA0007": {
@@ -32240,7 +33619,10 @@
         "TA0009": {
           "gap_type": "populated",
           "seam_ids": [
-            "C-mitm"
+            "C-mitm",
+            "GH5-pqc-hybrid-negotiation-downgrade",
+            "GH5-hndl-keylog-export-archival-bridge",
+            "GH5-fiveg-suci-reidentification-bridge"
           ]
         },
         "TA0011": {
@@ -32266,7 +33648,8 @@
             "C2-steganography-exfil",
             "C2-chunked-encrypted-exfil",
             "CO-domain-aging-reputation",
-            "CO-residential-proxy-egress-reputation"
+            "CO-residential-proxy-egress-reputation",
+            "GH5-hndl-keylog-export-archival-bridge"
           ]
         },
         "TA0040": {
@@ -32302,7 +33685,8 @@
             "CO-untrusted-image-pull",
             "GH2-passkey-sync-fabric-recovery-downgrade",
             "GH2-device-posture-attestation-spoof",
-            "GH2-slsa-provenance-scope-gap"
+            "GH2-slsa-provenance-scope-gap",
+            "GH5-cdn-edge-cache-key-confused-deputy"
           ]
         },
         "TA0002": {
@@ -32329,7 +33713,8 @@
             "CO-longlived-access-key",
             "CO-untrusted-image-pull",
             "GH2-slsa-provenance-scope-gap",
-            "GH2-jit-pam-approval-workflow-abuse"
+            "GH2-jit-pam-approval-workflow-abuse",
+            "GH4-orphaned-nhi-trusted-indefinitely"
           ]
         },
         "TA0004": {
@@ -32345,7 +33730,8 @@
             "CO-sa-token-overmount",
             "CO-admission-policy-bypass",
             "GH2-servicemesh-mtls-l7authz-gap",
-            "GH2-jit-pam-approval-workflow-abuse"
+            "GH2-jit-pam-approval-workflow-abuse",
+            "GH4-orphaned-nhi-trusted-indefinitely"
           ]
         },
         "TA0005": {
@@ -32355,7 +33741,10 @@
             "CO-admission-policy-bypass",
             "GH2-soar-playbook-field-injection",
             "GH2-device-posture-attestation-spoof",
-            "GH2-tee-attestation-freshness-tcb-gap"
+            "GH2-tee-attestation-freshness-tcb-gap",
+            "GH4-agent-action-nonrepudiation-gap",
+            "GH5-crypto-agility-policy-rollback-race",
+            "GH5-secrets-lease-rotation-window-race"
           ]
         },
         "TA0006": {
@@ -32384,7 +33773,9 @@
             "CO-cluster-secrets-exposure",
             "GH2-passkey-sync-fabric-recovery-downgrade",
             "GH2-tee-attestation-freshness-tcb-gap",
-            "GH2-workload-identity-federation-misbind"
+            "GH2-workload-identity-federation-misbind",
+            "GH5-crypto-agility-policy-rollback-race",
+            "GH5-edge-worker-cold-isolate-state-bleed"
           ]
         },
         "TA0007": {
@@ -32419,7 +33810,8 @@
             "CO-k8s-network-as-authz",
             "CO-sa-token-overmount",
             "GH2-workload-identity-federation-misbind",
-            "GH2-servicemesh-mtls-l7authz-gap"
+            "GH2-servicemesh-mtls-l7authz-gap",
+            "GH5-secrets-lease-rotation-window-race"
           ]
         },
         "TA0009": {
@@ -32427,7 +33819,12 @@
           "seam_ids": [
             "C-collection",
             "R-datastore-bulk-export",
-            "CO-object-store-acl-default"
+            "CO-object-store-acl-default",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export",
+            "GH5-hndl-keylog-export-archival-bridge",
+            "GH5-edge-worker-cold-isolate-state-bleed",
+            "GH5-cdn-edge-cache-key-confused-deputy"
           ]
         },
         "TA0011": {
@@ -32440,7 +33837,10 @@
           "gap_type": "populated",
           "seam_ids": [
             "F2b-iam-ratelimit-void",
-            "C2-saas-upload-exfil"
+            "C2-saas-upload-exfil",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export",
+            "GH5-hndl-keylog-export-archival-bridge"
           ]
         },
         "TA0040": {
@@ -32455,7 +33855,8 @@
             "C2-crown-jewel-access",
             "C2-business-process-disruption",
             "C2-fraudulent-transaction",
-            "XC-ratelimit-workflow-bypass"
+            "XC-ratelimit-workflow-bypass",
+            "GH4-agent-action-nonrepudiation-gap"
           ]
         }
       },
@@ -32475,7 +33876,8 @@
             "XC-ppe-pipeline-exec",
             "XC-artifact-tag-mutation",
             "CO-untrusted-image-pull",
-            "GH2-slsa-provenance-scope-gap"
+            "GH2-slsa-provenance-scope-gap",
+            "GH5-keyless-signing-identity-binding-gap"
           ]
         },
         "TA0002": {
@@ -32494,7 +33896,9 @@
             "XC-artifact-tag-mutation",
             "CO-untrusted-image-pull",
             "GH2-slsa-provenance-scope-gap",
-            "GH2-ebpf-blindspot-and-rootkit"
+            "GH2-ebpf-blindspot-and-rootkit",
+            "GH4-orphaned-nhi-trusted-indefinitely",
+            "GH5-keyless-signing-identity-binding-gap"
           ]
         },
         "TA0004": {
@@ -32508,14 +33912,16 @@
             "CO-privileged-pod-namespace-share",
             "CO-sa-token-overmount",
             "CO-admission-policy-bypass",
-            "GH2-servicemesh-mtls-l7authz-gap"
+            "GH2-servicemesh-mtls-l7authz-gap",
+            "GH4-orphaned-nhi-trusted-indefinitely"
           ]
         },
         "TA0005": {
           "gap_type": "populated",
           "seam_ids": [
             "CO-admission-policy-bypass",
-            "GH2-ebpf-blindspot-and-rootkit"
+            "GH2-ebpf-blindspot-and-rootkit",
+            "GH5-secrets-lease-rotation-window-race"
           ]
         },
         "TA0006": {
@@ -32524,7 +33930,8 @@
             "XC-ci-secret-oidc-exfil",
             "CO-sa-token-overmount",
             "CO-cluster-secrets-exposure",
-            "GH2-workload-identity-federation-misbind"
+            "GH2-workload-identity-federation-misbind",
+            "GH5-edge-worker-cold-isolate-state-bleed"
           ]
         },
         "TA0007": {
@@ -32543,12 +33950,15 @@
             "CO-privileged-pod-namespace-share",
             "CO-sa-token-overmount",
             "GH2-workload-identity-federation-misbind",
-            "GH2-servicemesh-mtls-l7authz-gap"
+            "GH2-servicemesh-mtls-l7authz-gap",
+            "GH5-secrets-lease-rotation-window-race"
           ]
         },
         "TA0009": {
-          "gap_type": "under-tooled",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH5-edge-worker-cold-isolate-state-bleed"
+          ]
         },
         "TA0011": {
           "gap_type": "under-tooled",
@@ -32574,7 +33984,8 @@
           "gap_type": "populated",
           "seam_ids": [
             "C-stage-capability",
-            "GH2-detection-as-code-rule-poison"
+            "GH2-detection-as-code-rule-poison",
+            "GH4-llm-judge-grading-gaming"
           ]
         },
         "TA0001": {
@@ -32588,7 +33999,9 @@
             "XC-ppe-pipeline-exec",
             "XC-artifact-tag-mutation",
             "CO-untrusted-image-pull",
-            "GH2-slsa-provenance-scope-gap"
+            "GH2-slsa-provenance-scope-gap",
+            "GH4-enrichment-api-identity-poisoning",
+            "GH5-keyless-signing-identity-binding-gap"
           ]
         },
         "TA0002": {
@@ -32611,28 +34024,35 @@
             "XC-runner-takeover-cache-poison",
             "XC-artifact-tag-mutation",
             "CO-untrusted-image-pull",
-            "GH2-slsa-provenance-scope-gap"
+            "GH2-slsa-provenance-scope-gap",
+            "GH4-orphaned-nhi-trusted-indefinitely",
+            "GH5-keyless-signing-identity-binding-gap"
           ]
         },
         "TA0004": {
           "gap_type": "populated",
           "seam_ids": [
             "F8a-skill-compose",
-            "PE-byovd"
+            "PE-byovd",
+            "GH4-orphaned-nhi-trusted-indefinitely"
           ]
         },
         "TA0005": {
           "gap_type": "populated",
           "seam_ids": [
             "PE-byovd",
-            "GH2-detection-as-code-rule-poison"
+            "GH2-detection-as-code-rule-poison",
+            "GH4-llm-judge-grading-gaming",
+            "GH5-crypto-agility-policy-rollback-race"
           ]
         },
         "TA0006": {
           "gap_type": "populated",
           "seam_ids": [
             "XC-ci-secret-oidc-exfil",
-            "GH2-workload-identity-federation-misbind"
+            "GH2-workload-identity-federation-misbind",
+            "GH4-enrichment-api-identity-poisoning",
+            "GH5-crypto-agility-policy-rollback-race"
           ]
         },
         "TA0007": {
@@ -32669,7 +34089,8 @@
           "gap_type": "populated",
           "seam_ids": [
             "R-repo-history-secrets",
-            "R-breach-paste-creds"
+            "R-breach-paste-creds",
+            "GH5-fiveg-suci-reidentification-bridge"
           ]
         },
         "TA0042": {
@@ -32691,7 +34112,12 @@
             "XC-ca-misissuance-trust",
             "CO-sockpuppet-account-aging",
             "GH2-passkey-sync-fabric-recovery-downgrade",
-            "GH2-device-posture-attestation-spoof"
+            "GH2-device-posture-attestation-spoof",
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-deepfake-liveness-kyc-bypass",
+            "GH4-synthetic-identity-aged-graph",
+            "GH4-enrichment-api-identity-poisoning",
+            "GH5-keyless-signing-identity-binding-gap"
           ]
         },
         "TA0002": {
@@ -32709,7 +34135,10 @@
             "XC-oauth-app-mailrule-persist",
             "CO-longlived-access-key",
             "GH2-jit-pam-approval-workflow-abuse",
-            "GH3-agent-confused-deputy-ca-issuance"
+            "GH3-agent-confused-deputy-ca-issuance",
+            "GH4-synthetic-identity-aged-graph",
+            "GH4-orphaned-nhi-trusted-indefinitely",
+            "GH5-keyless-signing-identity-binding-gap"
           ]
         },
         "TA0004": {
@@ -32721,7 +34150,8 @@
             "CO-longlived-access-key",
             "CO-sa-token-overmount",
             "CO-admission-policy-bypass",
-            "GH2-jit-pam-approval-workflow-abuse"
+            "GH2-jit-pam-approval-workflow-abuse",
+            "GH4-orphaned-nhi-trusted-indefinitely"
           ]
         },
         "TA0005": {
@@ -32733,7 +34163,10 @@
             "CO-residential-proxy-egress-reputation",
             "GH2-soar-playbook-field-injection",
             "GH2-device-posture-attestation-spoof",
-            "GH2-tee-attestation-freshness-tcb-gap"
+            "GH2-tee-attestation-freshness-tcb-gap",
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-agent-action-nonrepudiation-gap",
+            "GH5-secrets-lease-rotation-window-race"
           ]
         },
         "TA0006": {
@@ -32763,7 +34196,10 @@
             "GH2-passkey-sync-fabric-recovery-downgrade",
             "GH2-tee-attestation-freshness-tcb-gap",
             "GH2-workload-identity-federation-misbind",
-            "GH3-agent-confused-deputy-ca-issuance"
+            "GH3-agent-confused-deputy-ca-issuance",
+            "GH4-deepfake-liveness-kyc-bypass",
+            "GH4-enrichment-api-identity-poisoning",
+            "GH5-pqc-hybrid-negotiation-downgrade"
           ]
         },
         "TA0007": {
@@ -32790,14 +34226,17 @@
             "CO-cross-account-confused-deputy",
             "CO-longlived-access-key",
             "CO-sa-token-overmount",
-            "GH2-workload-identity-federation-misbind"
+            "GH2-workload-identity-federation-misbind",
+            "GH5-secrets-lease-rotation-window-race"
           ]
         },
         "TA0009": {
           "gap_type": "populated",
           "seam_ids": [
             "C-mitm",
-            "CO-object-store-acl-default"
+            "CO-object-store-acl-default",
+            "GH5-pqc-hybrid-negotiation-downgrade",
+            "GH5-fiveg-suci-reidentification-bridge"
           ]
         },
         "TA0011": {
@@ -32818,7 +34257,8 @@
             "C2-tier0-domain-admin",
             "C2-crown-jewel-access",
             "C2-business-process-disruption",
-            "C2-fraudulent-transaction"
+            "C2-fraudulent-transaction",
+            "GH4-agent-action-nonrepudiation-gap"
           ]
         }
       },
@@ -32831,7 +34271,8 @@
           "gap_type": "populated",
           "seam_ids": [
             "GH3-agent-ota-self-verified-firmware",
-            "GH3-poisoned-sensor-into-ai-actuation-model"
+            "GH3-poisoned-sensor-into-ai-actuation-model",
+            "GH4-llm-judge-grading-gaming"
           ]
         },
         "TA0001": {
@@ -32843,7 +34284,8 @@
             "F8c-skill-typosquat-install",
             "X-memory-supplychain-pin",
             "GH3-audio-channel-injection-into-vehicle-agent",
-            "GH3-embodied-agent-perception-spoof"
+            "GH3-embodied-agent-perception-spoof",
+            "GH4-enrichment-api-identity-poisoning"
           ]
         },
         "TA0002": {
@@ -32873,14 +34315,16 @@
             "X-human-memory-toctou",
             "GH3-agent-ota-self-verified-firmware",
             "GH3-agent-confused-deputy-ca-issuance",
-            "GH3-agent-zigbee-matter-fleet-pairing"
+            "GH3-agent-zigbee-matter-fleet-pairing",
+            "GH4-orphaned-nhi-trusted-indefinitely"
           ]
         },
         "TA0004": {
           "gap_type": "populated",
           "seam_ids": [
             "F8a-skill-compose",
-            "X-container-agent-rbac"
+            "X-container-agent-rbac",
+            "GH4-orphaned-nhi-trusted-indefinitely"
           ]
         },
         "TA0005": {
@@ -32889,7 +34333,9 @@
             "X-human-memory-toctou",
             "GH3-agent-mdm-mass-wipe-policy",
             "GH3-agent-rf-presence-ground-truth",
-            "GH3-agent-building-access-orchestration"
+            "GH3-agent-building-access-orchestration",
+            "GH4-llm-judge-grading-gaming",
+            "GH4-agent-action-nonrepudiation-gap"
           ]
         },
         "TA0006": {
@@ -32898,7 +34344,8 @@
             "F6c-agent-token-forge",
             "X-identity-agent-audience",
             "GH3-agent-rf-presence-ground-truth",
-            "GH3-agent-confused-deputy-ca-issuance"
+            "GH3-agent-confused-deputy-ca-issuance",
+            "GH4-enrichment-api-identity-poisoning"
           ]
         },
         "TA0007": {
@@ -32924,7 +34371,10 @@
           "gap_type": "populated",
           "seam_ids": [
             "F5c-memory-cross-tenant",
-            "X-vectorstore-shared-index"
+            "X-vectorstore-shared-index",
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export"
           ]
         },
         "TA0011": {
@@ -32937,7 +34387,10 @@
           "gap_type": "populated",
           "seam_ids": [
             "F2b-iam-ratelimit-void",
-            "F5c-memory-cross-tenant"
+            "F5c-memory-cross-tenant",
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export"
           ]
         },
         "TA0040": {
@@ -32953,7 +34406,8 @@
             "GH3-poisoned-sensor-into-ai-actuation-model",
             "GH3-embodied-agent-perception-spoof",
             "GH3-agent-building-access-orchestration",
-            "GH3-agent-zigbee-matter-fleet-pairing"
+            "GH3-agent-zigbee-matter-fleet-pairing",
+            "GH4-agent-action-nonrepudiation-gap"
           ]
         }
       },
@@ -32991,8 +34445,10 @@
           "seam_ids": []
         },
         "TA0005": {
-          "gap_type": "frontier",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-agent-action-nonrepudiation-gap"
+          ]
         },
         "TA0006": {
           "gap_type": "frontier",
@@ -33024,8 +34480,10 @@
           "seam_ids": []
         },
         "TA0040": {
-          "gap_type": "frontier",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-agent-action-nonrepudiation-gap"
+          ]
         }
       },
       "vectorstore": {
@@ -33081,7 +34539,9 @@
         "TA0009": {
           "gap_type": "populated",
           "seam_ids": [
-            "X-vectorstore-shared-index"
+            "X-vectorstore-shared-index",
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-model-output-residency-boundary-leak"
           ]
         },
         "TA0011": {
@@ -33090,8 +34550,11 @@
           "reason": "A passive retrieval index does not beacon. C2 that abuses it is modeled as memory-as-dead-drop on the agent, not the store. Permanent."
         },
         "TA0010": {
-          "gap_type": "frontier",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-model-output-residency-boundary-leak"
+          ]
         },
         "TA0040": {
           "gap_type": "populated",
@@ -33155,7 +34618,9 @@
         "TA0009": {
           "gap_type": "populated",
           "seam_ids": [
-            "F5c-memory-cross-tenant"
+            "F5c-memory-cross-tenant",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export"
           ]
         },
         "TA0011": {
@@ -33167,7 +34632,9 @@
         "TA0010": {
           "gap_type": "populated",
           "seam_ids": [
-            "F5c-memory-cross-tenant"
+            "F5c-memory-cross-tenant",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export"
           ]
         },
         "TA0040": {
@@ -33205,7 +34672,10 @@
             "XC-prt-device-code-phish",
             "XC-email-auth-spoof",
             "XC-collab-guest-link-abuse",
-            "CO-sockpuppet-account-aging"
+            "CO-sockpuppet-account-aging",
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-deepfake-liveness-kyc-bypass",
+            "GH4-synthetic-identity-aged-graph"
           ]
         },
         "TA0002": {
@@ -33218,7 +34688,8 @@
           "gap_type": "populated",
           "seam_ids": [
             "X-human-memory-toctou",
-            "GH2-jit-pam-approval-workflow-abuse"
+            "GH2-jit-pam-approval-workflow-abuse",
+            "GH4-synthetic-identity-aged-graph"
           ]
         },
         "TA0004": {
@@ -33230,7 +34701,8 @@
         "TA0005": {
           "gap_type": "populated",
           "seam_ids": [
-            "X-human-memory-toctou"
+            "X-human-memory-toctou",
+            "GH4-c2pa-watermark-strip-laundering"
           ]
         },
         "TA0006": {
@@ -33240,7 +34712,8 @@
             "CR-aitm-evilginx",
             "CR-keylogging",
             "XC-mfa-push-fatigue",
-            "XC-prt-device-code-phish"
+            "XC-prt-device-code-phish",
+            "GH4-deepfake-liveness-kyc-bypass"
           ]
         },
         "TA0007": {
@@ -33258,7 +34731,9 @@
         "TA0009": {
           "gap_type": "populated",
           "seam_ids": [
-            "R-session-surface-capture"
+            "R-session-surface-capture",
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-context-window-secret-persistence-export"
           ]
         },
         "TA0011": {
@@ -33268,7 +34743,9 @@
         "TA0010": {
           "gap_type": "populated",
           "seam_ids": [
-            "C2-removable-media-exfil"
+            "C2-removable-media-exfil",
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-context-window-secret-persistence-export"
           ]
         },
         "TA0040": {
@@ -33288,13 +34765,16 @@
         "TA0042": {
           "gap_type": "populated",
           "seam_ids": [
-            "GH2-detection-as-code-rule-poison"
+            "GH2-detection-as-code-rule-poison",
+            "GH4-llm-judge-grading-gaming"
           ]
         },
         "TA0001": {
           "gap_type": "populated",
           "seam_ids": [
-            "CO-sockpuppet-account-aging"
+            "CO-sockpuppet-account-aging",
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-enrichment-api-identity-poisoning"
           ]
         },
         "TA0002": {
@@ -33339,12 +34819,17 @@
             "GH2-soar-playbook-field-injection",
             "GH2-detection-as-code-rule-poison",
             "GH2-edr-cloud-baseline-driftpoison",
-            "GH2-ebpf-blindspot-and-rootkit"
+            "GH2-ebpf-blindspot-and-rootkit",
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-llm-judge-grading-gaming",
+            "GH4-agent-action-nonrepudiation-gap"
           ]
         },
         "TA0006": {
-          "gap_type": "frontier",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-enrichment-api-identity-poisoning"
+          ]
         },
         "TA0007": {
           "gap_type": "frontier",
@@ -33376,8 +34861,10 @@
           ]
         },
         "TA0040": {
-          "gap_type": "frontier",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-agent-action-nonrepudiation-gap"
+          ]
         }
       },
       "doc": {
@@ -33388,14 +34875,16 @@
         "TA0042": {
           "gap_type": "populated",
           "seam_ids": [
-            "F4a-corpus-write"
+            "F4a-corpus-write",
+            "GH4-llm-judge-grading-gaming"
           ]
         },
         "TA0001": {
           "gap_type": "populated",
           "seam_ids": [
             "F1a-doc-inject",
-            "IA-office-macro"
+            "IA-office-macro",
+            "GH4-c2pa-watermark-strip-laundering"
           ]
         },
         "TA0002": {
@@ -33418,9 +34907,11 @@
           "reason": "Document / File is an ingress conduit; it has no trust surface for this tactic."
         },
         "TA0005": {
-          "gap_type": "honest-na",
-          "seam_ids": [],
-          "reason": "Document / File is an ingress conduit; it has no trust surface for this tactic."
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-llm-judge-grading-gaming"
+          ]
         },
         "TA0006": {
           "gap_type": "honest-na",
@@ -33438,9 +34929,11 @@
           "reason": "Document / File is an ingress conduit; it has no trust surface for this tactic."
         },
         "TA0009": {
-          "gap_type": "honest-na",
-          "seam_ids": [],
-          "reason": "Document / File is an ingress conduit; it has no trust surface for this tactic."
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-context-window-secret-persistence-export",
+            "GH5-hndl-keylog-export-archival-bridge"
+          ]
         },
         "TA0011": {
           "gap_type": "honest-na",
@@ -33448,9 +34941,11 @@
           "reason": "A document is an ingress conduit, not a control channel. Permanent."
         },
         "TA0010": {
-          "gap_type": "honest-na",
-          "seam_ids": [],
-          "reason": "Document / File is an ingress conduit; it has no trust surface for this tactic."
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH4-context-window-secret-persistence-export",
+            "GH5-hndl-keylog-export-archival-bridge"
+          ]
         },
         "TA0040": {
           "gap_type": "populated",
@@ -33475,7 +34970,8 @@
         "TA0042": {
           "gap_type": "populated",
           "seam_ids": [
-            "F4a-corpus-write"
+            "F4a-corpus-write",
+            "GH4-llm-judge-grading-gaming"
           ]
         },
         "TA0001": {
@@ -33499,7 +34995,12 @@
             "XC-email-auth-spoof",
             "XC-collab-guest-link-abuse",
             "CO-sockpuppet-account-aging",
-            "GH2-passkey-sync-fabric-recovery-downgrade"
+            "GH2-passkey-sync-fabric-recovery-downgrade",
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-deepfake-liveness-kyc-bypass",
+            "GH4-synthetic-identity-aged-graph",
+            "GH4-enrichment-api-identity-poisoning",
+            "GH5-cdn-edge-cache-key-confused-deputy"
           ]
         },
         "TA0002": {
@@ -33523,7 +35024,8 @@
             "F4a-corpus-write",
             "F4c-vector-eviction",
             "F5a-memory-write",
-            "IA-web-shell"
+            "IA-web-shell",
+            "GH4-synthetic-identity-aged-graph"
           ]
         },
         "TA0004": {
@@ -33539,7 +35041,9 @@
             "C-unicode",
             "CO-tls-cert-provenance-ct-blindspot",
             "CO-residential-proxy-egress-reputation",
-            "GH2-soar-playbook-field-injection"
+            "GH2-soar-playbook-field-injection",
+            "GH4-c2pa-watermark-strip-laundering",
+            "GH4-llm-judge-grading-gaming"
           ]
         },
         "TA0006": {
@@ -33555,7 +35059,10 @@
             "XC-ratelimit-workflow-bypass",
             "XC-padding-oracle-nonce-reuse",
             "XC-tls-downgrade-rollback",
-            "GH2-passkey-sync-fabric-recovery-downgrade"
+            "GH2-passkey-sync-fabric-recovery-downgrade",
+            "GH4-deepfake-liveness-kyc-bypass",
+            "GH4-enrichment-api-identity-poisoning",
+            "GH5-edge-worker-cold-isolate-state-bleed"
           ]
         },
         "TA0007": {
@@ -33575,7 +35082,12 @@
         "TA0009": {
           "gap_type": "populated",
           "seam_ids": [
-            "CO-object-store-acl-default"
+            "CO-object-store-acl-default",
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export",
+            "GH5-edge-worker-cold-isolate-state-bleed",
+            "GH5-cdn-edge-cache-key-confused-deputy"
           ]
         },
         "TA0011": {
@@ -33595,7 +35107,10 @@
             "C2-steganography-exfil",
             "C2-chunked-encrypted-exfil",
             "CO-domain-aging-reputation",
-            "CO-residential-proxy-egress-reputation"
+            "CO-residential-proxy-egress-reputation",
+            "GH4-training-data-reconstruction-at-scale",
+            "GH4-model-output-residency-boundary-leak",
+            "GH4-context-window-secret-persistence-export"
           ]
         },
         "TA0040": {
@@ -33765,8 +35280,10 @@
       },
       "mobile": {
         "TA0043": {
-          "gap_type": "under-tooled",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH5-fiveg-suci-reidentification-bridge"
+          ]
         },
         "TA0042": {
           "gap_type": "under-tooled",
@@ -33780,7 +35297,9 @@
             "DOM-mobile-intent-injection",
             "DOM-rogue-ap-eviltwin",
             "GH2-passkey-sync-fabric-recovery-downgrade",
-            "GH2-device-posture-attestation-spoof"
+            "GH2-device-posture-attestation-spoof",
+            "GH4-deepfake-liveness-kyc-bypass",
+            "GH5-esim-rsp-profile-provenance-gap"
           ]
         },
         "TA0002": {
@@ -33792,8 +35311,10 @@
           ]
         },
         "TA0003": {
-          "gap_type": "under-tooled",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH5-esim-rsp-profile-provenance-gap"
+          ]
         },
         "TA0004": {
           "gap_type": "under-tooled",
@@ -33810,7 +35331,8 @@
           "gap_type": "populated",
           "seam_ids": [
             "DOM-rogue-ap-eviltwin",
-            "GH2-passkey-sync-fabric-recovery-downgrade"
+            "GH2-passkey-sync-fabric-recovery-downgrade",
+            "GH4-deepfake-liveness-kyc-bypass"
           ]
         },
         "TA0007": {
@@ -33822,8 +35344,10 @@
           "seam_ids": []
         },
         "TA0009": {
-          "gap_type": "under-tooled",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH5-fiveg-suci-reidentification-bridge"
+          ]
         },
         "TA0011": {
           "gap_type": "under-tooled",
@@ -33856,7 +35380,8 @@
           "seam_ids": [
             "DOM-fw-debug-interface",
             "DOM-ble-rfid-relay-clone",
-            "GH3-embodied-agent-perception-spoof"
+            "GH3-embodied-agent-perception-spoof",
+            "GH5-esim-rsp-profile-provenance-gap"
           ]
         },
         "TA0002": {
@@ -33871,7 +35396,8 @@
           "gap_type": "populated",
           "seam_ids": [
             "GH3-agent-ota-self-verified-firmware",
-            "GH3-agent-zigbee-matter-fleet-pairing"
+            "GH3-agent-zigbee-matter-fleet-pairing",
+            "GH5-esim-rsp-profile-provenance-gap"
           ]
         },
         "TA0004": {
@@ -33997,8 +35523,10 @@
       },
       "wireless": {
         "TA0043": {
-          "gap_type": "under-tooled",
-          "seam_ids": []
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH5-fiveg-suci-reidentification-bridge"
+          ]
         },
         "TA0042": {
           "gap_type": "populated",
@@ -34014,7 +35542,8 @@
             "DOM-wpa-handshake-crack",
             "DOM-ble-rfid-relay-clone",
             "DOM-rf-deauth-jam-replay",
-            "GH3-audio-channel-injection-into-vehicle-agent"
+            "GH3-audio-channel-injection-into-vehicle-agent",
+            "GH5-esim-rsp-profile-provenance-gap"
           ]
         },
         "TA0002": {
@@ -34026,7 +35555,8 @@
         "TA0003": {
           "gap_type": "populated",
           "seam_ids": [
-            "GH3-agent-zigbee-matter-fleet-pairing"
+            "GH3-agent-zigbee-matter-fleet-pairing",
+            "GH5-esim-rsp-profile-provenance-gap"
           ]
         },
         "TA0004": {
@@ -34056,9 +35586,10 @@
           "seam_ids": []
         },
         "TA0009": {
-          "gap_type": "honest-na",
-          "seam_ids": [],
-          "reason": "The RF medium is a transit/access surface, not a data store to collect from. Permanent."
+          "gap_type": "populated",
+          "seam_ids": [
+            "GH5-fiveg-suci-reidentification-bridge"
+          ]
         },
         "TA0011": {
           "gap_type": "under-tooled",
@@ -34599,6 +36130,278 @@
       "prediction": "Reach Host / Endpoint through the undetected new surface \"Cross-server tool contamination\" (P1), then fire the proven classic \"EDR unhooking and direct/indirect syscalls\" (P4) onward to SOC / Defense/Host / Endpoint.",
       "why_predictable": "Cross-server tool contamination has none detection and none tooling (a fresh, unwatched entry), while EDR unhooking and direct/indirect syscalls is mature-tooled and reliable. The graph already holds both edges at Host / Endpoint; their composition is mechanical, not speculative.",
       "score": 26.88
+    }
+  ],
+  "chains3": [
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>C-discovery>ad>C-kerberoast",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "C-discovery",
+      "hop2_seam": "C-kerberoast",
+      "nodes": [
+        "cloud",
+        "ad",
+        "ad"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Active Directory via \"Account/host/permission discovery\" (P2); then to Active Directory via \"Kerberoasting / AS-REP roasting\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>C-discovery>ad>C-delegation",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "C-discovery",
+      "hop2_seam": "C-delegation",
+      "nodes": [
+        "cloud",
+        "ad",
+        "host"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Active Directory via \"Account/host/permission discovery\" (P2); then to Host / Endpoint via \"Kerberos delegation abuse (RBCD/S4U)\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>C-discovery>ad>C-adcs-esc",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "C-discovery",
+      "hop2_seam": "C-adcs-esc",
+      "nodes": [
+        "cloud",
+        "ad",
+        "identity"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Active Directory via \"Account/host/permission discovery\" (P2); then to Identity & Federation via \"AD CS ESC1-ESC16 certificate abuse\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>C-discovery>ad>R-ad-trust-graph",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "C-discovery",
+      "hop2_seam": "R-ad-trust-graph",
+      "nodes": [
+        "cloud",
+        "ad",
+        "ad"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Active Directory via \"Account/host/permission discovery\" (P2); then to Active Directory via \"AD trust-graph enumeration (BloodHound/SharpHound)\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>C-discovery>ad>IA-kerberos-ticket",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "C-discovery",
+      "hop2_seam": "IA-kerberos-ticket",
+      "nodes": [
+        "cloud",
+        "ad",
+        "host"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P3"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Active Directory via \"Account/host/permission discovery\" (P2); then to Host / Endpoint via \"Golden Ticket and Silver Ticket forgery\" (P3). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>C-discovery>ad>CR-dcsync",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "C-discovery",
+      "hop2_seam": "CR-dcsync",
+      "nodes": [
+        "cloud",
+        "ad",
+        "ad"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Active Directory via \"Account/host/permission discovery\" (P2); then to Active Directory via \"DCSync replication of credentials (Mimikatz lsadump::dcsync, secretsdump)\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>C-lsass",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "C-lsass",
+      "nodes": [
+        "cloud",
+        "host",
+        "host"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Host / Endpoint via \"LSASS / OS credential dumping\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>C-persistence",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "C-persistence",
+      "nodes": [
+        "cloud",
+        "host",
+        "host"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P4"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Host / Endpoint via \"Boot/logon autostart, scheduled task\" (P4). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>C-evasion",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "C-evasion",
+      "nodes": [
+        "cloud",
+        "host",
+        "soc"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P4"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to SOC / Defense via \"Impair defenses / AMSI & EDR bypass / obfuscation\" (P4). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>C-discovery",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "C-discovery",
+      "nodes": [
+        "cloud",
+        "host",
+        "ad"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Active Directory via \"Account/host/permission discovery\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>C-lateral",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "C-lateral",
+      "nodes": [
+        "cloud",
+        "host",
+        "host"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P4"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Host / Endpoint via \"Pass-the-hash / remote services / PsExec\" (P4). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>C-c2",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "C-c2",
+      "nodes": [
+        "cloud",
+        "host",
+        "network"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P3"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Network via \"Application-layer / DNS / domain-fronted C2\" (P3). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>C-exfil",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "C-exfil",
+      "nodes": [
+        "cloud",
+        "host",
+        "web"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P5"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Web / Fetch via \"Exfiltration over C2 / alternative protocol / web service\" (P5). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>R-ad-trust-graph",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "R-ad-trust-graph",
+      "nodes": [
+        "cloud",
+        "host",
+        "ad"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Active Directory via \"AD trust-graph enumeration (BloodHound/SharpHound)\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
+    },
+    {
+      "id": "cx3:F2b-iam-ratelimit-void>cloud>R-datastore-bulk-export>host>R-internal-net-scan",
+      "entry_seam": "F2b-iam-ratelimit-void",
+      "hop1_seam": "R-datastore-bulk-export",
+      "hop2_seam": "R-internal-net-scan",
+      "nodes": [
+        "cloud",
+        "host",
+        "network"
+      ],
+      "primitives": [
+        "P2",
+        "P2",
+        "P2"
+      ],
+      "prediction": "Enter Cloud Control Plane via undetected \"Autonomous IAM abuse beyond human-tuned baselines\" (P2); hop to Host / Endpoint via \"Database dumps\" (P2); then to Network via \"Internal network scanning (Nmap/masscan host & port discovery)\" (P2). Two reliable classic hops behind one unmonitored door.",
+      "score": 36
     }
   ]
 }

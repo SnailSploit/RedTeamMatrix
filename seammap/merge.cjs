@@ -36,7 +36,7 @@ core.forEach(migrate);
 
 // --- fold in extension files (fixed order; core wins on collision) ---
 const extFiles = ["recon", "access", "escalation", "cred", "c2", "domains", "crosscut", "cloudops",
-  "gaps1", "gaps2", "gaps3"];
+  "gaps1", "gaps2", "gaps3", "gaps4", "gaps5"];
 let ext = [];
 for (const f of extFiles) {
   const arr = JSON.parse(fs.readFileSync(path.join(D, `_ext_${f}.json`), "utf8"));

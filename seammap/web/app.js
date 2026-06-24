@@ -7,7 +7,7 @@ let SEAM = {};          // seam id -> seam
 let SCORE = {};         // seam id -> scored
 let PNAME = {};         // principal id -> name
 let cy = null;
-const opFilter = { scalable: false, automatable: false, ai: false, frontierOnly: false };
+const opFilter = { scalable: false, automatable: false, ai: false, frontierOnly: false, prims: new Set() };
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -103,6 +103,15 @@ function renderGraphControls() {
     return l;
   };
   c.append(mk("scalable", "⤴ scalable"), mk("automatable", "⟳ automatable"), mk("ai", "⚡ ai"), mk("frontierOnly", "frontier seams only"));
+  // Per-primitive isolation: click a primitive to show only its edges (de-hairball).
+  DS.primitives.forEach((p) => {
+    const l = el("label", null, `<input type="checkbox"> <span style="color:${p.color}">${p.id}</span>`);
+    l.querySelector("input").addEventListener("change", (e) => {
+      if (e.target.checked) opFilter.prims.add(p.id); else opFilter.prims.delete(p.id);
+      buildGraph();
+    });
+    c.append(l);
+  });
 }
 
 const maturityColor = (m) => m === "frontier" ? "#ff5c5c" : m === "emerging" ? "#f0a93b" : "#6e7681";
@@ -113,6 +122,7 @@ function passesFilter(s) {
   if (opFilter.scalable && !s.operator.scalable) return false;
   if (opFilter.automatable && !s.operator.automatable) return false;
   if (opFilter.ai && !s.operator.ai_augmentable) return false;
+  if (opFilter.prims.size && !opFilter.prims.has(s.primitive)) return false; // isolate primitives
   return true;
 }
 
@@ -318,6 +328,25 @@ function buildPredict() {
       <div class="rat" style="margin-top:6px">${c.why_predictable}</div>`;
     list.append(card);
   });
+
+  // 3-hop emergent chains: undetected entry + two reliable classic hops.
+  const c3 = DS.chains3 || [];
+  if (c3.length) {
+    list.append(el("div", null, `<div class="bh" style="margin:16px 0 8px;color:#e6edf3">3-hop emergent chains <span class="count muted">— one unmonitored door, two reliable hops (${c3.length})</span></div>`));
+    c3.forEach((c, i) => {
+      const seamsArr = [c.entry_seam, c.hop1_seam, c.hop2_seam];
+      const card = el("div", "pathcard");
+      let h = `<div><span class="score">score ${c.score}</span><b>chain ${i + 1}</b> <span class="muted">${c.nodes.map((n) => PNAME[n] || n).join(" → ")}</span></div>
+        <div style="margin:6px 0">${c.prediction}</div>`;
+      seamsArr.forEach((sid, j) => {
+        const s = SEAM[sid]; if (!s) return;
+        const tag = j === 0 ? '<span class="fr" style="color:var(--frontier)">entry ◆</span>' : `<span style="color:#7ee787">hop${j} ▸</span>`;
+        h += `<div class="pathstep" onclick="showSeam('${sid}')">${tag} <span class="pdot" style="background:${primColor(c.primitives[j])}"></span>${c.primitives[j]} ${s.techniques[0].name}</div>`;
+      });
+      card.innerHTML = h;
+      list.append(card);
+    });
+  }
 }
 
 // --------------------------------------------------------------------------- path (kill-chain) view
