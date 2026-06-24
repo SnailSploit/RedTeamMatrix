@@ -65,6 +65,18 @@ The map is always behind the frontier by construction; the gap engine reads the 
 The **Gaps Register** is a primary deliverable, equal in weight to the graph: AGENT-DISCOVERED surfaced first,
 then `frontier → under-tooled → projected`.
 
+## Validation & recalibration (`data/validations.json`)
+
+A discovered gap is worthless if you can't tell whether it's real. Every one of the **96
+AGENT-DISCOVERED gaps** was put through adversarial validation: a concrete **falsifiable test**
+(`validation_method`), the observation that would **refute** it (`falsifier`), the prerequisites
+and existing controls, a skeptical **validity** verdict (`demonstrated` / `plausible` /
+`speculative`), and a **recalibration** of maturity/tooling/detection to reality. `model.ts` joins
+this onto the seams at load and applies the recalibration, so the scorer, matrix, and predictor all
+reflect calibrated confidence — not raw enthusiasm. Current verdicts: **30 demonstrated, 55 plausible,
+11 speculative**; recalibration moved 86/96 gaps off the raw `frontier/none/none` they were authored
+with. The Gaps view sorts demonstrated-first and exposes the test + refuter on every card.
+
 ## The composition predictor (`src/compose.ts`)
 
 The merge of old and new tech yields emergent vulnerabilities that look unpredictable — but a typed graph **predicts
@@ -103,9 +115,10 @@ over `web/dataset.json`, toggle without losing state:
 ## Run it
 
 ```bash
-node merge.cjs         # assemble canonical seams.json = seams.core.json (migrated) + data/_ext_*.json
-node src/build.ts      # render projections + gap register + predicted composites -> web/dataset.json
-node src/validate.ts   # 14 definition-of-done invariants (exits non-zero on violation)
+node merge.cjs              # assemble canonical seams.json = seams.core.json (migrated) + data/_ext_*.json
+node merge-validations.cjs # assemble data/validations.json from data/_val_*.json (gap validity + recalibration)
+node src/build.ts          # render projections + gap register + predicted composites -> web/dataset.json
+node src/validate.ts       # 16 definition-of-done invariants (exits non-zero on violation)
 node src/spawn-demo.ts # demonstrate the auto-spawn rule on a hypothetical 2027 node
 node shot.cjs          # (optional, dev) headless-render all six views to shot-*.png
 # then open web/index.html in a browser

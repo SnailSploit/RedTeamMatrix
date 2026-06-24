@@ -82,6 +82,10 @@ export function agentDiscovered(ds: Dataset): Gap[] {
       rationale: s.rationale,
       suggested_research: s.suggested_research,
       seam_id: s.id,
+      validity: s.validation?.validity,
+      confidence: s.validation?.confidence,
+      validation_method: s.validation?.validation_method,
+      falsifier: s.validation?.falsifier,
     }));
 }
 
@@ -96,10 +100,16 @@ export function gapsRegister(ds: Dataset): Gap[] {
   // The 14 hand-reasoned AGENT-DISCOVERED findings are the audit's actual output, so they
   // are surfaced FIRST (§6); the auto-typed bulk then follows frontier -> under-tooled ->
   // projected (§5.2 category order preserved).
+  // Within AGENT-DISCOVERED, order by validity (demonstrated first) then confidence, so the
+  // calibrated, evidence-backed gaps surface above the speculative ones.
+  const vOrder: Record<string, number> = { demonstrated: 0, plausible: 1, speculative: 2 };
+  const cOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const rank = (g: Gap) => g.origin === "AGENT-DISCOVERED"
+    ? -1 + (vOrder[g.validity ?? "plausible"] * 0.01) + (cOrder[g.confidence ?? "medium"] * 0.001)
+    : order[g.gap_type];
   const all: Gap[] = [...discovered, ...gaps];
   return all.sort((x, y) => {
-    const rx = x.origin === "AGENT-DISCOVERED" ? -1 : order[x.gap_type];
-    const ry = y.origin === "AGENT-DISCOVERED" ? -1 : order[y.gap_type];
+    const rx = rank(x), ry = rank(y);
     if (rx !== ry) return rx - ry;
     return x.id.localeCompare(y.id);
   });

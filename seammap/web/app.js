@@ -75,6 +75,11 @@ function showSeam(id) {
     <div class="k">tactics · branch</div><div class="v muted">${s.tactics.join(", ")} — ${s.classic_branches.join("; ")}</div>
     ${s.rationale ? `<div class="k">agent rationale</div><div class="v">${s.rationale}</div>` : ""}
     ${s.suggested_research ? `<div class="k">suggested research</div><div class="res" style="color:#7ee787">${s.suggested_research}</div>` : ""}
+    ${s.validation ? `<div class="k">validity</div><div class="chips"><span class="chip" style="border-color:${VALCOLOR[s.validation.validity] || "#888"};color:${VALCOLOR[s.validation.validity] || "#888"}">${s.validation.validity} · ${s.validation.confidence} confidence</span></div>
+      <div class="k">how to validate</div><div class="v">${s.validation.validation_method}</div>
+      <div class="k">refuted if</div><div class="v">${s.validation.falsifier}</div>
+      ${s.validation.prerequisites ? `<div class="k">prerequisites</div><div class="v">${s.validation.prerequisites}</div>` : ""}
+      ${s.validation.existing_controls ? `<div class="k">existing controls</div><div class="v">${s.validation.existing_controls}</div>` : ""}` : ""}
   `;
 }
 
@@ -281,12 +286,14 @@ function buildGaps() {
       <option value="projected">projected</option>
     </select>
     <select id="gf-prim"><option value="">all primitives</option>${DS.primitives.map((p) => `<option value="${p.id}">${p.id} ${p.name}</option>`).join("")}</select>
+    <select id="gf-val"><option value="">all validity</option><option value="demonstrated">demonstrated</option><option value="plausible">plausible</option><option value="speculative">speculative</option></select>
     <input id="gf-q" placeholder="filter principal / text…" />`;
-  ["#gf-type", "#gf-prim", "#gf-q"].forEach((s) => $(s).addEventListener("input", renderGaps));
+  ["#gf-type", "#gf-prim", "#gf-val", "#gf-q"].forEach((s) => $(s).addEventListener("input", renderGaps));
   renderGaps();
 }
+const VALCOLOR = { demonstrated: "#7ee787", plausible: "#f0a93b", speculative: "#8b949e" };
 function renderGaps() {
-  const type = $("#gf-type").value, prim = $("#gf-prim").value, q = $("#gf-q").value.toLowerCase();
+  const type = $("#gf-type").value, prim = $("#gf-prim").value, val = $("#gf-val").value, q = $("#gf-q").value.toLowerCase();
   const list = $("#gaps-list"); list.innerHTML = "";
   let shown = 0;
   const MAX = 300;
@@ -294,19 +301,24 @@ function renderGaps() {
     const kind = g.origin === "AGENT-DISCOVERED" ? "AGENT-DISCOVERED" : g.gap_type;
     if (type && kind !== type) continue;
     if (prim && g.primitive !== prim) continue;
-    const hay = `${g.source} ${g.target} ${g.rationale || ""} ${g.suggested_research || ""}`.toLowerCase();
+    if (val && g.validity !== val) continue;
+    const hay = `${g.source} ${g.target} ${g.rationale || ""} ${g.suggested_research || ""} ${g.validation_method || ""}`.toLowerCase();
     if (q && !hay.includes(q)) continue;
     if (shown >= MAX) { list.append(el("div", "muted", `…and ${DS.register.length - MAX}+ more typed gaps (narrow the filter).`)); break; }
     shown++;
     const cls = g.origin === "AGENT-DISCOVERED" ? "disc" : g.gap_type;
     const row = el("div", `gaprow ${cls}`);
+    const valBadge = g.validity ? `<span class="chip" style="border-color:${VALCOLOR[g.validity]};color:${VALCOLOR[g.validity]}">${g.validity}${g.confidence ? ` · ${g.confidence}` : ""}</span>` : "";
     row.innerHTML = `<div class="top">
         <span class="chip prim" style="background:${primColor(g.primitive)}">${g.primitive}</span>
         <span class="chip ${cls === "disc" ? "disc" : "op"}">${kind}</span>
+        ${valBadge}
         <span class="edge">${PNAME[g.source] || g.source} → ${PNAME[g.target] || g.target}</span>
         ${g.seam_id ? `<span class="muted" style="cursor:pointer" onclick="showSeam('${g.seam_id}')">[seam ${g.seam_id}]</span>` : ""}
       </div>
       ${g.rationale ? `<div class="rat">${g.rationale}</div>` : ""}
+      ${g.validation_method ? `<div class="res" style="color:#58a6ff">✓ validate: ${g.validation_method}</div>` : ""}
+      ${g.falsifier ? `<div class="rat" style="color:#d4a0a0">✗ refuted if: ${g.falsifier}</div>` : ""}
       ${g.suggested_research ? `<div class="res">↳ research: ${g.suggested_research}</div>` : ""}`;
     list.append(row);
   }

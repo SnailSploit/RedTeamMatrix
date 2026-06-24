@@ -21,6 +21,22 @@ export function loadDataset(): Dataset {
   const seams: Seam[] = readJson("seams.json").seams;
   const frontier_seams: FrontierSeam[] = readJson("frontier-seams.json").frontier_seams;
   const coverage: ClassicCoverage = readJson("classic-coverage.json");
+
+  // Join adversarial-validation results (validations.json) onto seams: attach the
+  // validation block AND recalibrate maturity/tooling/detection to the verdict, so the
+  // scorer, matrix, and predictor all reflect calibrated reality. Absent file => no-op.
+  try {
+    const validations: Record<string, any> = readJson("validations.json");
+    for (const s of seams) {
+      const v = validations[s.id];
+      if (!v) continue;
+      s.validation = v;
+      if (v.recalibrate?.maturity) s.maturity = v.recalibrate.maturity;
+      if (v.recalibrate?.tooling_status) s.tooling_status = v.recalibrate.tooling_status;
+      if (v.recalibrate?.detection_status) s.detection_status = v.recalibrate.detection_status;
+    }
+  } catch { /* validations.json not present yet */ }
+
   return { primitives, principals, seams, frontier_seams, coverage };
 }
 

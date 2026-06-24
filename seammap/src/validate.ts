@@ -200,5 +200,25 @@ const ds = loadDataset();
   log(wellFormed, `Composition predictor: every prediction = real undetected-entry x real mature-propagation at a shared node`);
 }
 
+// ---------------------------------------------------------------------------
+// 8. VALIDATION & RECALIBRATION — every AGENT-DISCOVERED gap carries a falsifiable
+// validation technique and a skeptical validity verdict, so the model is calibrated,
+// not just enumerated.
+// ---------------------------------------------------------------------------
+{
+  const disc = ds.seams.filter((s) => s.origin === "AGENT-DISCOVERED");
+  const VALIDITY = new Set(["demonstrated", "plausible", "speculative"]);
+  const complete = disc.filter((s) =>
+    s.validation && s.validation.validation_method?.length > 20 && s.validation.falsifier?.length > 10 &&
+    VALIDITY.has(s.validation.validity));
+  log(complete.length === disc.length,
+    `Validation: all ${disc.length} discovered gaps have a falsifiable method + refuter + validity verdict (${complete.length})`);
+
+  // Recalibration must have actually moved some statuses off the raw "frontier/none/none".
+  const recalibrated = disc.filter((s) => s.maturity !== "frontier" || s.tooling_status !== "none" || s.detection_status !== "none");
+  log(recalibrated.length > 0,
+    `Recalibration: validation moved ${recalibrated.length}/${disc.length} gaps off raw frontier/none/none to calibrated status`);
+}
+
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);
 process.exit(failures === 0 ? 0 : 1);

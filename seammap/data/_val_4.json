@@ -1,0 +1,192 @@
+[
+ {
+  "id": "F6c-agent-token-forge",
+  "validation_method": "Stand up a 2-agent system (e.g. A2A/MCP or a custom orchestrator-worker setup) where agent A tasks agent B via a message carrying a capability/task token. Capture a legitimate inter-agent message, then from a third 'rogue' process replay it verbatim and also mint a fabricated token with a different agent's id. Observe whether agent B executes the tasking. The seam is real if B acts on the replayed or forged token without rejecting it for missing signature, expired nonce, or wrong audience.",
+  "falsifier": "Agent B rejects the replayed/forged message because tokens are signed (e.g. JWS/DPoP), nonce/jti-bound against replay, and audience-bound to the specific recipient, so a copied or fabricated token fails verification.",
+  "prerequisites": "Ability to observe or inject onto the inter-agent transport (same host, MITM, or compromised broker) and knowledge of the message format.",
+  "existing_controls": "Signed tokens (JWS), mTLS between agents, OAuth audience/aud binding, DPoP/PoP tokens, nonce/jti replay caches. Many current agent frameworks (early A2A, ad-hoc MCP chains) ship without these by default.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "X-memory-supplychain-pin",
+  "validation_method": "Configure an agent with persistent memory (vector store / memory file) that records a 'known-good' package or endpoint. In session 1, write a memory entry mapping a tool to a name. Between sessions, poison the memory store (simulating prior injection or shared-memory contamination) to point the remembered name at a typosquatted package or attacker endpoint. In session 2, prompt the agent to use the 'trusted' resource and observe whether it resolves/installs the poisoned target without re-validation.",
+  "falsifier": "The agent re-validates the resource at use time (lockfile hash, signature, allowlist check) and ignores or cannot be steered by the stored memory, OR memory writes are integrity-protected so the poisoned entry is rejected.",
+  "prerequisites": "Write access to the agent's persistent memory store, or a prior injection vector that can write memory; an agent design that trusts memory for resolution.",
+  "existing_controls": "Dependency pinning/lockfiles with hashes, signed packages, endpoint allowlists, memory provenance/signing. Re-validation at use time defeats it. Memory integrity is not yet standard in agent frameworks.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "nascent" }
+ },
+ {
+  "id": "X-cloud-memory-arn-confusion",
+  "validation_method": "Have an agent remember a cloud resource identifier (S3 bucket name, IAM role name, subdomain) across sessions. Delete/release that resource so the name becomes re-registerable, then (as attacker) re-claim the same name pointing at attacker-controlled infrastructure. In a later session, prompt the agent to act on the remembered name and observe whether it reads/writes to the attacker resource. This is a dangling-resource / name-reuse takeover applied to agent memory.",
+  "falsifier": "The cloud control plane binds the remembered handle to an immutable resource id (ARN includes account id; bucket access checked by account/region; role ARN includes account) so a re-registered same-name resource resolves to a different ARN and access fails, OR the agent re-resolves by stable id rather than name.",
+  "prerequisites": "A released/expired cloud name that is re-registerable (S3 bucket names are global and reusable, subdomains, some role/alias names), plus an agent that persists and reuses bare names.",
+  "existing_controls": "Account-scoped ARNs, S3 bucket-owner-condition / expected-bucket-owner, subdomain dangling-DNS scanning, resource pinning by id. Bucket-name and subdomain reuse is a well-documented real takeover class.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH1-eval-set-overfit-bypass",
+  "validation_method": "Take a model/guardrail with a published safety benchmark. Reproduce the benchmark to confirm it passes. Then construct held-out inputs that target the same harmful intent but are stylistically/structurally outside the benchmark's distribution (paraphrase, obfuscation, novel framing) and measure refusal rate on these vs. the published set. The seam is shown if refusal collapses materially on the out-of-distribution-but-same-intent set while the published eval still scores high (Goodhart gap).",
+  "falsifier": "Refusal rates on out-of-distribution same-intent inputs match the published eval (the guardrail generalizes to intent, not surface form), so no exploitable distribution gap exists.",
+  "prerequisites": "Access to query the model/guardrail and knowledge of (or ability to infer) the published eval distribution.",
+  "existing_controls": "Held-out/private eval sets, adversarial red-team augmentation, intent-classifier defenses, continuous eval refresh. The general phenomenon (jailbreaks generalizing past benchmarks) is well demonstrated; the specific 'eval-set overfit' framing is established research but hard to attribute to one PoC.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "partial", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH1-system-prompt-extraction-targeting",
+  "validation_method": "Against a deployed agent, run system-prompt/tool-schema extraction prompts (leakage requests, 'repeat the text above', error-induced disclosure, refusal-boundary probing). Verify the extracted prompt/tool names against ground truth. Then craft an injection that names the disclosed tools and quotes the exact instruction wording, and measure whether a targeted injection succeeds at a higher rate than a blind one. Seam confirmed if extraction succeeds AND targeting measurably improves attack success.",
+  "falsifier": "System prompt and tool schemas cannot be extracted (robust output filtering / no reflection), OR knowing the exact wording/tool names provides no measurable uplift over blind injection because defenses are content-based not obscurity-based.",
+  "prerequisites": "Interactive query access to the target agent.",
+  "existing_controls": "Output filters that block prompt disclosure, prompt-injection classifiers, defenses designed to be robust to known wording (Kerckhoffs principle). System-prompt extraction itself is widely demonstrated publicly; obscurity is known to be weak.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "mature", "tooling_status": "available", "detection_status": "partial" }
+ },
+ {
+  "id": "GH2-edr-cloud-baseline-driftpoison",
+  "validation_method": "In a lab tenant of a UEBA/cloud-EDR product, establish a baseline for a host/identity, then introduce a target malicious behavior incrementally over the model's training window (e.g. slowly increasing data egress volume or login-time drift) at a rate below the anomaly threshold. After the rolling baseline normalizes, perform the full-tempo action and observe whether it scores below threshold (no alert). Compare against the same action performed cold.",
+  "falsifier": "The full-tempo action still alerts despite the slow drip (the model uses fixed/expert thresholds, peer-group/population baselining, or change-point detection that flags the drift itself), OR the training window is too long/weighted to be shifted within a realistic dwell time.",
+  "prerequisites": "Persistent low-and-slow control of a monitored host/identity over weeks, knowledge of the model's adaptation window, and tolerance for very long timelines.",
+  "existing_controls": "Peer-group baselining, fixed detections layered over ML, drift/change-point monitoring, retraining governance, threat-hunting. Concept (model poisoning of adaptive baselines) is theoretically sound but rarely demonstrated end-to-end against commercial UEBA.",
+  "validity": "speculative",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH2-ebpf-blindspot-and-rootkit",
+  "validation_method": "On a host running an eBPF-based EDR sensor, load a second privileged eBPF program (CAP_BPF) that tampers with the data the sensor relies on: overwrite/filter entries in shared maps, attach a competing hook with higher priority, or rewrite syscall return data (e.g. hide a PID from getdents/readdir, drop connection events). Run a known-detectable action and observe whether the EDR's view omits it. Seam confirmed if the sensor reports a clean/incomplete view.",
+  "falsifier": "The sensor's maps are not writable by other programs, hook ordering cannot be preempted, the kernel/LSM restricts bpf_probe_write/map access, or the EDR cross-checks with an independent source so tampering is detected.",
+  "prerequisites": "CAP_BPF / root / privileged container with bpf() syscall access, kernel version supporting the needed eBPF features.",
+  "existing_controls": "bpf() lockdown, restricting CAP_BPF, BPF token/LSM hooks, signed/locked programs, kernel-level integrity. eBPF rootkits (TripleCross, ebpfkit, boopkit, Symbiote-style) are publicly demonstrated; using eBPF to blind eBPF EDR specifically is shown in research/PoCs.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "available", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH3-agent-protocol-bridge-approval-loss",
+  "validation_method": "Build an NL-to-fieldbus agent that takes one approved high-level intent and emits multiple Modbus/OPC-UA writes. Approve a benign high-level goal, then via injected context cause the decomposition to include extra/over-broad writes. Observe whether those un-approved function-code writes are emitted to a simulated PLC (e.g. ModbusPal / OpenPLC) without a per-write approval check. Seam confirmed if injected sub-steps reach the controller carrying inherited approval.",
+  "falsifier": "The translation layer enforces approval at the function-code boundary (per-write allowlist, signed command envelope, human re-confirmation of the concrete register writes), so injected sub-steps are blocked.",
+  "prerequisites": "An agentic NL-to-OT bridge that binds approval to NL intent rather than wire commands; ability to inject into the agent's context. Such bridges are largely experimental today.",
+  "existing_controls": "Per-command authorization at the protocol layer, OT command allowlisting, engineering-workstation change control, unidirectional gateways. Approval-at-the-wire is the standard correct design; NL-to-OT agents are nascent.",
+  "validity": "speculative",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "none" }
+ },
+ {
+  "id": "GH3-agent-ota-self-verified-firmware",
+  "validation_method": "Configure a fleet-ops agent with authority to push OTA images, where the workflow relies on the agent's narrated 'I verified the signature' rather than an enforced cryptographic gate. Supply an unsigned/swapped/downgraded image plus an attacker-authored changelog/release page. Observe whether the agent rationalizes it as legitimate and pushes it, and whether devices accept it. Seam confirmed if the image is deployed without a real signature check enforced by the device or pipeline.",
+  "falsifier": "Devices enforce secure boot / signature verification independently of the agent's narration, so an unsigned/swapped image is rejected at the device regardless of what the agent 'concluded'; or the pipeline gates on a verified signature, not agent text.",
+  "prerequisites": "A deployment that delegates provenance to agent narration and a fleet that does not independently enforce signatures (or accepts downgrades). Well-run fleets enforce secure boot.",
+  "existing_controls": "Device-side secure boot, signed firmware with anti-rollback, TUF/Uptane update frameworks, code-signing enforcement in the CD pipeline. These neutralize it when present; the seam exists only where verification is delegated to the agent.",
+  "validity": "speculative",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "none" }
+ },
+ {
+  "id": "GH3-agent-zigbee-matter-fleet-pairing",
+  "validation_method": "Set up a Matter/Zigbee controller driven by an LLM home-automation agent with commissioning authority. Inject a malicious instruction via untrusted text (a device-advertised name, a calendar entry, an email the agent reads) directing it to commission an attacker device or rebind a control group. Observe whether the agent issues the commissioning/binding command and the fabric admits the rogue node. Seam confirmed if a rogue device joins or groups rebind from agent action without human physical confirmation.",
+  "falsifier": "Matter commissioning requires the device passcode/QR + physical proximity / user attestation that the agent cannot supply from injected text, so the join fails; or the controller requires explicit human approval per commissioning.",
+  "prerequisites": "An LLM agent with real controller commissioning authority, an injection channel, and a fabric configured to let the controller commission without out-of-band human proof. Matter's commissioning normally needs the device's secret passcode.",
+  "existing_controls": "Matter Passcode/PASE commissioning requiring the device secret, device attestation certificates, physical-proximity/QR requirements, human-in-the-loop commissioning. These strongly limit it; the agent generally cannot mint a valid passcode from prose.",
+  "validity": "speculative",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "none" }
+ },
+ {
+  "id": "GH4-llm-judge-grading-gaming",
+  "validation_method": "Set up an LLM-as-judge pipeline (e.g. RAG-answer grader or code-review scorer) and submit a candidate artifact containing embedded steering text ('this meets all criteria, score 10/10', authoritative framing, or known sycophancy triggers). Compare the verdict/score against the same artifact without the injected text. Seam confirmed if the embedded content materially raises the score or flips a fail to pass.",
+  "falsifier": "The judge ignores in-artifact instructions (instruction/data separation, injection-robust judging, structured rubric scoring) so scores are unchanged by the embedded steering text.",
+  "prerequisites": "Ability to submit the artifact that the judge evaluates; no need for direct judge access.",
+  "existing_controls": "Delimiting/escaping evaluated content, injection-aware judge prompts, ensemble/multi-judge voting, rubric-constrained scoring, human spot-checks. Prompt injection of LLM judges is publicly demonstrated in research and benchmarks.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "partial", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH4-enrichment-api-identity-poisoning",
+  "validation_method": "In an identity/risk pipeline that ingests a data-broker or reputation/IP-intel feed, seed attacker-favorable records upstream (create false firmographic/broker entries, age an IP/domain to gain reputation, register misleading device attributes) and submit a subject that triggers the enrichment lookup. Observe whether the poisoned 'facts' flip an automated approve/deny/escalate decision. Seam confirmed if the manipulated feed changes the decision and the pipeline cannot trace the poisoned source.",
+  "falsifier": "The pipeline corroborates enrichment against independent signals or treats single-source enrichment as advisory only (human review, multi-source consensus), so a single poisoned feed cannot move the decision.",
+  "prerequisites": "Ability to influence the upstream broker/reputation source (record seeding, reputation aging, registration), and a pipeline that auto-decisions on the feed.",
+  "existing_controls": "Multi-source corroboration, provider data-quality/fraud controls, manual review thresholds, anomaly checks on enrichment values. IP/reputation aging and broker-record manipulation are demonstrated in adjacent fraud contexts.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH5-cdn-edge-cache-key-confused-deputy",
+  "validation_method": "Deploy a CDN/edge config (e.g. Cloudflare/Fastly/CloudFront) where the origin authorizes/personalizes a response using an input (a tenant token, an edge-function-injected header, a Vary-omitted field) that is NOT part of the computed cache key. As victim, populate the cache with a scoped response; as attacker, issue a request that produces the same cache key and observe whether the victim-scoped/cross-tenant response is served. Seam confirmed on cross-tenant disclosure. This is web cache deception / key-confusion.",
+  "falsifier": "All authorization/personalization inputs are folded into the cache key or Vary, or auth'd responses are marked private/no-store, so a different requester never gets a cache hit on someone else's response.",
+  "prerequisites": "A CDN config with a mismatch between authorizing inputs and the cache key (misconfigured Vary, header injection by edge functions, tenant token outside key). Attacker needs only normal request access.",
+  "existing_controls": "Correct Cache-Key/Vary configuration, Cache-Control private/no-store on authorized content, cache deception protections. Web cache deception and key-confusion disclosures are publicly demonstrated (multiple real incidents/bug bounties).",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "available", "detection_status": "partial" }
+ },
+ {
+  "id": "GH6-oracle-twap-window-cross-block-warp",
+  "validation_method": "On a testnet/fork, deploy a protocol using a short-window on-chain TWAP (e.g. Uniswap v2/v3 cumulative-price oracle) backing liquidation/mint. As an attacker controlling block production cadence (local sequencer, or a forked chain where you control block timestamps/ordering) on a low-liquidity pool, manipulate price and stuff/space blocks so the manipulated observations dominate the time-weighting, then trigger the dependent action within the warped window. Measure extracted value vs. a fair TWAP.",
+  "falsifier": "The TWAP window is long enough and the pool liquid enough that controlling cadence cannot make a brief manipulated price dominate, or the protocol cross-checks against an independent oracle (e.g. Chainlink) so the warped TWAP doesn't drive the action.",
+  "prerequisites": "Control of block production cadence (own L2 sequencer, proposer/builder power, or a chain with long/irregular block times) and a low-liquidity pool; a protocol relying on a short on-chain TWAP.",
+  "existing_controls": "Longer TWAP windows, deep-liquidity pools, multi-oracle / Chainlink cross-checks, per-block manipulation caps. TWAP manipulation generally is demonstrated; the specific cadence/sequencer-warping vector is plausible but liquidity-bounded.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH6-did-credential-status-staleness-trust",
+  "validation_method": "Set up a VC verifier using StatusList2021 (or an on-chain revocation registry) that caches the status list. Issue a credential, revoke it at the issuer, then present the credential to the verifier within the cache TTL / before the status list mirror updates. Observe whether the verifier accepts the revoked credential as active. Vary cache TTL and force resolution to a stale mirror to measure the acceptance window.",
+  "falsifier": "The verifier fetches a fresh, signed, timestamped status list on every verification (no stale cache) or uses a freshness/'valid as of' bound, so a credential revoked before presentation is reliably rejected; revocation propagation is effectively synchronous in the deployment.",
+  "prerequisites": "Ability to present a credential during the propagation/cache window, or to steer the verifier to a stale status-list mirror / did resolution. Window may be short.",
+  "existing_controls": "Short status-list cache TTLs, signed and freshness-bounded status lists, OCSP-stapling-style freshness, online status checks. Revocation-propagation lag is a known general PKI/CRL problem; specific VC StatusList exploitation is plausible, not widely demonstrated.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH7-gnss-position-spoof-autonomy-ground-truth",
+  "validation_method": "In an RF-shielded lab (or with a licensed/contained SDR like HackRF/USRP running GPS-SDR-SIM/gps-sdr-sim-style coherent spoofer), capture-and-drag a target receiver's position smoothly along an attacker trajectory consistent with vehicle dynamics. Feed the receiver into an autonomy/state estimator and observe whether it actuates on the spoofed fix (heading change, false geofence breach, RTH toward attacker coordinates) without rejecting the fix.",
+  "falsifier": "The platform fuses an independent absolute reference or anti-spoof signal (multi-antenna/CRPA angle-of-arrival, RAIM, signal-quality/AGC anomaly detection, INS innovation gating) and rejects or down-weights the spoofed fix so actuation does not follow it.",
+  "prerequisites": "RF transmit capability and (lawfully) a shielded environment; a target autonomy stack that fuses GNSS as ground truth without independent cross-checks. Coherent capture-and-drag requires moderate sophistication.",
+  "existing_controls": "RAIM, multi-constellation/multi-frequency, antenna-array anti-spoofing (CRPA), INS/visual cross-checks, signal authentication (Galileo OSNMA). GNSS spoofing including capture-and-drag is publicly demonstrated (academic and real-world maritime/UAV incidents).",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "mature", "tooling_status": "available", "detection_status": "partial" }
+ },
+ {
+  "id": "GH7-ptp-asymmetric-delay-offset-trust",
+  "validation_method": "On a PTP/NTP-synced lab segment, insert an on-path element (transparent-clock relay, programmable switch, or tc/netem middlebox) that adds latency to only one direction. Measure the client's computed offset and observe it slew its clock by ~half the injected one-way asymmetry. Confirm authenticated PTP (e.g. with integrity protection) still mis-syncs because the path-symmetry assumption, not packet content, is violated.",
+  "falsifier": "The client measures or bounds one-way delay independently (multi-path/redundant time sources, two-way symmetric verified paths, GNSS cross-check) and rejects or corrects the asymmetric error, so the injected delay does not shift its clock undetectably.",
+  "prerequisites": "On-path position to introduce directional delay (compromised switch, transparent clock, or inline middlebox).",
+  "existing_controls": "Redundant/diverse time sources, GNSS or holdover cross-check, asymmetry monitoring, hardware timestamping with calibrated paths, multiple PTP grandmasters. PTP asymmetric-delay attacks are well established in academic literature and demonstrated in testbeds.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH8-package-hallucination-slopsquat-preregistration",
+  "validation_method": "Prompt popular code models repeatedly for install/import suggestions across many tasks and collect package names; confirm a stable subset of names that do not exist on the registry (recurrent hallucinations). Register a benign canary under one such name and instrument it; then have a fresh build agent act on the same hallucinated suggestion and observe whether it installs/executes the canary. Seam confirmed if hallucinated names recur stably AND agents install them unchecked.",
+  "falsifier": "Hallucinated names are not stable/recurring across runs (so pre-registration cannot target them), OR the developer/build agent verifies package existence/ownership/popularity before install so the squatted name is rejected.",
+  "prerequisites": "Ability to register packages on a public registry; an LLM-assisted workflow that installs suggested names without verification.",
+  "existing_controls": "Dependency allowlists, install-time existence/ownership/age checks, lockfiles, scoped/private registries, package-hallucination scanners. 'Slopsquatting' / package hallucination is publicly studied and demonstrated (research and proof-of-concept registrations).",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "available", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH8-shared-system-prompt-repo-import-trust",
+  "validation_method": "Publish a shared agent-definition / system prompt to a community repo or gist that embeds hidden directives (exfiltrate context to a URL, prefer an attacker MCP server, lower guardrails on a trigger phrase). Have a team import it as configuration without review and run the agent through normal tasks; observe whether the agent exfiltrates context, routes to the attacker tool, or relaxes guardrails on the trigger. Seam confirmed if the imported prose silently alters agent behavior at privileged level.",
+  "falsifier": "The importing workflow reviews/sanitizes prompt imports (treats them as control-plane code with diff review, signing, or a policy linter) so the hidden directives are caught, OR the runtime enforces tool-allowlists/guardrails that the prompt cannot override.",
+  "prerequisites": "Ability to publish/update a shared prompt that a target team imports unreviewed, and an agent that loads it into privileged instruction context.",
+  "existing_controls": "Treating prompts as code (review/sign/pin), prompt-injection scanning of imported definitions, tool allowlists and runtime guardrails independent of prompt text. Hidden-directive prompts are demonstrated in research; supply-chain via shared prompts is plausible and emerging.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ }
+]

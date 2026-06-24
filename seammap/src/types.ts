@@ -43,6 +43,22 @@ export interface OperatorWeights {
   ai_augmentable: number; // an LLM does the attacker's cognitive work
 }
 
+export type Validity = "demonstrated" | "plausible" | "speculative";
+export type Confidence = "high" | "medium" | "low";
+
+// Adversarial-validation result attached to a discovered gap: how to determine the seam is
+// real (falsifiable), what would refute it, and a skeptical validity verdict that recalibrates
+// the seam's maturity/tooling/detection to reality.
+export interface ValidationInfo {
+  validation_method: string;
+  falsifier: string;
+  prerequisites?: string;
+  existing_controls?: string;
+  validity: Validity;
+  confidence: Confidence;
+  recalibrate?: { maturity?: Maturity; tooling_status?: Status; detection_status?: Status };
+}
+
 export interface Seam {
   id: string;
   primitive: PrimitiveId;
@@ -62,6 +78,7 @@ export interface Seam {
   origin: Origin;
   rationale?: string;          // AGENT-DISCOVERED only
   suggested_research?: string; // AGENT-DISCOVERED only
+  validation?: ValidationInfo; // attached at load from validations.json
 }
 
 export interface FrontierSeam {
@@ -85,6 +102,10 @@ export interface Gap {
   rationale?: string;
   suggested_research?: string;
   seam_id?: string;           // present when this gap is backed by an authored seam
+  validity?: Validity;        // adversarial-validation verdict (AGENT-DISCOVERED)
+  confidence?: Confidence;
+  validation_method?: string;
+  falsifier?: string;
 }
 
 export interface ClassicCoverage {

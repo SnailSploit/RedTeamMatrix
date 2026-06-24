@@ -42,6 +42,9 @@ const bundle = {
     gap_stats: gapStats(register),
     predicted_composites: composites.length,
     predicted_chains3: chains3.length,
+    validity: register.filter((g) => g.origin === "AGENT-DISCOVERED").reduce((m: any, g) => {
+      m[g.validity ?? "unrated"] = (m[g.validity ?? "unrated"] ?? 0) + 1; return m;
+    }, {}),
   },
   primitives: ds.primitives,
   principals: ds.principals,
