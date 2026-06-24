@@ -21,6 +21,8 @@
     { "id": "mobile",      "name": "Mobile (iOS / Android)",     "class": "substrate", "era_introduced": 2008, "maturity": "mature",   "note": "Apps, MDM/profiles, IPC/intents, mobile session tokens." },
     { "id": "hardware",    "name": "Hardware / IoT / Firmware",  "class": "substrate", "era_introduced": 1995, "maturity": "mature",   "note": "Firmware, secure boot, debug interfaces (JTAG/UART), side channels." },
     { "id": "auto",        "name": "Automotive / CAN",           "class": "substrate", "era_introduced": 2010, "maturity": "emerging", "note": "CAN bus, ECUs, key fobs (PKES), telematics/OTA." },
-    { "id": "wireless",    "name": "Wireless / RF",              "class": "substrate", "era_introduced": 1999, "maturity": "mature",   "note": "Wi-Fi, Bluetooth/BLE, RFID/NFC, SDR-reachable RF medium." }
+    { "id": "wireless",    "name": "Wireless / RF",              "class": "substrate", "era_introduced": 1999, "maturity": "mature",   "note": "Wi-Fi, Bluetooth/BLE, RFID/NFC, SDR-reachable RF medium." },
+    { "id": "chain",       "name": "Blockchain / Smart Contract","class": "substrate", "era_introduced": 2015, "maturity": "emerging", "note": "Smart contracts, bridges, oracles, wallets/key custody, DeFi, on-chain governance, DePIN." },
+    { "id": "pnt",         "name": "PNT / GNSS / Space-Ground",  "class": "substrate", "era_introduced": 1995, "maturity": "mature",   "note": "Positioning/navigation/timing (GPS/GNSS), satellite links, ground stations, time-sync dependents." }
   ]
 }

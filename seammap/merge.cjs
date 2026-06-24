@@ -36,11 +36,12 @@ core.forEach(migrate);
 
 // --- fold in extension files (fixed order; core wins on collision) ---
 const extFiles = ["recon", "access", "escalation", "cred", "c2", "domains", "crosscut", "cloudops",
-  "gaps1", "gaps2", "gaps3", "gaps4", "gaps5"];
+  "gaps1", "gaps2", "gaps3", "gaps4", "gaps5", "gaps6", "gaps7", "gaps8"];
 let ext = [];
 for (const f of extFiles) {
-  const arr = JSON.parse(fs.readFileSync(path.join(D, `_ext_${f}.json`), "utf8"));
-  ext = ext.concat(arr);
+  const fp = path.join(D, `_ext_${f}.json`);
+  if (!fs.existsSync(fp)) { console.log(`  (skip ${f}: not present yet)`); continue; }
+  ext = ext.concat(JSON.parse(fs.readFileSync(fp, "utf8")));
 }
 
 // --- dedup: by exact (primitive+primary technique name) and by trust_assumption (a dup IS padding) ---

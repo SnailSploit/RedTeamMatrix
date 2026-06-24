@@ -12018,6 +12018,1478 @@
       "origin": "AGENT-DISCOVERED",
       "rationale": "Keyless signing (Sigstore/Fulcio/Rekor) is the fast-spreading 2025-2027 answer to 'no more long-lived signing keys,' and verifiers increasingly gate artifact admission on the OIDC identity embedded in the short-lived cert. The overlooked seam is that the security now rests entirely on the trustworthiness of that OIDC identity binding, which was itself phishable, typosquattable, or impersonable at the CI-workflow level — the verifier authenticates that *a* valid OIDC identity signed, not that the identity legitimately represents the publisher it claims. This is explicitly distinct from CA mis-issuance (no rogue CA needed; Fulcio behaves correctly) and from SLSA provenance scope: the violated trust is the identity-binding semantics of keyless signatures and the verifier's pattern-matching policy. Identity-allowlist tooling is only nascent and brittle to look-alikes, and there is no detection for keyless signatures from newly-seen, dormant, or impersonating identities.",
       "suggested_research": "Build an identity-binding risk scorer for keyless-signature policies that flags look-alike, newly-registered, dormant, or workflow-ref-mismatched OIDC identities and requires reputation/age evidence before admission; demonstrate admitting a malicious artifact via a typosquatted OIDC identity that satisfies a naive identity-pattern verification policy."
+    },
+    {
+      "id": "GH6-oracle-twap-window-cross-block-warp",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "chain"
+      ],
+      "target": [
+        "chain"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0040",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "API & Business-Logic Abuse",
+        "Impact"
+      ],
+      "trust_assumption": "A DeFi protocol that switched from spot price to a time-weighted average price (TWAP) oracle trusts that averaging over a window of recent observations makes the reported price economically infeasible to manipulate, so it treats the TWAP read at the moment of a liquidation, mint, or collateral revaluation as manipulation-resistant ground truth and sizes its safety margins accordingly.",
+      "violation": "An attacker who controls block production cadence (a proposer/builder via MEV markets, an L2 sequencer, or a low-liquidity pool on a chain with long or irregular block times) skews the observations that fall inside the TWAP window — stuffing or spacing blocks so a brief manipulated price dominates the time-weighting — and extracts value during the exact transaction that reads the average, defeating the window's averaging by warping the time dimension the average is computed over rather than the prices themselves.",
+      "techniques": [
+        {
+          "name": "Block-cadence warping of TWAP observation window",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-682",
+            "CWE-1339"
+          ]
+        },
+        {
+          "name": "Sequencer-controlled timestamp skew of weighted price",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-829",
+            "CWE-367"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "After the flash-loan spot-oracle disasters, the entire DeFi industry treated TWAP as the cure, and 2025-2027 protocols on app-chains, rollups, and alt-L1s deploy short-window TWAPs as their canonical manipulation-resistant feed. The overlooked seam is that TWAP's security rests on an assumption about *time* — that observations are sampled at honest, roughly-uniform intervals — yet on chains where the attacker influences block timing (centralized L2 sequencers, MEV proposer control, configurable block times) the weighting can be skewed without sustaining the manipulated price, so a brief excursion gains outsized weight. This is distinct from the classic flash-loan spot-oracle hint because the violated trust is the temporal honesty of the sampling, not the instantaneous price; it is a time/state primitive failure that becomes exploitable precisely on the new high-throughput, single-sequencer venues protocols are migrating to. No oracle library validates inter-observation timing integrity against the sequencer, and no monitor flags a liquidation whose TWAP window was dominated by anomalously-spaced blocks.",
+      "suggested_research": "Build a TWAP-window auditor that reconstructs the block-timestamp distribution feeding each oracle read and scores how concentrated the time-weight was on suspicious intervals, alerting on liquidations/mints whose window was cadence-skewed; on a single-sequencer L2 testbed, demonstrate value extraction by spacing blocks to over-weight a transient manipulated price without holding it."
+    },
+    {
+      "id": "GH6-bridge-lightclient-finality-reorg-mint",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "chain"
+      ],
+      "target": [
+        "chain"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0040"
+      ],
+      "classic_branches": [
+        "Cryptography & PKI",
+        "Impact",
+        "API & Business-Logic Abuse"
+      ],
+      "trust_assumption": "A cross-chain bridge that verifies source-chain events with an on-target light client trusts that a header/proof which passed the source chain's stated finality rule is irreversible, so once the light client accepts a deposit proof at the bridge's configured confirmation depth it irrevocably mints or releases the wrapped asset on the destination chain.",
+      "violation": "An attacker exploits the gap between the bridge's hard-coded confirmation depth and the source chain's *actual* probabilistic or reconfigurable finality — triggering a deep reorg, a finality-gadget stall, or a validator-set rotation that orphans the proven block after the destination already minted — so a deposit that gets rolled back on the source chain has already been released on the destination, double-spending across the seam that assumes finality is a single global truth.",
+      "techniques": [
+        {
+          "name": "Source-chain deep reorg after destination mint at fixed confirmation depth",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-367",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "Light-client validator-set rotation orphaning a proven header",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-697",
+            "CWE-696"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Light-client bridges are sold in 2025-2027 as the trust-minimized successor to multisig bridges, verifying real consensus proofs instead of trusting a federation. The unexamined seam is that 'finality' is not a uniform property: many chains offer only probabilistic finality, some have finality gadgets that can stall or revert under attack, and validator-set rotations can invalidate a header the light client already accepted. Bridges encode a static confirmation depth as a proxy for irreversibility, but that proxy can be wrong exactly when an attacker forces a reorg deeper than the configured threshold, and the destination mint is irreversible while the source deposit is not. This is distinct from the validator-quorum-forgery bridge hint because the cryptographic proof is honest and the quorum is not forged — the violated trust is the equivalence between 'passed my confirmation depth' and 'final on the source chain.' No bridge tooling adapts confirmation depth to live reorg risk, and no detector reconciles a destination mint against a subsequent source-chain reorg that orphaned its proof.",
+      "suggested_research": "Build a cross-chain finality reconciler that tracks every bridge mint and watches the source chain for reorgs/finality reversions that orphan the proving block, raising a clawback alarm; model the economic conditions under which renting hashpower or stalling a finality gadget makes a reorg-after-mint profitable against named light-client bridges, and prototype dynamic confirmation depth keyed to live reorg depth."
+    },
+    {
+      "id": "GH6-proxy-upgrade-storage-collision-silent-reslot",
+      "primitive": "P5",
+      "kind": "frontier",
+      "source": [
+        "chain"
+      ],
+      "target": [
+        "chain",
+        "human"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0003",
+        "TA0040"
+      ],
+      "classic_branches": [
+        "Supply Chain",
+        "API & Business-Logic Abuse",
+        "Impact"
+      ],
+      "trust_assumption": "Users and integrators of an upgradeable proxy contract trust that the address they audited keeps its meaning across upgrades because the proxy's storage layout is append-only and the implementation is reviewed, so they treat the contract's persistent state (balances, roles, allowances) as stable and continue interacting with the same address after an upgrade without re-auditing how the new logic interprets existing storage slots.",
+      "violation": "A proxy admin (or an attacker who captured the admin/upgrade key) ships a new implementation whose storage layout silently re-maps existing slots — reusing a slot that previously held a balance as a role flag, or shifting a struct so an attacker-controlled value now occupies the owner slot — so the same on-chain bytes that meant one thing under the audited logic are reinterpreted as authority or value under the new logic, with no bytecode-immutability violation visible at the trusted address.",
+      "techniques": [
+        {
+          "name": "Upgrade-time storage-slot re-interpretation seizing role/owner",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-843",
+            "CWE-665"
+          ]
+        },
+        {
+          "name": "Proxy implementation layout shift colliding persistent state",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-913",
+            "CWE-1188"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Upgradeable proxies (transparent, UUPS, beacon, diamond) are ubiquitous in 2025-2027 DeFi and the standard auditing mental model is 'audit the implementation, trust the admin not to rug.' The under-covered seam is not the well-known admin-key-swaps-logic risk but the format/boundary failure at the storage layer: persistent storage outlives the code that defined its layout, and an upgrade can reinterpret the *same bytes* as a different type or field — turning a stale balance slot into a role bitmap or pushing attacker data into the owner slot — without ever appearing as a bytecode change at the address users trust. This is a P5 reinterpretation distinct from the generic proxy-admin-key hint (which is about swapping logic wholesale) because here the attack is the silent semantic re-slotting of existing state that even a fresh audit of the new implementation may miss if it is not diffed against the live storage layout. Layout-diff tooling exists for deploys but is rarely enforced on live state, and no monitor alerts users that an upgrade changed the meaning of slots they hold value in.",
+      "suggested_research": "Build a live storage-layout differ that, on every observed proxy upgrade, diffs the new implementation's slot map against the prior one over the contract's actual occupied storage and flags any slot whose type/semantics changed under live value; demonstrate a benign-looking upgrade that re-slots a balance mapping into a role flag to seize control without altering the trusted address."
+    },
+    {
+      "id": "GH6-eip712-domain-replay-fork-chainid-confusion",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "chain",
+        "human"
+      ],
+      "target": [
+        "chain"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0006",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "Cryptography & PKI",
+        "Identity & Federation Attacks",
+        "API & Business-Logic Abuse"
+      ],
+      "trust_assumption": "A contract that accepts an EIP-712 typed signature (permit, meta-transaction, gasless order, intent) trusts that the domain separator binding the signature to one chainId and one verifying contract guarantees the user's authorization can only be exercised in the single context the user signed for, so it executes the signed action as proof of scoped intent.",
+      "violation": "An attacker replays a validly-signed EIP-712 message in a context the domain separator failed to actually pin to — a fork or rollup that shares the source chain's historical chainId, a redeployed verifying contract at the same address on a second chain via CREATE2, or a wallet that cached a stale domain across a chainId change — so a signature the human scoped to one chain/contract authorizes value movement on another, because the domain binding the verifier relies on collides across the multichain namespace the user never reasoned about.",
+      "techniques": [
+        {
+          "name": "EIP-712 signature replay across shared/forked chainId domain",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-294",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "CREATE2-redeployed verifier domain collision cross-chain",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-290",
+            "CWE-308"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "EIP-712 typed signing is the backbone of 2025-2027 gasless UX, intents, and account abstraction, and the domain separator (name, version, chainId, verifyingContract) is treated as a complete replay guard. The seam is that the domain's uniqueness assumptions break in the multichain reality the standard predates: forks reuse historical chainIds, deterministic CREATE2 deploys put the same verifying contract address on many chains, and wallets cache domain data across network switches — so a signature scoped to a single context can be exercised in a colliding one. This is broader than the signature-replay hint's single-direction framing because it identifies the structural source of the collision (the multichain namespace versus a separator computed from values that are not globally unique) and includes the wallet-side stale-domain vector. It is a P2 identity/authority seam: the verifier trusts the domain as proof of scoped human intent. There is no tooling that audits a verifying contract's domain for cross-chain/fork collision exposure, and no detection correlates the same signed digest being consumed on two chains.",
+      "suggested_research": "Build a domain-collision scanner that, for a given verifying contract, enumerates chains/forks where its chainId+address+name+version separator collides and flags exploitable replay surface; demonstrate cross-chain consumption of a single permit signature against a CREATE2-redeployed verifier, and propose a wallet-side domain-freshness check that re-derives chainId at sign time."
+    },
+    {
+      "id": "GH6-blind-signing-simulation-divergence-decoy",
+      "primitive": "P1",
+      "kind": "frontier",
+      "source": [
+        "chain",
+        "web"
+      ],
+      "target": [
+        "human",
+        "chain"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0040"
+      ],
+      "classic_branches": [
+        "API & Business-Logic Abuse",
+        "Impact"
+      ],
+      "trust_assumption": "A wallet user relies on the transaction-simulation / clear-signing preview the wallet renders (asset changes, recipients, decoded calldata) as a faithful prediction of what executing the transaction will do, so they approve based on the human-readable summary rather than the opaque calldata, treating 'simulation shows I receive X and send Y' as binding ground truth for on-chain effect.",
+      "violation": "An attacker crafts calldata whose simulated execution diverges from its real execution — exploiting state that changes between simulation and inclusion (oracle/price reads, block.timestamp/number, a front-run state mutation, or a contract that branches on tx.origin/gasleft or a flash-set storage flag the simulator doesn't reproduce) — so the wallet's preview shows a benign, profitable-looking outcome while the mined transaction drains the signer, weaponizing the very simulation layer that was built to end blind signing.",
+      "techniques": [
+        {
+          "name": "Simulation/execution state divergence yielding decoy preview",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-367",
+            "CWE-1339"
+          ]
+        },
+        {
+          "name": "Calldata branching on context absent in wallet simulation",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-451",
+            "CWE-829"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Clear-signing and transaction simulation are the 2025-2027 industry answer to the blind-signing problem, and wallets/security extensions now present a decoded preview that users are explicitly told to trust over raw calldata. The under-explored seam is that a simulation is an evaluation against a snapshot of state, and on-chain execution happens later against different state under attacker influence — so a contract can be written to behave one way under the wallet's simulation conditions and another way at inclusion (reading a price the attacker will move, branching on a storage flag set by a sandwiching tx, or on tx ordering). The violated trust is data->control: the human treats the preview data as controlling their decision, while the attacker controls the gap between previewed and realized state. This is a distinct, newly-relevant seam created by the clear-signing rollout itself (the blind-signing hint assumed no preview at all); no wallet flags simulation/execution divergence risk, and no detection compares a signed tx's simulated preview to its mined effect.",
+      "suggested_research": "Build a wallet-side divergence guard that re-simulates at inclusion-adjacent state (or against adversarial state perturbations) and warns when the realized outcome can deviate from the shown preview; demonstrate a contract whose simulation shows a gain but whose mined execution drains the signer by reading attacker-moved state, and quantify how many production wallets surface no divergence warning."
+    },
+    {
+      "id": "GH6-did-credential-status-staleness-trust",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "chain",
+        "identity"
+      ],
+      "target": [
+        "identity",
+        "web"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0006",
+        "TA0003"
+      ],
+      "classic_branches": [
+        "Identity & Federation Attacks",
+        "Cryptography & PKI"
+      ],
+      "trust_assumption": "A verifier of a W3C verifiable credential trusts that checking the issuer's signature plus the referenced status mechanism (StatusList2021 bitstring, on-chain revocation registry, did:method resolution) tells it the credential is currently valid, so a credential that resolves and whose status bit reads 'active' is accepted as a present-tense attestation of the holder's standing.",
+      "violation": "An attacker exploits the propagation and resolution latency in the decentralized status layer — presenting a credential after revocation but before the status list/registry the verifier caches has updated, or steering the verifier to a stale did:method resolution or an outdated status-list mirror — so a revoked or rotated credential is honored as active, because in a decentralized identity system there is no synchronous authority that can answer 'is this valid right now' and the verifier silently trusts a snapshot that lags the true state.",
+      "techniques": [
+        {
+          "name": "Post-revocation credential acceptance during status-list propagation lag",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-613",
+            "CWE-672"
+          ]
+        },
+        {
+          "name": "Stale did/status-list resolution steered to honor revoked VC",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-299"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Decentralized identity (DIDs and W3C verifiable credentials) is moving from pilots to real deployment in 2025-2027 (EU digital identity wallets, reusable KYC, employment/age credentials), and the verification model deliberately removes the central authority that PKI/OCSP-style systems queried for live status. The seam is that revocation in this world is eventually-consistent: status lists are published artifacts that verifiers fetch and cache, did:method resolution can be cached or steered, and there is no synchronous 'check now' — so the window between revocation and propagation is a designed-in feature, not a bug, that an attacker times against. The violated trust is the provenance/freshness of the status answer the verifier relies on. This is distinct from classic cert-revocation-latency because the status authority is itself decentralized and the verifier often cannot even reach a canonical current source. No DID wallet/verifier tooling measures or bounds status freshness, and no detection flags credentials presented during their revocation-propagation window.",
+      "suggested_research": "Measure real-world status-propagation latency across StatusList2021 and on-chain revocation registries in shipping VC stacks, and build a verifier-side freshness bound that rejects or down-trusts credentials whose status snapshot is older than a policy threshold; demonstrate acceptance of a just-revoked credential by presenting it inside the propagation window against a caching verifier."
+    },
+    {
+      "id": "GH6-dao-governance-flashstake-snapshot-capture",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "chain"
+      ],
+      "target": [
+        "chain",
+        "human"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0004",
+        "TA0040"
+      ],
+      "classic_branches": [
+        "API & Business-Logic Abuse",
+        "Identity & Federation Attacks",
+        "Impact"
+      ],
+      "trust_assumption": "A DAO's on-chain governance trusts that a token (or vote-escrowed/delegated) balance measured at a proposal's snapshot block represents a participant's genuine, at-risk economic stake, so it equates voting weight at that block with legitimate skin-in-the-game and lets that measured weight decide treasury, parameter, and upgrade outcomes.",
+      "violation": "An attacker assembles voting weight they have no lasting stake in — flash-borrowing governance tokens, renting delegated voting power, or momentarily acquiring vote-escrow positions just before the snapshot block and unwinding immediately after — so the snapshot reads attacker-controlled weight as legitimate stake and passes a self-dealing proposal, because the governance system trusts a point-in-time balance as a proxy for durable economic alignment it never verifies the persistence of.",
+      "techniques": [
+        {
+          "name": "Flash-borrowed governance-token snapshot vote capture",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-841",
+            "CWE-840"
+          ]
+        },
+        {
+          "name": "Rented delegated voting power transient to the snapshot block",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-863",
+            "CWE-708"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "On-chain DAO governance controls enormous treasuries and protocol-upgrade keys in 2025-2027, and the security model assumes voting weight equals economic stake equals aligned incentives. The seam is that balance at a snapshot block is a fungible, rentable, flash-loanable quantity — markets now exist to borrow governance tokens and rent delegated/vote-escrow power for a single block — so an attacker can present overwhelming 'stake' at the measurement instant with zero durable exposure, then unwind. The violated trust is the identity/authority equivalence between a transient measured balance and persistent skin-in-the-game. While the governance-flash-borrow hint names the primitive, the under-tooled extension here is that even time-locked or vote-escrow and delegation designs are gameable via rental markets and just-in-time escrow, and there is no tooling that scores a proposal's passing coalition for stake transience. No governance framework verifies durable holding across the proposal lifecycle, and no monitor flags votes whose weight was borrowed/rented around the snapshot.",
+      "suggested_research": "Build a governance-stake-persistence analyzer that, for each passed proposal, traces whether the deciding voters held their weight durably or acquired/borrowed it around the snapshot and unwound after, scoring coalition transience; prototype a time-integrated voting weight (stake held across a window, not a single block) and demonstrate capture of a vanilla snapshot vote via flash-rented delegation."
+    },
+    {
+      "id": "GH6-erc4337-paymaster-validation-execution-gap",
+      "primitive": "P4",
+      "kind": "frontier",
+      "source": [
+        "chain"
+      ],
+      "target": [
+        "chain"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0040",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "API & Business-Logic Abuse",
+        "Impact"
+      ],
+      "trust_assumption": "An ERC-4337 paymaster that agrees to sponsor a user operation's gas trusts that the conditions it checked in the validation phase — the userOp's calldata, the account's state, an off-chain signed sponsorship policy, or a token allowance it will pull as repayment — still hold when the operation executes, so it commits to paying gas based on the picture it validated.",
+      "violation": "An attacker exploits the structural separation between ERC-4337's validation and execution phases (and the bundler's freedom to order/aggregate userOps) so that state the paymaster relied on during validation is changed before or during execution — the repayment token is drained, the sponsored action is swapped via reentrant or ordering effects, or aggregated userOps interfere — leaving the paymaster to pay gas for an operation that no longer matches what it agreed to sponsor, draining its deposit at scale.",
+      "techniques": [
+        {
+          "name": "Validation/execution state divergence draining paymaster deposit",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-367",
+            "CWE-841"
+          ]
+        },
+        {
+          "name": "Bundler ordering/aggregation invalidating sponsorship precondition",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-662",
+            "CWE-840"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Account abstraction via ERC-4337 is hitting production wallets and chains in 2025-2027, and paymasters that sponsor gas are central to the gasless UX everyone is building. The protocol deliberately splits a userOp into a validation phase (where the paymaster decides to pay) and an execution phase (where the action runs), with strict storage-access rules during validation that prevent the paymaster from fully foreseeing execution-time state — and bundlers can order and aggregate userOps between those phases. The seam is context-inheritance: the paymaster's commitment to pay inherits the validation-time context, but execution runs in a context the attacker can mutate (drain the repayment token, change what the sponsored call does, exploit ordering), so the paymaster pays for something other than what it vetted. This is a fresh AA-specific seam with essentially no tooling; the paymaster-trust hint names the actor but not this validation/execution-context divergence. No paymaster framework re-checks preconditions at execution, and no detection flags sponsored ops whose execution-time state contradicts validation-time assumptions.",
+      "suggested_research": "Enumerate paymaster designs and identify which sponsorship preconditions can be invalidated between validation and execution under hostile bundler ordering and reentrancy, then build a paymaster-side guard that re-asserts critical invariants at execution start and a detector for sponsored ops whose repayment or sponsored action diverged; demonstrate deposit drain by mutating the repayment-token balance after validation."
+    },
+    {
+      "id": "GH6-depin-proof-of-physical-work-sensor-spoof",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "hardware",
+        "wireless"
+      ],
+      "target": [
+        "chain"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0001",
+        "TA0040"
+      ],
+      "classic_branches": [
+        "API & Business-Logic Abuse",
+        "Impact",
+        "Supply Chain"
+      ],
+      "trust_assumption": "A DePIN network's on-chain reward contract trusts that the proofs of physical work it receives (sensor readings, location/GPS attestations, coverage or bandwidth measurements, hashed device telemetry) are honest evidence that a real device performed real-world work at a real place and time, so it mints token rewards in proportion to those submitted proofs.",
+      "violation": "An attacker fabricates physical-work proofs without doing the work — spoofing GNSS/location, replaying or simulating sensor telemetry, virtualizing many device identities on one host, or colluding so witnesses attest to non-existent coverage — and the reward contract mints tokens because on-chain it cannot distinguish a cryptographically well-formed proof of real physical work from a well-formed fabrication, since the gap between the digital attestation and the physical ground truth is unverifiable from the chain's vantage point.",
+      "techniques": [
+        {
+          "name": "GNSS/location-spoofed proof of physical work minting rewards",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-290"
+          ]
+        },
+        {
+          "name": "Virtualized multi-identity device sybil for coverage rewards",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-291",
+            "CWE-294"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "DePIN (decentralized physical infrastructure: wireless coverage, mapping, sensing, compute, energy) is a fast-growing 2025-2027 sector that pays token rewards for real-world work attested on-chain. The fundamental seam is provenance across the digital/physical boundary: a smart contract can verify a signature and a proof's structure but cannot itself perceive whether a sensor reading, a GPS fix, or a coverage measurement reflects reality, so a cryptographically valid proof of fabricated work is indistinguishable from honest work at the point of minting. Attackers spoof location, replay/simulate telemetry, virtualize device fleets, or collude on witness attestations to farm rewards. This generalizes and extends the DePIN-sensor-reward hint by framing it as a P3 ground-truth gap inherent to any chain that mints on physical attestations, and by spanning location, telemetry, and sybil/virtualization vectors. There is little tooling to detect fabricated physical-work proofs at scale, detection is only nascent (some networks do anomaly heuristics), and no general framework binds an on-chain proof to verifiable physical ground truth.",
+      "suggested_research": "Build a cross-network physical-work fraud detector that fuses spatial-temporal plausibility (impossible travel, implausible coverage density), device-fingerprint sybil clustering, and signal-physics consistency to flag fabricated proofs, and evaluate it against named DePIN reward systems; demonstrate reward farming via GNSS spoofing plus virtualized device identities, and propose hardware-rooted attestation that binds proofs to tamper-evident physical sensing."
+    },
+    {
+      "id": "GH7-gnss-time-spoof-into-disciplined-clock",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "pnt"
+      ],
+      "target": [
+        "ot",
+        "network",
+        "cloud"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0040"
+      ],
+      "classic_branches": [
+        "Wireless / RF Attacks",
+        "OT / ICS Attacks",
+        "Impact"
+      ],
+      "trust_assumption": "A GPS-disciplined oscillator or PTP grandmaster trusts the GNSS-derived time-of-day and 1PPS edge it recovers from the satellite signal as an unforgeable physical reference, so every downstream consumer (synchrophasor PMUs, 5G RAN frame timing, financial timestamping, data-center NTP roots, sequence-of-events recorders) treats the disciplined clock as authoritative absolute time and never cross-checks the rate at which that time is allowed to move.",
+      "violation": "An attacker spoofs the GNSS RF to slew the recovered time — not the position — by tens of microseconds to milliseconds, walking the disciplined clock past the holdover/insanity thresholds slowly enough that the grandmaster never declares loss-of-lock, so PMU phase-angle math, 5G slot boundaries, MiFID/transaction sequencing, and consensus quorum windows all silently act on a falsified 'now' that every component still labels as GPS-authoritative.",
+      "techniques": [
+        {
+          "name": "Slow time-slew GNSS spoof under loss-of-lock threshold",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1278",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "Disciplined-clock holdover-bypass via spoofed 1PPS edge",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-367",
+            "CWE-348"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Public GNSS-spoofing tooling and most detection research target the position fix; the timing dimension is the under-modeled seam because in 2025-2027 power grids, 5G fronthaul, financial venues, and data-center fabrics increasingly depend on GPS-disciplined time as their single authoritative clock with no monotonic-rate sanity check independent of the GNSS source. The trust violated is that recovered time can only move forward at real-world rate; a spoofer who slews under the receiver's own holdover/insanity thresholds keeps the lock indicator green while corrupting the absolute reference, so synchrophasor protection, slot scheduling, and timestamp ordering act on falsified time that telemetry still attests as good. This is distinct from generic GNSS position spoofing and from NTP/PTP transport attacks: the disciplined-clock-as-ground-truth assumption is the seam, no product reconciles GNSS-derived time-rate against an independent holdover oscillator's drift envelope, and ATT&CK ICS has no technique for timing-reference falsification.",
+      "suggested_research": "Build a multi-source time-sanity monitor that bounds GNSS-disciplined time against a disciplined free-running oscillator's predicted drift envelope and flags any slew exceeding physical plausibility before loss-of-lock fires; red-team a PTP grandmaster with an SDR slow-slew profile and measure how far PMU/5G consumers can be walked while the lock LED stays green."
+    },
+    {
+      "id": "GH7-gnss-position-spoof-autonomy-ground-truth",
+      "primitive": "P1",
+      "kind": "frontier",
+      "source": [
+        "pnt"
+      ],
+      "target": [
+        "auto",
+        "ot"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0040"
+      ],
+      "classic_branches": [
+        "Wireless / RF Attacks",
+        "OT / ICS Attacks",
+        "Impact"
+      ],
+      "trust_assumption": "An autonomous platform's navigation/guidance stack (drone flight controller, ag/mining autonomy, maritime ECDIS autopilot, last-mile robot) trusts the GNSS fix as the absolute ground-truth anchor that corrects its inertial dead-reckoning, so a plausibly-continuous position stream is fused into the state estimator and converted directly into actuation (waypoint, heading, geofence, return-to-home) without the fix ever competing against an independent absolute reference.",
+      "violation": "An attacker injects a coherent spoofed GNSS constellation that smoothly captures the receiver and then drags the reported position along an attacker-chosen trajectory consistent with vehicle dynamics, so the autonomy treats spoofed data as control input — steering the platform, triggering a false geofence breach, or commanding return-to-home toward attacker coordinates — because the state estimator weights the externally-supplied fix as truth over its own physics.",
+      "techniques": [
+        {
+          "name": "Coherent capture-and-drag GNSS trajectory injection",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-1254"
+          ]
+        },
+        {
+          "name": "Spoofed-fix overriding INS fusion as actuation input",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1247",
+            "CWE-807"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "GNSS position spoofing is demonstrated in the literature, but the frontier seam for 2025-2027 is the data->control coupling inside increasingly autonomous platforms where the fix is not merely displayed to a human but fed directly into a closed-loop estimator that actuates. The trust violated is that an externally-radiated position is ground truth that should dominate the platform's own inertial physics; a dynamics-consistent capture-and-drag defeats the cheap consistency checks (jump detection, signal-strength) most COTS receivers ship. This differs from manual-navigation spoofing because the victim is an automated control loop with machine-speed reaction and no human sanity check, and AI-driven trajectory synthesis makes the drag arbitrarily plausible. No COTS autonomy stack cross-validates GNSS against independent absolute references (vision/terrain/RF-ranging) as an authority arbiter rather than a smoother, and there is no detection that distinguishes a physics-consistent slow drag from real motion.",
+      "suggested_research": "Prototype an authority-arbitration layer that demotes GNSS from ground truth to one vote among vision/terrain-matching/multi-antenna-bearing and refuses actuation when the fix diverges from the inertial-only prediction beyond a dynamics bound; demonstrate capture-and-drag against an open-source flight controller and measure the divergence before any onboard alarm."
+    },
+    {
+      "id": "GH7-satellite-uplink-command-format-trust",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "wireless",
+        "network"
+      ],
+      "target": [
+        "pnt"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0001",
+        "TA0040"
+      ],
+      "classic_branches": [
+        "Wireless / RF Attacks",
+        "Hardware / IoT / Firmware",
+        "Impact"
+      ],
+      "trust_assumption": "A satellite (especially COTS-bus SmallSat/CubeSat or a legacy bird) trusts that a telecommand arriving on the correct uplink frequency, in the expected CCSDS/AX.25 frame format, and within the ground-station contact window originated from its authorized operator, so the onboard command handler executes the command on the basis of channel and format conformance rather than strong per-command cryptographic authentication.",
+      "violation": "An attacker with SDR transmit capability and orbital/contact-window knowledge transmits a well-formed telecommand on the legitimate uplink during a pass, and the spacecraft's command handler — lacking authenticated command counters or rejecting only on framing errors — accepts and executes attacker commands (mode change, attitude maneuver, payload toggle, memory write) as if from the operator, because possession of the format and frequency is treated as possession of authority.",
+      "techniques": [
+        {
+          "name": "Unauthenticated CCSDS telecommand injection on live uplink",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-306",
+            "CWE-294"
+          ]
+        },
+        {
+          "name": "Command-window format conformance accepted as operator identity",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-290",
+            "CWE-940"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 0,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "The 2025-2027 explosion of cheap COTS-bus SmallSats, ride-share constellations, and amateur/academic missions has multiplied birds that ship with weak or absent telecommand authentication, where the implicit access-control model is 'right frequency + right frame + our contact window = us.' The trust violated is identity->authority: channel and format conformance is mistaken for operator identity, an exact P2 confused-deputy where the deputy is the spacecraft's own command handler. This is a live frontier because ground-segment SDR is commodity and orbital ephemerides are public, yet there is essentially no public tooling and no on-orbit detection that an executed command lacked cryptographic provenance. It is distinct from ground-network compromise: the seam is the radio command-acceptance policy itself, which CCSDS SDLS adoption has not yet closed across the COTS fleet.",
+      "suggested_research": "Survey COTS flight-software command stacks (e.g., open-source cFS-derived handlers) for whether authenticated command counters/SDLS are enforced versus framing-only acceptance, and build a ground-side telecommand provenance verifier that refuses to relay any command lacking a fresh authenticated counter; model the SDR cost and pass-window window for an unauthenticated injection."
+    },
+    {
+      "id": "GH7-smallsat-cots-bus-component-provenance",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "supplychain",
+        "hardware"
+      ],
+      "target": [
+        "pnt"
+      ],
+      "maturity": "frontier",
+      "tactics": [
+        "TA0001",
+        "TA0003"
+      ],
+      "classic_branches": [
+        "Hardware / IoT / Firmware",
+        "Supply Chain"
+      ],
+      "trust_assumption": "A SmallSat integrator trusts that each COTS subsystem it bolts onto the spacecraft bus (reaction wheels, GNSS receiver, radio, OBC, star tracker) ships authentic vendor firmware and speaks the bus (CAN/SpaceWire/I2C/MIL-STD-1553) as a benign peer, so any board that enumerates correctly on the bus inherits implicit trust to source telemetry and accept commands without inter-component authentication.",
+      "violation": "A subverted or counterfeit COTS component — firmware tampered in the distribution channel or a clone board sold into the rapid-integration market — enumerates normally and then, once on orbit, abuses its bus peer position to forge telemetry, drop or alter commands to sibling subsystems, or trigger at a chosen time, because the bus grants every enumerated board the same trust the integrator extended to the vendor's brand.",
+      "techniques": [
+        {
+          "name": "Counterfeit COTS subsystem forging intra-bus telemetry",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1357",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "Tampered subsystem firmware as trusted bus peer",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1269",
+            "CWE-494"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 0,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "New-space economics push integrators toward commodity, rapidly-sourced subsystems and tight schedules, so spacecraft buses increasingly look like unauthenticated peer fabrics where 'enumerates correctly' equals 'is the genuine vendor part.' The trust violated is provenance: the receiver checks the board's bus identity label, not the authenticity of its firmware or origin, and intra-bus protocols (1553/CAN/SpaceWire) typically lack component attestation. This is a frontier with no public tooling and no on-orbit detection because hardware attestation on COTS smallsat buses is essentially nonexistent and a malicious peer's forged telemetry is indistinguishable from a faulty sensor. It is distinct from ground supply-chain attacks on flight software: the seam is the on-bus inter-subsystem trust that survives launch, where a single tampered board becomes a persistent insider with physical authority over attitude or payload.",
+      "suggested_research": "Define a lightweight intra-bus component-attestation scheme (per-subsystem signed boot measurement gossiped on 1553/SpaceWire) and a ground-side telemetry-provenance cross-check that correlates a subsystem's reported state against independent sibling sensors to flag a lying peer; build a hardware-in-the-loop testbed injecting a counterfeit reaction-wheel controller."
+    },
+    {
+      "id": "GH7-ais-broadcast-position-as-truth",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "wireless",
+        "pnt"
+      ],
+      "target": [
+        "ot",
+        "network"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0040"
+      ],
+      "classic_branches": [
+        "Wireless / RF Attacks",
+        "Impact",
+        "Defense Evasion"
+      ],
+      "trust_assumption": "A Vessel Traffic Service, port-management system, collision-avoidance display, and maritime-domain-awareness analytics platform trusts that an AIS message carrying an MMSI, position, course, and identity was broadcast by the real vessel it names, so it ingests AIS as authoritative real-time ground truth for traffic deconfliction, automated routing, and sanctions/anomaly analytics without any cryptographic origin binding.",
+      "violation": "An attacker transmits or replays unauthenticated AIS frames over VHF (or injects via a compromised AIS aggregator/feed) to fabricate phantom vessels, clone a real MMSI to a decoy track, or erase a ship's presence, and the VTS/MDA stack treats the spoofed broadcasts as genuine positions — corrupting collision-avoidance, triggering false port/safety responses, or laundering a vessel's true movements past sanctions analytics.",
+      "techniques": [
+        {
+          "name": "Unauthenticated AIS phantom-vessel and MMSI-clone injection",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-290"
+          ]
+        },
+        {
+          "name": "AIS aggregator feed poisoning into MDA analytics",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-348",
+            "CWE-940"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "AIS has no authentication by design and 2025-2027 maritime operations increasingly automate on AIS feeds (autonomous-assist collision avoidance, sanctions and dark-fleet analytics, port digital twins), so the broadcast-as-truth assumption now feeds machine decisions, not just a watchstander's screen. The trust violated is provenance: the consumer believes an MMSI identifies the vessel that sent it, when any SDR can forge frames and aggregator APIs can be poisoned upstream. This is an emerging seam rather than mature classic spoofing because the novel exposure is the analytics/automation layer that fuses AIS as ground truth, and AI-driven track synthesis makes phantom fleets statistically plausible. Detection is only nascent (kinematic/RF-fingerprint anomaly research), there is no cryptographic AIS origin binding deployed at scale, and ATT&CK does not model maritime broadcast trust.",
+      "suggested_research": "Build a cross-source AIS validator that fuses terrestrial-VHF receive-fingerprint, satellite-AIS, and radar/EO tracks to score each MMSI track's physical plausibility and flag clones/phantoms, and red-team an MDA analytics pipeline by injecting dynamics-consistent dark-fleet tracks to measure false-clearance of sanctions screens."
+    },
+    {
+      "id": "GH7-adsb-datalink-track-trust",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "wireless",
+        "pnt"
+      ],
+      "target": [
+        "ot",
+        "network"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0040"
+      ],
+      "classic_branches": [
+        "Wireless / RF Attacks",
+        "Impact"
+      ],
+      "trust_assumption": "An air-traffic surveillance fusion system, UTM/drone-traffic service, and increasingly an aircraft's own ADS-B-In/TCAS display trusts that an ADS-B broadcast carrying an ICAO address and GNSS-derived position came from the aircraft it identifies, so it fuses the squitter into the surveillance picture and conflict-detection logic as a real cooperative target without origin authentication.",
+      "violation": "An attacker transmits unauthenticated 1090ES/UAT ADS-B squitters to inject ghost aircraft, spoof an ICAO identity onto a false track, or shift a reported position, and the surveillance fusion or UTM deconfliction logic treats the fabricated targets as genuine cooperative traffic — generating spurious conflict alerts, distorting the drone-traffic picture, or masking a real intruder by saturating the airspace model.",
+      "techniques": [
+        {
+          "name": "Ghost-aircraft ADS-B squitter injection into fusion",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-290"
+          ]
+        },
+        {
+          "name": "ICAO-identity spoof onto fabricated ADS-B track",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-348",
+            "CWE-294"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "ADS-B carries no authentication and the 2025-2027 frontier is its expansion into UAS Traffic Management and automated detect-and-avoid, where ghost targets feed deconfliction algorithms that command drone maneuvers rather than merely informing a controller. The trust violated is provenance: a GNSS-sourced position relayed over an open datalink is accepted as the named aircraft's true state. This is emerging rather than purely classic because the consumer shifting from human controllers (who apply multilateration cross-checks) to automated UTM logic that may trust the broadcast directly is the new exposure, compounded by GNSS-spoofing feeding falsified positions into otherwise-genuine transponders. Multilateration/RF-fingerprint detection is only partially deployed, there is no authenticated ADS-B at scale, and UTM-layer trust of cooperative broadcasts is unmodeled.",
+      "suggested_research": "Develop a UTM-side cross-validator that requires multilateration or multi-receiver time-difference-of-arrival agreement before a cooperative ADS-B target influences automated deconfliction, and quantify how injected ghost tracks alter detect-and-avoid maneuver commands in an open UTM simulator."
+    },
+    {
+      "id": "GH7-ptp-asymmetric-delay-offset-trust",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "network"
+      ],
+      "target": [
+        "ot",
+        "cloud",
+        "pnt"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0040",
+        "TA0005"
+      ],
+      "classic_branches": [
+        "Network Attacks",
+        "OT / ICS Attacks",
+        "Impact"
+      ],
+      "trust_assumption": "A PTP/NTP time client trusts that the network path to its time source is symmetric — that forward and reverse propagation delays are equal — so it computes its clock offset as half the round-trip and applies the result as authoritative time correction, having no way to independently measure one-way delay and therefore no way to detect that the symmetry assumption was violated.",
+      "violation": "An on-path attacker (transparent-clock relay, compromised switch, or queue-manipulating middlebox) introduces a controlled asymmetric delay — adding latency to only one direction — which the client folds into its offset calculation as a real time error and slews its clock by the injected asymmetry, so the consumer's notion of 'now' is shifted by an amount it cannot detect because authenticated PTP/NTP packets protect content but not path symmetry.",
+      "techniques": [
+        {
+          "name": "Directional delay injection skewing PTP offset",
+          "attack_ids": [
+            "T0830"
+          ],
+          "cwe_ids": [
+            "CWE-367",
+            "CWE-345"
+          ]
+        },
+        {
+          "name": "Transparent-clock asymmetry exploiting half-RTT assumption",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-208",
+            "CWE-348"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "As enterprises move off GNSS toward network-delivered PTP/NTP for resilient timing (telco fronthaul, exchanges, data-center fabrics), the under-modeled seam is that even fully authenticated PTP (with security TLVs) and NTS-secured NTP defend message integrity but cannot defend the half-round-trip symmetry assumption baked into offset math. The trust violated is temporal: the client believes its computed offset reflects real clock error when an attacker has injected directional delay it cannot observe. This is distinct from the GNSS-time gap (no satellite involved) and from spoofing/replay (packets are genuine and authenticated): the attacker manipulates only path timing. There is no deployed detection because one-way delay is not independently measurable on a single path, and SIEMs do not model per-direction latency asymmetry as a time-integrity signal.",
+      "suggested_research": "Prototype multi-path/redundant-source asymmetry detection that cross-checks offset estimates from independent network paths or a disciplined holdover and flags divergence consistent with one-directional delay injection; demonstrate a controlled-asymmetry attack against a PTP-secured grandmaster and measure the achievable undetected clock skew."
+    },
+    {
+      "id": "GH7-time-window-trust-in-consensus-and-certs",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "pnt",
+        "network"
+      ],
+      "target": [
+        "chain",
+        "identity",
+        "cloud"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0040",
+        "TA0006"
+      ],
+      "classic_branches": [
+        "Cryptography & PKI",
+        "Impact"
+      ],
+      "trust_assumption": "Distributed-consensus and certificate-validation logic trusts the local clock as an honest absolute time source when it enforces time-bounded rules — block/timestamp acceptance windows, validator slot timing, TOTP/OCSP/JWT freshness, and certificate notBefore/notAfter validity — so each node independently decides validity against its own clock without treating that clock as an attacker-influenceable input shared across the quorum.",
+      "violation": "An attacker who shifts the time source feeding a set of nodes (via the GNSS or PTP/NTP gaps above, or NTP manipulation) moves their certificate validity windows and consensus timing simultaneously, so revoked or not-yet-valid certificates are accepted, expired tokens pass freshness checks, or a coordinated clock skew across enough validators reshapes which blocks/slots are considered timely — turning a falsified shared 'now' into an authorization and liveness weapon.",
+      "techniques": [
+        {
+          "name": "Coordinated clock skew widening cert validity acceptance",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-324",
+            "CWE-672"
+          ]
+        },
+        {
+          "name": "Consensus slot-timing manipulation via shared time-source skew",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-367",
+            "CWE-345"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Security logic everywhere assumes the local clock is a trustworthy oracle: certificate validity windows, OCSP/CRL freshness, JWT exp, TOTP, and proof-of-stake slot/attestation timing all gate authorization or liveness on time the node never treats as attacker-controllable. The frontier seam for 2025-2027 is that the same nodes increasingly share a small number of upstream time sources (GNSS-disciplined or NTP/PTP), so a single time manipulation correlates across the quorum and across the PKI simultaneously — a revoked cert re-accepted on a skewed node, or enough validators skewed to bias slot timeliness. The trust violated is that 'now' is an honest local fact rather than a shared, spoofable input. This is distinct from the clock-source gaps it builds on: the novel seam is the consensus/PKI layer's unexamined assumption that time is non-adversarial, with no tooling that treats clock provenance as part of the validity decision.",
+      "suggested_research": "Model how far an attacker must skew N validators or relying parties to flip a quorum-timeliness or cert-validity decision, and prototype a validity layer that attaches signed time-source provenance/uncertainty to each notBefore/notAfter and slot check so a node refuses time-gated decisions when its clock confidence degrades."
+    },
+    {
+      "id": "GH7-der-aggregator-grid-command-trust",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "cloud",
+        "network"
+      ],
+      "target": [
+        "ot"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0040"
+      ],
+      "classic_branches": [
+        "OT / ICS Attacks",
+        "Impact"
+      ],
+      "trust_assumption": "A distributed-energy-resource fleet (rooftop solar inverters, home batteries, EV chargers, smart thermostats) trusts that a setpoint or curtail/dispatch command arriving from its cloud aggregator or VPP/DERMS platform over IEEE 2030.5/OpenADR is a legitimate utility instruction, so each device actuates real power output on the aggregator's say-so, and the grid operator in turn trusts the aggregator's reported fleet capacity as dispatchable reserve.",
+      "violation": "An attacker who compromises the aggregator/VPP cloud, its API tokens, or the command channel issues a synchronized command to thousands of geographically clustered DER devices — a simultaneous trip, ramp, or curtail — and the inverters obey because device-side authority is delegated wholesale to the aggregator, producing a coordinated multi-megawatt step change that the bulk grid never authorized and the operator's reserve model did not anticipate.",
+      "techniques": [
+        {
+          "name": "Synchronized DER fleet trip via compromised aggregator",
+          "attack_ids": [
+            "T0855",
+            "T0831"
+          ],
+          "cwe_ids": [
+            "CWE-306",
+            "CWE-863"
+          ]
+        },
+        {
+          "name": "VPP capacity-report trust into bulk reserve dispatch",
+          "attack_ids": [
+            "T0856"
+          ],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-290"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "none",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Aggregated DER and virtual power plants are scaling fast in 2025-2027, with single cloud platforms holding dispatch authority over fleets large enough to matter at transmission scale, yet device-side trust is a wholesale delegation: the inverter authorizes the aggregator's position, not the legitimacy or grid-safety of each command. The trust violated is identity->authority — possession of the aggregator's command channel becomes possession of synchronized control over thousands of grid-edge actuators. This is an emerging seam because the concentration of dispatch authority and the standardized command protocols (2030.5/OpenADR) are recent, and the bulk-grid operator's reserve model trusts aggregator capacity reports it cannot independently verify. There is no tooling to detect an anomalous synchronized DER command and only nascent grid-edge anomaly research; ATT&CK ICS models device control but not the aggregator-as-mass-actuator concentration.",
+      "suggested_research": "Model the frequency/voltage impact of a synchronized DER step from a single compromised aggregator and design a device-side rate-and-coincidence guard that refuses to honor implausibly-correlated fleet-wide commands, plus an operator-side validator that cross-checks aggregator capacity claims against metered telemetry before counting them as reserve."
+    },
+    {
+      "id": "GH7-safety-telemetry-replay-into-automated-response",
+      "primitive": "P6",
+      "kind": "frontier",
+      "source": [
+        "ot",
+        "network"
+      ],
+      "target": [
+        "ot",
+        "soc"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0040",
+        "TA0005"
+      ],
+      "classic_branches": [
+        "OT / ICS Attacks",
+        "Impact",
+        "Defense Evasion"
+      ],
+      "trust_assumption": "A safety instrumented system, building-automation controller, or medical-device monitoring loop trusts that the sensor/telemetry value it last received over an unsequenced field link (BACnet/IP, Modbus/TCP, medical device telemetry) reflects the current physical state, so its automated safety/control response and the SOC's monitoring both act on the most-recent reading as if it is fresh and live.",
+      "violation": "An attacker on the network captures a normal-state telemetry frame and replays it (or holds the last good value) while the real process diverges, so the controller's automated response and the operator/SOC view continue to act on a stale value presented as current — suppressing a safety trip, masking a dangerous excursion, or holding a building/medical setpoint while the true measured quantity has moved into an unsafe regime.",
+      "techniques": [
+        {
+          "name": "Stale-telemetry replay suppressing automated safety response",
+          "attack_ids": [
+            "T0856",
+            "T0832"
+          ],
+          "cwe_ids": [
+            "CWE-294",
+            "CWE-367"
+          ]
+        },
+        {
+          "name": "Last-good-value freeze masking process excursion",
+          "attack_ids": [
+            "T0815",
+            "T0814"
+          ],
+          "cwe_ids": [
+            "CWE-345",
+            "CWE-348"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 0,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Safety-telemetry field protocols (BACnet, Modbus, many medical-device links) carry no per-message freshness/sequence authentication, and the 2025-2027 frontier is that the consumer of these readings is increasingly an automated safety/response loop and an ML-driven SOC rather than a human watching a gauge, so a replayed or frozen value directly suppresses an automated trip or alarm. The trust violated is temporal freshness: true-at-capture is treated as true-at-use, with no liveness proof binding the reading to the present moment. This is distinct from generic ICS replay because the seam is specifically the freshness contract feeding automated safety decisions and cyber-physical alarm suppression, where the absence of a heartbeat/nonce means stale data is indistinguishable from live. Detection is only nascent (timing/jitter anomaly research) and no field-protocol freshness enforcement is widely deployed.",
+      "suggested_research": "Design a lightweight freshness/heartbeat overlay (signed monotonic counter or challenge-nonce) for BACnet/Modbus/medical telemetry that lets the consumer prove a reading is live, and build a passive detector that flags telemetry whose value-vs-jitter signature indicates a held or replayed frame; validate against a building-automation and an SIS testbed."
+    },
+    {
+      "id": "GH8-coding-assistant-inline-suggestion-laundering",
+      "primitive": "P1",
+      "kind": "frontier",
+      "source": [
+        "agent",
+        "web"
+      ],
+      "target": [
+        "supplychain",
+        "human"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0003"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "CI/CD & Build Pipeline"
+      ],
+      "trust_assumption": "A developer using an AI coding assistant trusts that an inline completion offered in their editor is a neutral synthesis of best practice, so a snippet accepted with a single keystroke inherits the developer's authorship identity, passes through review as 'code I wrote', and is committed as if a human had reasoned about its security properties.",
+      "violation": "An attacker biases the assistant's suggestions toward a subtly insecure or backdoored pattern (by seeding public repos, docs, or Stack-Overflow-style answers that the model retrieves or was trained on, or by poisoning the project-context the assistant indexes) so the generated completion carries an injected weakness, and because the accept-completion gesture launders machine-authored text into human-attributed commits, the insecure code crosses the review boundary wearing the developer's identity and is never scrutinized as third-party content.",
+      "techniques": [
+        {
+          "name": "Suggestion-bias seeding of public corpus to steer completions",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1357",
+            "CWE-829"
+          ]
+        },
+        {
+          "name": "Accept-keystroke authorship laundering past code review",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1395",
+            "CWE-494"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "By 2025-2027 a large fraction of new code is first drafted by inline assistants and accepted with a tab, but the entire trust apparatus of software engineering - code review, blame, attribution, ownership - assumes a human authored what is attributed to them. The seam is that the accept gesture collapses a provenance boundary: machine-generated, attacker-influenceable text is relabeled as human-written and thereby exempted from the third-party-code scrutiny that a copy-pasted library or vendored dependency would receive. This is distinct from generic prompt injection and from agent-skill typosquat because the violated trust is the authorship/attribution boundary inside the editor, not a tool call or a package name; the attacker need not compromise any dependency, only bias the suggestion distribution. No SAST tool treats AI-suggested lines as a separate provenance class, and no review process flags 'this hunk was machine-generated' as a risk signal.",
+      "suggested_research": "Instrument an editor to tag the provenance of every accepted completion and feed that into review, then measure whether reviewers scrutinize machine-authored hunks less; red-team a major assistant by seeding a poisoned pattern in its retrieval corpus and measuring the rate at which the insecure variant is suggested and accepted versus a secure baseline."
+    },
+    {
+      "id": "GH8-package-hallucination-slopsquat-preregistration",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "agent"
+      ],
+      "target": [
+        "supplychain",
+        "host"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0002"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "CI/CD & Build Pipeline"
+      ],
+      "trust_assumption": "A developer or build agent trusts that a package name confidently emitted by an LLM in an import statement or install command refers to a real, vetted artifact, so the name is passed straight to the package manager as an authoritative identity without first checking that the package exists, who owns it, or whether it was named by a human at all.",
+      "violation": "An attacker harvests the stable set of non-existent package names that popular models repeatedly hallucinate, pre-registers those exact names on the public registry with malicious payloads, and then any subsequent developer or autonomous build agent that acts on the same hallucinated suggestion installs and executes attacker code - the model's fabricated identity becomes a real, resolvable supply-chain identity the attacker controls.",
+      "techniques": [
+        {
+          "name": "Pre-registration of recurrent LLM-hallucinated package names",
+          "attack_ids": [
+            "T1195.001"
+          ],
+          "cwe_ids": [
+            "CWE-1357",
+            "CWE-829"
+          ]
+        },
+        {
+          "name": "Autonomous-agent install of unverified hallucinated dependency",
+          "attack_ids": [
+            "T1195"
+          ],
+          "cwe_ids": [
+            "CWE-494",
+            "CWE-829"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Hallucinated package names from LLMs are not random - the same models produce the same fabricated names repeatedly, giving an attacker a predictable, pre-computable target set to squat before any victim exists. As coding agents move toward autonomously resolving and installing dependencies in 2025-2027, the human sanity-check that once caught a weird import disappears, and the model's confident-but-false naming becomes an unmediated authority signal to the package manager. This is distinct from classic typosquatting (which targets human fat-finger errors near real names) and from dependency confusion (which exploits internal/external name resolution order): here the violated trust is that an LLM-emitted name corresponds to any real maintainer identity at all, and the attacker manufactures that identity to match the model's fiction. Registries do not flag never-before-seen names that match known-hallucination corpora, and agent tooling does not gate installs on existence/ownership age.",
+      "suggested_research": "Build a continuously-updated corpus of model-specific hallucinated package names by sampling completions across languages, cross-reference against fresh registrations to detect adversarial pre-squatting, and prototype an install-time gate for agents that refuses packages whose name first appeared after a recent cutoff or lacks maintainer history."
+    },
+    {
+      "id": "GH8-model-hub-config-deserialization-trust",
+      "primitive": "P5",
+      "kind": "frontier",
+      "source": [
+        "web",
+        "supplychain"
+      ],
+      "target": [
+        "host",
+        "agent"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0002",
+        "TA0005"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Supply Chain"
+      ],
+      "trust_assumption": "An ML engineer pulling a model from a public hub trusts that the accompanying config, tokenizer, and serialized weight artifacts are inert data describing a network, so the loading library is allowed to parse and instantiate them with full local privileges as if deserializing a benign document rather than executing untrusted code.",
+      "violation": "An attacker publishes a model whose artifact embeds executable behavior at load time - a pickle/`__reduce__` payload, a custom-code-on-load config flag, or a tokenizer/processor that runs arbitrary code during instantiation - so the act of merely loading the 'data' executes attacker code on the engineer's host or in the inference container, exploiting the format boundary between 'a model file' and 'a program'.",
+      "techniques": [
+        {
+          "name": "Pickle/__reduce__ payload in serialized model artifact",
+          "attack_ids": [
+            "T1204.002"
+          ],
+          "cwe_ids": [
+            "CWE-502"
+          ]
+        },
+        {
+          "name": "Remote-code-on-load via trust_remote_code / custom processor",
+          "attack_ids": [
+            "T1195.002"
+          ],
+          "cwe_ids": [
+            "CWE-494",
+            "CWE-829"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 0
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Model hubs distribute hundreds of thousands of community artifacts and the dominant loading libraries will, by default or with a single flag, deserialize pickles and execute custom model/processor code at load time. The seam is the format-boundary assumption that a downloaded model is passive data when it is actually a program the loader runs with local privilege. This is explicitly distinct from the excluded LoRA-adapter-provenance gap (which concerns who fine-tuned an adapter and behavioral backdoors) - here the violation is pure deserialization/code-execution at load, before any inference happens, regardless of model behavior. Safetensors mitigates the weight-blob case but config, tokenizer, processor, and remote-code paths remain executable, and scanners that flag pickles do not cover the custom-code-on-load vectors. There is no consistent attestation that a hub artifact is execution-free.",
+      "suggested_research": "Survey the top model artifacts for load-time code paths beyond weight pickles (remote-code configs, custom processors, tokenizer hooks), build a sandboxed 'dry-load' harness that traces any code execution during model instantiation, and propose an execution-free artifact attestation that hubs could enforce."
+    },
+    {
+      "id": "GH8-leaderboard-contamination-procurement-trust",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "supplychain",
+        "web"
+      ],
+      "target": [
+        "human",
+        "cloud"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0042",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Reconnaissance"
+      ],
+      "trust_assumption": "An enterprise buyer or platform selecting a model trusts that a published benchmark or leaderboard score measures generalization to unseen tasks, so the score is treated as a procurement-grade fitness signal and used to justify deploying the model into security-relevant workflows.",
+      "violation": "A model vendor contaminates the benchmark by training (or fine-tuning) on the public test set or near-duplicates of it, so the reported score reflects memorization rather than capability, and the buyer procures and trusts a model whose real-world behavior - including its security guardrail efficacy and tool-use reliability - is materially worse than the number that drove the purchase, with the gap invisible until production.",
+      "techniques": [
+        {
+          "name": "Benchmark test-set contamination inflating procurement score",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1395"
+          ]
+        },
+        {
+          "name": "Near-duplicate leakage to game held-out evaluation",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1357"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 0,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "In 2025-2027 model selection by enterprises and integrators is heavily driven by leaderboard rank, yet public benchmarks leak into training corpora and vendors face strong incentive to contaminate, turning a measurement into a marketing artifact. The trust violated is procurement-specific: a buyer treats a held-out score as evidence of fitness for a security-relevant deployment, but a contaminated score certifies memorization, not the safety/capability the buyer is actually buying. This is distinct from the excluded eval-set-overfit-bypass (which is about an attacker bypassing a deployed model's eval-tuned defenses) and from LLM-judge gaming (which targets the grader): here the seam is the supply-chain provenance of the score itself as a purchasing trust signal, landing on the human/organizational buyer and the cloud platform that onboards the model. No procurement process demands contamination attestation, and contamination detection is research-stage, not a buyer's-side control.",
+      "suggested_research": "Develop a buyer-side contamination probe using freshly-authored private held-out tasks and canary strings to estimate the gap between a vendor's leaderboard score and clean-set performance, and define a procurement attestation standard requiring vendors to disclose training-data cutoffs and benchmark exclusion proofs."
+    },
+    {
+      "id": "GH8-rlhf-preference-data-crowdsource-poison",
+      "primitive": "P1",
+      "kind": "frontier",
+      "source": [
+        "human",
+        "web"
+      ],
+      "target": [
+        "agent",
+        "supplychain"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0003",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Supply Chain"
+      ],
+      "trust_assumption": "A model trainer running RLHF, DPO, or constitutional/preference fine-tuning trusts that crowdsourced or community preference labels are honest human judgments of helpfulness and harmlessness, so the aggregated preference signal is allowed to directly shape the model's reward function and post-trained behavior without per-labeler provenance or adversarial vetting.",
+      "violation": "A coordinated set of labelers (or a sybil farm, or automated raters) injects a poisoned preference pattern - upvoting responses that comply with a specific trigger phrase, or systematically rewarding an unsafe behavior framed as 'helpful' - so the trigger-conditioned backdoor is baked into the reward model and inherited by every model trained against it, a behavioral compromise introduced through the feedback channel rather than the training corpus.",
+      "techniques": [
+        {
+          "name": "Sybil preference-label injection into reward model",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1395",
+            "CWE-807"
+          ]
+        },
+        {
+          "name": "Trigger-conditioned helpfulness reward backdoor",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-349"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Preference data is increasingly crowdsourced, community-contributed (open preference datasets, in-product thumbs-up/down, arena votes), and even synthetically generated, and it feeds the reward model that most directly governs a model's safety behavior. The seam is that the feedback channel is treated as an honest aggregate human signal while it is in fact an open write surface where a coordinated minority can shift the reward landscape and plant a trigger-gated backdoor that survives into downstream fine-tunes. This is distinct from training-data reconstruction and from the contamination/procurement gap because the violated trust is the integrity of the human-preference channel itself, and the payload is a conditional behavioral backdoor in the reward model rather than data leakage or an inflated score. There is no per-labeler provenance, sybil-resistance, or adversarial audit standard for preference datasets, and no detector for trigger-conditioned reward anomalies.",
+      "suggested_research": "Construct a poisoned preference subset with a rare trigger phrase, train a reward model and a DPO policy on it, and measure backdoor persistence and stealth; then prototype a preference-data auditor that clusters labeler behavior to surface coordinated voting and trigger-correlated reward shifts."
+    },
+    {
+      "id": "GH8-api-distillation-query-volume-trust",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "web",
+        "identity"
+      ],
+      "target": [
+        "cloud",
+        "supplychain"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0009",
+        "TA0010"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Reconnaissance"
+      ],
+      "trust_assumption": "A model-as-a-service provider trusts that paying, authenticated API traffic represents legitimate inference consumption, so it serves high-volume, diverse, logit-or-text-rich responses to any account in good standing without treating the query distribution itself as a potential exfiltration of the model's learned function.",
+      "violation": "An attacker (or a competitor) operates one or many authenticated accounts to systematically query the model across a coverage-maximizing input distribution and trains a substitute model on the responses, extracting a usable clone of the provider's proprietary capability - the provider's identity/billing trust signal authorized the very access that distills its core asset out through the front door.",
+      "techniques": [
+        {
+          "name": "Coverage-maximizing query farming for model distillation",
+          "attack_ids": [
+            "T1213"
+          ],
+          "cwe_ids": [
+            "CWE-799",
+            "CWE-1287"
+          ]
+        },
+        {
+          "name": "Sybil-account fan-out to evade per-key extraction limits",
+          "attack_ids": [
+            "T1606"
+          ],
+          "cwe_ids": [
+            "CWE-307"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Frontier capability is expensive to train but cheap to distill: a smaller student model trained on a teacher's API outputs can recover much of its behavior, and in 2025-2027 this is both a competitive-IP threat and a way to clone a model along with its safety alignment for offline jailbreak research. The seam is that provider trust is keyed on authentication and billing - a paid, well-behaved account - while the threat lives in the aggregate query distribution, which no per-request authorization sees. This is distinct from training-data reconstruction (which recovers training examples) because the target here is the model function itself, extracted through legitimate inference, and distinct from generic rate-limiting because sybil fan-out and patient pacing defeat per-key thresholds. Providers lack distribution-level extraction detection, and there is no standard for watermarking outputs to prove a downstream clone was distilled.",
+      "suggested_research": "Simulate distillation against a hosted model under realistic rate limits and sybil fan-out, quantify queries-to-clone-fidelity, and prototype a fleet-level detector that scores account or account-cluster query distributions for coverage-maximizing extraction patterns plus an output-watermarking scheme that survives distillation."
+    },
+    {
+      "id": "GH8-shared-system-prompt-repo-import-trust",
+      "primitive": "P4",
+      "kind": "frontier",
+      "source": [
+        "supplychain",
+        "web"
+      ],
+      "target": [
+        "agent",
+        "mcp"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0001",
+        "TA0003"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "CI/CD & Build Pipeline"
+      ],
+      "trust_assumption": "A team building an agent trusts a shared system-prompt or agent-definition pulled from a community repo, gist, or prompt-marketplace as a configuration template, so it is dropped into the agent's privileged instruction context without the code-review, signing, or dependency-pinning that an executable dependency would receive.",
+      "violation": "An attacker publishes or updates a popular shared prompt / agent-definition that embeds hidden directives - an instruction to exfiltrate context, to silently prefer an attacker-controlled tool or MCP server, or to lower its own guardrails on a trigger - and because the importing team treats prose configuration as inert text rather than as control-plane code, the agent inherits the attacker's instructions at the highest privilege level it has.",
+      "techniques": [
+        {
+          "name": "Hidden directive embedded in shared agent-definition",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1357",
+            "CWE-829"
+          ]
+        },
+        {
+          "name": "Prompt-template update injecting context exfiltration",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-494",
+            "CWE-77"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "System prompts and agent definitions are the highest-authority instruction layer an agent has, and a thriving ecosystem of shared prompt repos, awesome-lists, and prompt marketplaces means teams routinely copy them in unreviewed. The seam is that this prose is treated as documentation/config rather than as the control-plane code it actually is, so it bypasses every supply-chain control (signing, pinning, SCA, review) that an imported library triggers. This is distinct from the excluded agent-skill-typosquat (a malicious named skill/tool package) and MCP-capability-drift (post-install permission expansion): here the artifact is a natural-language instruction blob whose danger is invisible to code scanners, and its update channel is unmonitored. No SCA tool parses system prompts as a dependency, no signing standard covers agent definitions, and there is no detection for a prompt update that adds an exfiltration or tool-steering directive.",
+      "suggested_research": "Build a prompt-dependency scanner that diffs imported system prompts/agent definitions for newly-added directives matching exfiltration, tool-steering, or guardrail-relaxation intent, and propose a signing-and-pinning convention so agent definitions carry the same provenance guarantees as packages."
+    },
+    {
+      "id": "GH8-agent-authored-iac-policy-compliance-drift",
+      "primitive": "P3",
+      "kind": "frontier",
+      "source": [
+        "agent"
+      ],
+      "target": [
+        "cloud",
+        "container"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0003",
+        "TA0005"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Cloud Attacks"
+      ],
+      "trust_assumption": "An ops team using an agent to generate Terraform, Kubernetes manifests, or cloud IaC trusts that infrastructure-as-code authored by the assistant embodies the same policy intent and least-privilege defaults a human engineer would apply, so the generated plan is approved on a quick skim and applied with the team's deployment authority.",
+      "violation": "The agent generates infrastructure that is syntactically valid and superficially matches the request but quietly diverges from policy - an over-broad IAM principal, a public-by-default storage resource, a disabled control plane log, a wildcard security-group - and because reviewers trust agent-authored IaC as policy-aligned and policy-as-code gates do not cover the specific drift, the non-compliant infrastructure is applied with full authority and becomes live attack surface.",
+      "techniques": [
+        {
+          "name": "Agent-generated over-broad IAM/security-group in IaC",
+          "attack_ids": [
+            "T1098.003"
+          ],
+          "cwe_ids": [
+            "CWE-732",
+            "CWE-1188"
+          ]
+        },
+        {
+          "name": "Policy-as-code gap exploited by plausible agent IaC drift",
+          "attack_ids": [
+            "T1525"
+          ],
+          "cwe_ids": [
+            "CWE-1393",
+            "CWE-16"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "nascent",
+      "detection_status": "nascent",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Agents authoring and even applying IaC is a fast-growing 2025-2027 pattern, and the failure mode is not malicious code but plausible-looking infra that drifts from intended policy in ways a skim approval misses. The seam is the provenance trust placed on agent-authored infrastructure: reviewers assume the generator internalized least-privilege and compliance intent, while the agent optimizes for 'works/applies' and policy-as-code gates only catch the rules someone pre-wrote, leaving the long tail of drift unguarded. This is distinct from generic IaC misconfiguration because the new element is the implicit trust that an AI author is policy-aware, which suppresses human scrutiny precisely as volume of generated infra explodes. Detection that diffs agent-generated plans against intended policy posture (not just a fixed ruleset) is nascent, and no provenance signal marks a plan as machine-authored to trigger heavier review.",
+      "suggested_research": "Generate IaC from agents across many prompts and measure the rate and class of policy drift versus human baselines, then build a review gate that tags plan provenance as agent-authored and runs an intent-vs-policy differential (beyond static OPA rules) before apply."
+    },
+    {
+      "id": "GH8-guardrail-classifier-dependency-swap",
+      "primitive": "P2",
+      "kind": "frontier",
+      "source": [
+        "supplychain"
+      ],
+      "target": [
+        "agent",
+        "mcp"
+      ],
+      "maturity": "emerging",
+      "tactics": [
+        "TA0005",
+        "TA0001"
+      ],
+      "classic_branches": [
+        "AI / Agent Attacks",
+        "Supply Chain"
+      ],
+      "trust_assumption": "An application that fronts its LLM with a safety/guardrail classifier (prompt-injection detector, content moderator, jailbreak filter) trusts that this safety model is a faithful enforcing dependency, so it relies on the classifier's verdict to authorize or block inputs and outputs without independently verifying the classifier artifact's integrity or that its decisions still hold.",
+      "violation": "An attacker swaps, poisoned-fine-tunes, or version-pins-backward the guardrail classifier in the supply chain - publishing a malicious build under the same model id, compromising the hub artifact, or seeding a backdoor that passes a specific trigger - so the safety layer silently approves the very inputs/outputs it exists to block, and the application keeps trusting its verdicts while the protection has been hollowed out.",
+      "techniques": [
+        {
+          "name": "Backdoored guardrail model passing trigger-marked attacks",
+          "attack_ids": [],
+          "cwe_ids": [
+            "CWE-1395",
+            "CWE-693"
+          ]
+        },
+        {
+          "name": "Supply-chain swap of safety-classifier artifact",
+          "attack_ids": [
+            "T1195.002"
+          ],
+          "cwe_ids": [
+            "CWE-494",
+            "CWE-829"
+          ]
+        }
+      ],
+      "operator": {
+        "scalable": 1,
+        "automatable": 1,
+        "ai_augmentable": 1
+      },
+      "tooling_status": "none",
+      "detection_status": "none",
+      "origin": "AGENT-DISCOVERED",
+      "rationale": "Guardrail and moderation models are increasingly shipped as off-the-shelf dependencies (open-weight safety classifiers, hub-hosted moderation models, vendor SDKs) and treated as a trusted enforcement boundary, but they are themselves an ML supply-chain artifact subject to swap, poisoning, and silent regression. The seam is that the security control's own integrity and decision-fidelity are unverified: the application trusts the classifier's allow/block output as authoritative while a compromised or backdoored build can be made to wave through attacker-marked content. This is distinct from generic model-hub deserialization (which is load-time code execution) and from LLM-judge gaming (which games a benign grader's metric): here the target is the safety enforcer as a dependency whose compromise produces a fail-open that no upstream control sees. There is no continuous attestation that the deployed guardrail behaves as certified and no detection for a guardrail that has silently started passing a trigger class.",
+      "suggested_research": "Train a backdoored guardrail classifier that fails open on a hidden trigger and measure detectability, then build a continuous guardrail-canary harness that feeds known-bad red-team inputs to the live safety model and alarms on any drop in block rate, plus an artifact-attestation pin so the deployed classifier matches its certified build."
     }
   ]
 }
