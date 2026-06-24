@@ -29,13 +29,11 @@ async function init() {
   document.querySelectorAll("nav button").forEach((b) =>
     b.addEventListener("click", () => switchView(b.dataset.view)));
 
-  renderLegend();
-  renderGraphControls();
-  buildGraph();
-  buildMatrix();
-  buildTree();
-  buildGaps();
-  buildPath();
+  // Build each view independently: a failure in one must never blank the others.
+  for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
+    ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps], ["path", buildPath]]) {
+    try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
+  }
 }
 
 function switchView(v) {
@@ -119,30 +117,34 @@ function passesFilter(s) {
 
 function buildGraph() {
   if (typeof cytoscape === "undefined") {
-    $("#cy").innerHTML = "<p style='padding:20px;color:#8b949e'>cytoscape failed to load (offline?). Other views work; the graph needs the CDN script.</p>";
+    $("#cy").innerHTML = "<p style='padding:20px;color:#8b949e'>cytoscape failed to load — expected at vendor/cytoscape.min.js (bundled, no network needed).</p>";
     return;
   }
+  // Style is data/class-driven (no JS function mappers — those crash cytoscape's renderer
+  // on some shapes). Color/width live in element data; maturity, class, frontier, glow are classes.
   const elements = [];
   DS.principals.forEach((p) => elements.push({
-    data: { id: p.id, label: p.name, cls: p.class, maturity: p.maturity }, classes: "principal",
+    data: { id: p.id, label: p.name },
+    classes: `principal mat-${p.maturity} cls-${p.class}`,
   }));
 
   DS.seams.filter(passesFilter).forEach((s) => {
     const sc = SCORE[s.id];
     const w = 1 + s.operator.scalable + s.operator.automatable + s.operator.ai_augmentable;
     const glow = (s.operator.scalable && s.operator.automatable && s.operator.ai_augmentable);
+    const color = primColor(s.primitive);
+    const ecls = `seam${s.kind === "frontier" ? " frontier" : ""}${glow ? " glow" : ""}`;
     if (sc.hyper) {
       // Hyperedge: a relay node carries the frame so multi-party reads as multi-party.
       const hid = `he:${s.id}`;
-      elements.push({ data: { id: hid, label: "", relay: true, prim: s.primitive, seam: s.id }, classes: "relay" });
+      elements.push({ data: { id: hid, color, seam: s.id }, classes: "relay" });
       sc.frame.forEach((m) => elements.push({
-        data: { id: `${hid}:${m}`, source: hid, target: m, prim: s.primitive, seam: s.id, w, glow, frontier: s.kind === "frontier" }, classes: "seam",
+        data: { id: `${hid}:${m}`, source: hid, target: m, color, seam: s.id, w }, classes: ecls,
       }));
     } else {
       elements.push({ data: {
-        id: `e:${s.id}`, source: s.source[0], target: s.target[0],
-        prim: s.primitive, seam: s.id, w, glow, frontier: s.kind === "frontier",
-      }, classes: "seam" });
+        id: `e:${s.id}`, source: s.source[0], target: s.target[0], color, seam: s.id, w,
+      }, classes: ecls });
     }
   });
 
@@ -152,21 +154,24 @@ function buildGraph() {
     style: [
       { selector: "node.principal", style: {
         "background-color": "#1f2630", "label": "data(label)", "color": "#e6edf3",
-        "font-size": 9, "text-wrap": "wrap", "text-max-width": 90, "text-valign": "center",
-        "shape": (n) => classShape(n.data("cls")),
-        "border-width": 3, "border-color": (n) => maturityColor(n.data("maturity")),
-        "width": 46, "height": 46, "padding": 6 } },
+        "font-size": 9, "text-wrap": "wrap", "text-max-width": 84, "text-valign": "center",
+        "border-width": 3, "width": 46, "height": 46 } },
+      { selector: "node.mat-frontier", style: { "border-color": "#ff5c5c" } },
+      { selector: "node.mat-emerging", style: { "border-color": "#f0a93b" } },
+      { selector: "node.mat-mature", style: { "border-color": "#6e7681" } },
+      { selector: "node.cls-substrate", style: { "shape": "rectangle" } },
+      { selector: "node.cls-human", style: { "shape": "ellipse" } },
+      { selector: "node.cls-defense", style: { "shape": "hexagon" } },
+      { selector: "node.cls-broker", style: { "shape": "diamond" } },
+      { selector: "node.cls-conduit", style: { "shape": "tag", "background-color": "#161b22" } },
       { selector: "node.relay", style: {
-        "width": 8, "height": 8, "background-color": (n) => primColor(n.data("prim")),
-        "border-width": 0, "shape": "ellipse" } },
+        "width": 10, "height": 10, "background-color": "data(color)", "border-width": 0, "shape": "ellipse" } },
       { selector: "edge.seam", style: {
-        "width": "data(w)", "line-color": (e) => primColor(e.data("prim")),
-        "target-arrow-color": (e) => primColor(e.data("prim")), "target-arrow-shape": "triangle",
-        "curve-style": "bezier", "arrow-scale": 0.8, "opacity": 0.85,
-        "line-style": (e) => e.data("frontier") ? "dashed" : "solid",
-        "shadow-blur": (e) => e.data("glow") ? 14 : 0, "shadow-color": (e) => primColor(e.data("prim")),
-        "shadow-opacity": (e) => e.data("glow") ? 0.9 : 0 } },
-      { selector: ".faded", style: { "opacity": 0.08 } },
+        "width": "data(w)", "line-color": "data(color)", "target-arrow-color": "data(color)",
+        "target-arrow-shape": "triangle", "curve-style": "bezier", "arrow-scale": 0.8, "opacity": 0.8 } },
+      { selector: "edge.frontier", style: { "line-style": "dashed" } },
+      { selector: "edge.glow", style: { "underlay-color": "data(color)", "underlay-opacity": 0.35, "underlay-padding": 5 } },
+      { selector: ".faded", style: { "opacity": 0.07 } },
       { selector: ".hi", style: { "opacity": 1, "width": 5, "z-index": 99 } },
     ],
     layout: { name: "cose", animate: false, nodeRepulsion: 9000, idealEdgeLength: 110, padding: 40 },
@@ -176,6 +181,7 @@ function buildGraph() {
   cy.on("tap", "node.relay", (e) => showSeam(e.target.data("seam")));
   cy.on("tap", "node.principal", (e) => showPrincipal(e.target.id()));
   cy.on("tap", (e) => { if (e.target === cy) cy.elements().removeClass("faded hi"); });
+  window.cy = cy; // expose for debugging / render checks
 }
 
 function highlightSeam(id) {
