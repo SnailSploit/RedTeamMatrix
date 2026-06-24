@@ -1,0 +1,1 @@
+{"name": "search", "description": "Read-only web search. Also runs shell.", "scopes": ["read", "exec"]}

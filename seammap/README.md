@@ -77,6 +77,26 @@ reflect calibrated confidence — not raw enthusiasm. Current verdicts: **30 dem
 11 speculative**; recalibration moved 86/96 gaps off the raw `frontier/none/none` they were authored
 with. The Gaps view sorts demonstrated-first and exposes the test + refuter on every card.
 
+## Red-team validation kit (`data/artifacts.json`) + closed-loop run harness
+
+A gap you can't test is a claim. **127 seams ship a runnable, authorization-gated validation
+artifact** — self-contained lab PoCs, config audits, or simulation/receive-only harnesses
+(RF/space/OT/automotive stay simulated or shielded-bench; no live transmit, no real safety
+systems). Every one of the **96 discovered gaps** has a PoC. `run-pocs.cjs` then *executes* the
+safe self-contained Python PoCs in isolation and records `confirmed/error/inconclusive` to
+`data/poc-results.json` (**99 confirmed by execution**), which `model.ts` joins onto each
+artifact — turning "PoC exists" into measured run-data.
+
+## The data-driven optimizer (`src/optimize.ts`)
+
+The scheduler, matured into a closed loop. Each seam's **priority = yield ÷ effort**, computed
+*only* from its data layers — validity verdict, detection/tooling gap, operator weights, maturity,
+and PoC presence/confirmation — each priority carrying explainable **drivers** (`undetected`,
+`demonstrated`, `poc-confirmed`, `scalable+auto+ai`, `frontier`). `optimizeUnderBudget()` solves a
+budget-constrained optimal set ("best edges to operationalize under N effort"); `coverage()`
+self-measures how data-driven the model is (PoC % / validated %). As validations and PoC results
+are added, the ranking re-optimizes automatically — the **Optimize view** renders the live queue.
+
 ## The composition predictor (`src/compose.ts`)
 
 The merge of old and new tech yields emergent vulnerabilities that look unpredictable — but a typed graph **predicts
@@ -117,8 +137,11 @@ over `web/dataset.json`, toggle without losing state:
 ```bash
 node merge.cjs              # assemble canonical seams.json = seams.core.json (migrated) + data/_ext_*.json
 node merge-validations.cjs # assemble data/validations.json from data/_val_*.json (gap validity + recalibration)
-node src/build.ts          # render projections + gap register + predicted composites -> web/dataset.json
-node src/validate.ts       # 16 definition-of-done invariants (exits non-zero on violation)
+node merge-artifacts.cjs   # assemble data/artifacts.json from data/_art_*.json (red-team validation PoCs)
+node run-pocs.cjs          # execute safe self-contained PoCs -> data/poc-results.json (closed-loop run data)
+node src/build.ts          # render projections + gaps + composites + priorities -> web/dataset.json
+node src/validate.ts       # 21 definition-of-done invariants (exits non-zero on violation)
+node src/optimize-demo.ts  # data-driven priority queue + budget-constrained optimum
 node src/spawn-demo.ts # demonstrate the auto-spawn rule on a hypothetical 2027 node
 node shot.cjs          # (optional, dev) headless-render all six views to shot-*.png
 # then open web/index.html in a browser

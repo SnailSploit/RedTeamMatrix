@@ -7,3 +7,6 @@ seammap/allshot.cjs
 seammap/fshot*.cjs
 seammap/art-*.png
 seammap/artshot.cjs
+seammap/opt-view.png
+seammap/oshot.cjs
+seammap/build_phys2.py

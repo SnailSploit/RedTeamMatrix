@@ -1,0 +1,510 @@
+{
+ "F1a-doc-inject": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F1b-web-inject": {
+  "result": "error",
+  "rc": 1
+ },
+ "F1c-tooloutput-inject": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F1d-email-inject": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F3a-broker-confused-deputy": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F3b-cross-server-contamination": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F4a-corpus-write": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F4b-retrieval-read": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F5a-memory-write": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F5b-memory-deaddrop": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-multimodal-metadata-injection": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH8-package-hallucination-slopsquat-preregistration": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-sqli": {
+  "result": "error",
+  "rc": 1
+ },
+ "C-xss": {
+  "result": "error",
+  "rc": 1
+ },
+ "C-cmdi": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-deser": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-ssti": {
+  "result": "error",
+  "rc": 1
+ },
+ "C-ssrf": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-imds": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-lsass": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-kerberoast": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-adcs-esc": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-delegation": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-smuggling": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-oauth-consent": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-containerescape": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-supplychain": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-depconfusion": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F8b-container-compose": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F8c-skill-typosquat-install": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "X-container-agent-rbac": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "X-mcp-transport-desync": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-saml-token-confusion": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-jwt-alg-confusion": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-bola-idor": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-workload-identity-federation-misbind": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "GH8-model-hub-config-deserialization-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-email-auth-spoof": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "F3c-capability-drift": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F4c-vector-eviction": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F5c-memory-cross-tenant": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F6c-agent-token-forge": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "X-identity-agent-audience": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "X-soc-rag-inject": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "X-memory-supplychain-pin": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "X-human-memory-toctou": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "X-vectorstore-shared-index": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "X-cloud-memory-arn-confusion": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "GH1-rendered-ui-ground-truth": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-tool-result-cache-poison": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-approval-fatigue-conditioning": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-eval-set-overfit-bypass": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-lora-adapter-provenance": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-dynamic-client-registration-abuse": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-prompt-cache-timing-leak": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-interpreter-egress-trust": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "GH1-system-prompt-extraction-targeting": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-subagent-context-inheritance": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH1-rag-citation-spoof": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-confused-deputy-ca-issuance": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-training-data-reconstruction-at-scale": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-model-output-residency-boundary-leak": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-llm-judge-grading-gaming": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-orphaned-nhi-trusted-indefinitely": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-context-window-secret-persistence-export": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-agent-action-nonrepudiation-gap": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-enrichment-api-identity-poisoning": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH8-coding-assistant-inline-suggestion-laundering": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "GH8-rlhf-preference-data-crowdsource-poison": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH8-shared-system-prompt-repo-import-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH8-agent-authored-iac-policy-compliance-drift": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "GH8-guardrail-classifier-dependency-swap": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F7d-detector-feedback-poison": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-soar-playbook-field-injection": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "GH2-detection-as-code-rule-poison": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-edr-cloud-baseline-driftpoison": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-slsa-provenance-scope-gap": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-ebpf-blindspot-and-rootkit": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "GH2-servicemesh-mtls-l7authz-gap": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-jit-pam-approval-workflow-abuse": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-c2pa-watermark-strip-laundering": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-synthetic-identity-aged-graph": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-pqc-hybrid-negotiation-downgrade": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-crypto-agility-policy-rollback-race": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-hndl-keylog-export-archival-bridge": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "GH5-edge-worker-cold-isolate-state-bleed": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-cdn-edge-cache-key-confused-deputy": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-secrets-lease-rotation-window-race": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-keyless-signing-identity-binding-gap": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH8-leaderboard-contamination-procurement-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH8-api-distillation-query-volume-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-passkey-sync-fabric-recovery-downgrade": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-device-posture-attestation-spoof": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH2-tee-attestation-freshness-tcb-gap": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-hmi-operator-impersonation": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-protocol-bridge-approval-loss": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-fleet-telematics-to-can": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "GH3-agent-mdm-mass-wipe-policy": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-audio-channel-injection-into-vehicle-agent": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-rf-presence-ground-truth": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-ota-self-verified-firmware": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-poisoned-sensor-into-ai-actuation-model": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-embodied-agent-perception-spoof": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-building-access-orchestration": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH3-agent-zigbee-matter-fleet-pairing": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH4-deepfake-liveness-kyc-bypass": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-esim-rsp-profile-provenance-gap": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH5-fiveg-suci-reidentification-bridge": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH6-depin-proof-of-physical-work-sensor-spoof": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-gnss-time-spoof-into-disciplined-clock": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-gnss-position-spoof-autonomy-ground-truth": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-satellite-uplink-command-format-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-smallsat-cots-bus-component-provenance": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-ais-broadcast-position-as-truth": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-adsb-datalink-track-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-ptp-asymmetric-delay-offset-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-time-window-trust-in-consensus-and-certs": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-der-aggregator-grid-command-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH7-safety-telemetry-replay-into-automated-response": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH6-oracle-twap-window-cross-block-warp": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH6-bridge-lightclient-finality-reorg-mint": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH6-proxy-upgrade-storage-collision-silent-reslot": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "GH6-eip712-domain-replay-fork-chainid-confusion": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "GH6-blind-signing-simulation-divergence-decoy": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH6-did-credential-status-staleness-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH6-dao-governance-flashstake-snapshot-capture": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "GH6-erc4337-paymaster-validation-execution-gap": {
+  "result": "confirmed",
+  "rc": 0
+ }
+}

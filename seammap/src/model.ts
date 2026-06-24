@@ -43,6 +43,13 @@ export function loadDataset(): Dataset {
     for (const s of seams) if (artifacts[s.id]) s.test_artifact = artifacts[s.id];
   } catch { /* artifacts.json not present yet */ }
 
+  // Join PoC run-results (poc-results.json) onto the artifact: real execution outcomes
+  // (the closed loop) upgrade the optimizer's signal from "PoC exists" to "PoC confirmed".
+  try {
+    const runs: Record<string, any> = readJson("poc-results.json");
+    for (const s of seams) if (s.test_artifact && runs[s.id]) s.test_artifact.result = runs[s.id].result;
+  } catch { /* poc-results.json not present yet */ }
+
   return { primitives, principals, seams, frontier_seams, coverage };
 }
 
