@@ -28,7 +28,9 @@
       "artifact_coverage": 0.441,
       "poc_confirmed": 99,
       "validation_coverage": 0.333
-    }
+    },
+    "discoveries": 60,
+    "mitre_absent": 52
   },
   "primitives": [
     {
@@ -46326,5 +46328,587 @@
     ],
     "totalYield": 60.48,
     "totalEffort": 24.13
-  }
+  },
+  "discoveries": [
+    {
+      "id": "chain:web>network>ot",
+      "kind": "transitive-chain",
+      "source": "web",
+      "target": "ot",
+      "primitive": "P6",
+      "reason": "Web / Fetch (untrusted) reaches Network via \"WHOIS / DNS-history footprinting\", and Network holds a privileged seam into OT / ICS / SCADA. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "R-dns-domain-footprint+GH7-ptp-asymmetric-delay-offset-trust"
+    },
+    {
+      "id": "chain:doc>network>host",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "host",
+      "primitive": "P2",
+      "reason": "Document / File (untrusted) reaches Network via \"Data exfiltration via sandbox egress in model-generated code\", and Network holds a privileged seam into Host / Endpoint. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+C-recon-infoleak"
+    },
+    {
+      "id": "chain:doc>network>cloud",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "cloud",
+      "primitive": "P6",
+      "reason": "Document / File (untrusted) reaches Network via \"Data exfiltration via sandbox egress in model-generated code\", and Network holds a privileged seam into Cloud Control Plane. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+C-replay"
+    },
+    {
+      "id": "chain:doc>network>identity",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "identity",
+      "primitive": "P2",
+      "reason": "Document / File (untrusted) reaches Network via \"Data exfiltration via sandbox egress in model-generated code\", and Network holds a privileged seam into Identity & Federation. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+C-mitm"
+    },
+    {
+      "id": "chain:doc>network>container",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "container",
+      "primitive": "P2",
+      "reason": "Document / File (untrusted) reaches Network via \"Data exfiltration via sandbox egress in model-generated code\", and Network holds a privileged seam into Container / K8s. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+CO-k8s-network-as-authz"
+    },
+    {
+      "id": "chain:doc>network>ot",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "ot",
+      "primitive": "P6",
+      "reason": "Document / File (untrusted) reaches Network via \"Data exfiltration via sandbox egress in model-generated code\", and Network holds a privileged seam into OT / ICS / SCADA. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+GH7-ptp-asymmetric-delay-offset-trust"
+    },
+    {
+      "id": "chain:wireless>network>host",
+      "kind": "transitive-chain",
+      "source": "wireless",
+      "target": "host",
+      "primitive": "P2",
+      "reason": "Wireless / RF (untrusted) reaches Network via \"Unauthenticated AIS phantom-vessel and MMSI-clone injection\", and Network holds a privileged seam into Host / Endpoint. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH7-ais-broadcast-position-as-truth+C-recon-infoleak"
+    },
+    {
+      "id": "chain:wireless>network>cloud",
+      "kind": "transitive-chain",
+      "source": "wireless",
+      "target": "cloud",
+      "primitive": "P6",
+      "reason": "Wireless / RF (untrusted) reaches Network via \"Unauthenticated AIS phantom-vessel and MMSI-clone injection\", and Network holds a privileged seam into Cloud Control Plane. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH7-ais-broadcast-position-as-truth+C-replay"
+    },
+    {
+      "id": "chain:wireless>network>identity",
+      "kind": "transitive-chain",
+      "source": "wireless",
+      "target": "identity",
+      "primitive": "P2",
+      "reason": "Wireless / RF (untrusted) reaches Network via \"Unauthenticated AIS phantom-vessel and MMSI-clone injection\", and Network holds a privileged seam into Identity & Federation. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH7-ais-broadcast-position-as-truth+C-mitm"
+    },
+    {
+      "id": "chain:wireless>network>container",
+      "kind": "transitive-chain",
+      "source": "wireless",
+      "target": "container",
+      "primitive": "P2",
+      "reason": "Wireless / RF (untrusted) reaches Network via \"Unauthenticated AIS phantom-vessel and MMSI-clone injection\", and Network holds a privileged seam into Container / K8s. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH7-ais-broadcast-position-as-truth+CO-k8s-network-as-authz"
+    },
+    {
+      "id": "chain:wireless>network>ot",
+      "kind": "transitive-chain",
+      "source": "wireless",
+      "target": "ot",
+      "primitive": "P6",
+      "reason": "Wireless / RF (untrusted) reaches Network via \"Unauthenticated AIS phantom-vessel and MMSI-clone injection\", and Network holds a privileged seam into OT / ICS / SCADA. Network launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH7-ais-broadcast-position-as-truth+GH7-ptp-asymmetric-delay-offset-trust"
+    },
+    {
+      "id": "chain:web>cloud>ot",
+      "kind": "transitive-chain",
+      "source": "web",
+      "target": "ot",
+      "primitive": "P2",
+      "reason": "Web / Fetch (untrusted) reaches Cloud Control Plane via \"Server-side request forgery -> metadata creds\", and Cloud Control Plane holds a privileged seam into OT / ICS / SCADA. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "C-ssrf+GH7-der-aggregator-grid-command-trust"
+    },
+    {
+      "id": "chain:supplychain>cloud>ot",
+      "kind": "transitive-chain",
+      "source": "supplychain",
+      "target": "ot",
+      "primitive": "P2",
+      "reason": "Supply Chain / Build (untrusted) reaches Cloud Control Plane via \"Poisoned Pipeline Execution via controllable CI config/scripts (D-PPE/I-PPE)\", and Cloud Control Plane holds a privileged seam into OT / ICS / SCADA. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "XC-ppe-pipeline-exec+GH7-der-aggregator-grid-command-trust"
+    },
+    {
+      "id": "chain:email>cloud>ot",
+      "kind": "transitive-chain",
+      "source": "email",
+      "target": "ot",
+      "primitive": "P2",
+      "reason": "Email / Messaging (untrusted) reaches Cloud Control Plane via \"Illicit OAuth consent-grant application persistence\", and Cloud Control Plane holds a privileged seam into OT / ICS / SCADA. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "XC-oauth-app-mailrule-persist+GH7-der-aggregator-grid-command-trust"
+    },
+    {
+      "id": "chain:doc>cloud>ad",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "ad",
+      "primitive": "P2",
+      "reason": "Document / File (untrusted) reaches Cloud Control Plane via \"Data exfiltration via sandbox egress in model-generated code\", and Cloud Control Plane holds a privileged seam into Active Directory. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+C-discovery"
+    },
+    {
+      "id": "chain:doc>cloud>host",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "host",
+      "primitive": "P2",
+      "reason": "Document / File (untrusted) reaches Cloud Control Plane via \"Data exfiltration via sandbox egress in model-generated code\", and Cloud Control Plane holds a privileged seam into Host / Endpoint. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+R-datastore-bulk-export"
+    },
+    {
+      "id": "chain:doc>cloud>container",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "container",
+      "primitive": "P3",
+      "reason": "Document / File (untrusted) reaches Cloud Control Plane via \"Data exfiltration via sandbox egress in model-generated code\", and Cloud Control Plane holds a privileged seam into Container / K8s. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+XC-artifact-tag-mutation"
+    },
+    {
+      "id": "chain:doc>cloud>identity",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "identity",
+      "primitive": "P3",
+      "reason": "Document / File (untrusted) reaches Cloud Control Plane via \"Data exfiltration via sandbox egress in model-generated code\", and Cloud Control Plane holds a privileged seam into Identity & Federation. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+CO-object-store-acl-default"
+    },
+    {
+      "id": "chain:doc>cloud>ot",
+      "kind": "transitive-chain",
+      "source": "doc",
+      "target": "ot",
+      "primitive": "P2",
+      "reason": "Document / File (untrusted) reaches Cloud Control Plane via \"Data exfiltration via sandbox egress in model-generated code\", and Cloud Control Plane holds a privileged seam into OT / ICS / SCADA. Cloud Control Plane launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "GH1-interpreter-egress-trust+GH7-der-aggregator-grid-command-trust"
+    },
+    {
+      "id": "chain:supplychain>container>identity",
+      "kind": "transitive-chain",
+      "source": "supplychain",
+      "target": "identity",
+      "primitive": "P2",
+      "reason": "Supply Chain / Build (untrusted) reaches Container / K8s via \"Compromise software supply chain\", and Container / K8s holds a privileged seam into Identity & Federation. Container / K8s launders untrusted input into privileged action with no re-validation between.",
+      "score": 1.4,
+      "basis": "C-supplychain+GH4-orphaned-nhi-trusted-indefinitely"
+    },
+    {
+      "id": "xfer:cloud>supplychain:P2",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "supplychain",
+      "primitive": "P2",
+      "reason": "Cloud Control Plane is structurally similar to Identity & Federation (sim 0.91; same class / shared primitive profile), which already holds \"Phishable/typosquatted OIDC identity yielding valid keyless signature\". The seam likely transfers but is unwritten.",
+      "score": 1.182,
+      "basis": "GH5-keyless-signing-identity-binding-gap"
+    },
+    {
+      "id": "xfer:network>supplychain:P2",
+      "kind": "analogical-transfer",
+      "source": "network",
+      "target": "supplychain",
+      "primitive": "P2",
+      "reason": "Network is structurally similar to Identity & Federation (sim 0.89; same class / shared primitive profile), which already holds \"Phishable/typosquatted OIDC identity yielding valid keyless signature\". The seam likely transfers but is unwritten.",
+      "score": 1.158,
+      "basis": "GH5-keyless-signing-identity-binding-gap"
+    },
+    {
+      "id": "xfer:identity>pnt:P6",
+      "kind": "analogical-transfer",
+      "source": "identity",
+      "target": "pnt",
+      "primitive": "P6",
+      "reason": "Identity & Federation is structurally similar to Network (sim 0.89; same class / shared primitive profile), which already holds \"Directional delay injection skewing PTP offset\". The seam likely transfers but is unwritten.",
+      "score": 1.158,
+      "basis": "GH7-ptp-asymmetric-delay-offset-trust"
+    },
+    {
+      "id": "xfer:identity>soc:P1",
+      "kind": "analogical-transfer",
+      "source": "identity",
+      "target": "soc",
+      "primitive": "P1",
+      "reason": "Identity & Federation is structurally similar to Host / Endpoint (sim 0.88; same class / shared primitive profile), which already holds \"Adversarial evasion of ML/LLM detector\". The seam likely transfers but is unwritten.",
+      "score": 1.144,
+      "basis": "F7a-detector-evade"
+    },
+    {
+      "id": "xfer:host>supplychain:P2",
+      "kind": "analogical-transfer",
+      "source": "host",
+      "target": "supplychain",
+      "primitive": "P2",
+      "reason": "Host / Endpoint is structurally similar to Identity & Federation (sim 0.88; same class / shared primitive profile), which already holds \"Phishable/typosquatted OIDC identity yielding valid keyless signature\". The seam likely transfers but is unwritten.",
+      "score": 1.144,
+      "basis": "GH5-keyless-signing-identity-binding-gap"
+    },
+    {
+      "id": "xfer:cloud>mcp:P1",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "mcp",
+      "primitive": "P1",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Cross-server tool contamination\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "F3b-cross-server-contamination"
+    },
+    {
+      "id": "xfer:cloud>container:P2",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "container",
+      "primitive": "P2",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Autonomous in-cluster RBAC abuse by agent\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "X-container-agent-rbac"
+    },
+    {
+      "id": "xfer:cloud>human:P6",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "human",
+      "primitive": "P6",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Confirmation-stream conditioning to harvest reflexive approval\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH1-approval-fatigue-conditioning"
+    },
+    {
+      "id": "xfer:cloud>mcp:P4",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "mcp",
+      "primitive": "P4",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Unsanitized context inheritance across agent spawn boundary\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH1-subagent-context-inheritance"
+    },
+    {
+      "id": "xfer:cloud>ot:P4",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "ot",
+      "primitive": "P4",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Approval-context inheritance across NL-to-fieldbus translation\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH3-agent-protocol-bridge-approval-loss"
+    },
+    {
+      "id": "xfer:cloud>auto:P1",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "auto",
+      "primitive": "P1",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Agent-issued bulk remote-vehicle command via telematics scope\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH3-agent-fleet-telematics-to-can"
+    },
+    {
+      "id": "xfer:cloud>hardware:P2",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "hardware",
+      "primitive": "P2",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Agent-orchestrated mass door-unlock / access-control override\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH3-agent-building-access-orchestration"
+    },
+    {
+      "id": "xfer:cloud>wireless:P2",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "wireless",
+      "primitive": "P2",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Agent-driven rogue device commissioning into Matter/Zigbee fabric\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH3-agent-zigbee-matter-fleet-pairing"
+    },
+    {
+      "id": "xfer:network>container:P6",
+      "kind": "analogical-transfer",
+      "source": "network",
+      "target": "container",
+      "primitive": "P6",
+      "reason": "Network is structurally similar to Cloud Control Plane (sim 0.88; same class / shared primitive profile), which already holds \"Rotated-out lease accepted during downstream grace overlap\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH5-secrets-lease-rotation-window-race"
+    },
+    {
+      "id": "xfer:agent>container:P6",
+      "kind": "analogical-transfer",
+      "source": "agent",
+      "target": "container",
+      "primitive": "P6",
+      "reason": "AI Agent is structurally similar to Cloud Control Plane (sim 0.88; same class / shared primitive profile), which already holds \"Rotated-out lease accepted during downstream grace overlap\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH5-secrets-lease-rotation-window-race"
+    },
+    {
+      "id": "xfer:cloud>pnt:P6",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "pnt",
+      "primitive": "P6",
+      "reason": "Cloud Control Plane is structurally similar to Network (sim 0.88; same class / shared primitive profile), which already holds \"Directional delay injection skewing PTP offset\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH7-ptp-asymmetric-delay-offset-trust"
+    },
+    {
+      "id": "xfer:cloud>supplychain:P1",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "supplychain",
+      "primitive": "P1",
+      "reason": "Cloud Control Plane is structurally similar to AI Agent (sim 0.88; same class / shared primitive profile), which already holds \"Suggestion-bias seeding of public corpus to steer completions\". The seam likely transfers but is unwritten.",
+      "score": 1.142,
+      "basis": "GH8-coding-assistant-inline-suggestion-laundering"
+    },
+    {
+      "id": "xfer:cloud>soc:P1",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "soc",
+      "primitive": "P1",
+      "reason": "Cloud Control Plane is structurally similar to Host / Endpoint (sim 0.87; same class / shared primitive profile), which already holds \"Adversarial evasion of ML/LLM detector\". The seam likely transfers but is unwritten.",
+      "score": 1.127,
+      "basis": "F7a-detector-evade"
+    },
+    {
+      "id": "xfer:cloud>soc:P3",
+      "kind": "analogical-transfer",
+      "source": "cloud",
+      "target": "soc",
+      "primitive": "P3",
+      "reason": "Cloud Control Plane is structurally similar to Host / Endpoint (sim 0.87; same class / shared primitive profile), which already holds \"Detection-model training poisoning\". The seam likely transfers but is unwritten.",
+      "score": 1.127,
+      "basis": "F7b-detector-poison"
+    },
+    {
+      "id": "xfer:host>container:P6",
+      "kind": "analogical-transfer",
+      "source": "host",
+      "target": "container",
+      "primitive": "P6",
+      "reason": "Host / Endpoint is structurally similar to Cloud Control Plane (sim 0.87; same class / shared primitive profile), which already holds \"Rotated-out lease accepted during downstream grace overlap\". The seam likely transfers but is unwritten.",
+      "score": 1.127,
+      "basis": "GH5-secrets-lease-rotation-window-race"
+    },
+    {
+      "id": "hole:host>cloud:P1",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "cloud",
+      "primitive": "P1",
+      "reason": "Host / Endpoint and Cloud Control Plane are both high-degree hubs (deg 114/86) densely connected to shared neighbors, yet no P1 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>cloud:P5",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "cloud",
+      "primitive": "P5",
+      "reason": "Host / Endpoint and Cloud Control Plane are both high-degree hubs (deg 114/86) densely connected to shared neighbors, yet no P5 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>identity:P1",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "identity",
+      "primitive": "P1",
+      "reason": "Host / Endpoint and Identity & Federation are both high-degree hubs (deg 114/68) densely connected to shared neighbors, yet no P1 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>identity:P5",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "identity",
+      "primitive": "P5",
+      "reason": "Host / Endpoint and Identity & Federation are both high-degree hubs (deg 114/68) densely connected to shared neighbors, yet no P5 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>agent:P1",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "agent",
+      "primitive": "P1",
+      "reason": "Host / Endpoint and AI Agent are both high-degree hubs (deg 114/62) densely connected to shared neighbors, yet no P1 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>agent:P2",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "agent",
+      "primitive": "P2",
+      "reason": "Host / Endpoint and AI Agent are both high-degree hubs (deg 114/62) densely connected to shared neighbors, yet no P2 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>agent:P3",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "agent",
+      "primitive": "P3",
+      "reason": "Host / Endpoint and AI Agent are both high-degree hubs (deg 114/62) densely connected to shared neighbors, yet no P3 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>agent:P4",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "agent",
+      "primitive": "P4",
+      "reason": "Host / Endpoint and AI Agent are both high-degree hubs (deg 114/62) densely connected to shared neighbors, yet no P4 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>agent:P5",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "agent",
+      "primitive": "P5",
+      "reason": "Host / Endpoint and AI Agent are both high-degree hubs (deg 114/62) densely connected to shared neighbors, yet no P5 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>agent:P6",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "agent",
+      "primitive": "P6",
+      "reason": "Host / Endpoint and AI Agent are both high-degree hubs (deg 114/62) densely connected to shared neighbors, yet no P6 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>network:P1",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "network",
+      "primitive": "P1",
+      "reason": "Host / Endpoint and Network are both high-degree hubs (deg 114/57) densely connected to shared neighbors, yet no P1 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>human:P3",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "human",
+      "primitive": "P3",
+      "reason": "Host / Endpoint and Human Operator / User are both high-degree hubs (deg 114/41) densely connected to shared neighbors, yet no P3 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>human:P4",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "human",
+      "primitive": "P4",
+      "reason": "Host / Endpoint and Human Operator / User are both high-degree hubs (deg 114/41) densely connected to shared neighbors, yet no P4 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>human:P5",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "human",
+      "primitive": "P5",
+      "reason": "Host / Endpoint and Human Operator / User are both high-degree hubs (deg 114/41) densely connected to shared neighbors, yet no P5 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>human:P6",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "human",
+      "primitive": "P6",
+      "reason": "Host / Endpoint and Human Operator / User are both high-degree hubs (deg 114/41) densely connected to shared neighbors, yet no P6 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>supplychain:P1",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "supplychain",
+      "primitive": "P1",
+      "reason": "Host / Endpoint and Supply Chain / Build are both high-degree hubs (deg 114/34) densely connected to shared neighbors, yet no P1 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>supplychain:P2",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "supplychain",
+      "primitive": "P2",
+      "reason": "Host / Endpoint and Supply Chain / Build are both high-degree hubs (deg 114/34) densely connected to shared neighbors, yet no P2 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>supplychain:P3",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "supplychain",
+      "primitive": "P3",
+      "reason": "Host / Endpoint and Supply Chain / Build are both high-degree hubs (deg 114/34) densely connected to shared neighbors, yet no P3 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>supplychain:P4",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "supplychain",
+      "primitive": "P4",
+      "reason": "Host / Endpoint and Supply Chain / Build are both high-degree hubs (deg 114/34) densely connected to shared neighbors, yet no P4 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    },
+    {
+      "id": "hole:host>supplychain:P5",
+      "kind": "structural-hole",
+      "source": "host",
+      "target": "supplychain",
+      "primitive": "P5",
+      "reason": "Host / Endpoint and Supply Chain / Build are both high-degree hubs (deg 114/34) densely connected to shared neighbors, yet no P5 seam exists between them — a hole the graph's topology predicts should be populated.",
+      "score": 0.5
+    }
+  ]
 }

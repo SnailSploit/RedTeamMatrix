@@ -16,7 +16,8 @@ import { ALL_PRIMITIVES, pairKey, populatedPairs } from "./model.ts";
 
 const CONDUITS = new Set(["doc", "web", "email"]);
 
-function plausible(a: Principal, b: Principal, p: PrimitiveId): boolean {
+// Exported so the relation-graph discoverer can reuse the same plausibility rule.
+export function plausible(a: Principal, b: Principal, p: PrimitiveId): boolean {
   // A conduit has no trust of its own to violate: it is pure ingress. Never a target.
   if (CONDUITS.has(b.id)) return false;
   // Defense is modeled as a target (the detection-model seam), not an attack origin.
