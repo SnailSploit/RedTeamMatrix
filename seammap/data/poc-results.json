@@ -747,6 +747,74 @@
   "result": "skipped",
   "reason": "non-python"
  },
+ "DOM-fieldbus-no-auth": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "DOM-ews-logic-download": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-sis-sensor-spoof": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-mobile-repackaged-app": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-mobile-mdm-profile-abuse": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-mobile-intent-injection": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-fw-unsigned-downgrade": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-fw-debug-interface": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-fw-secureboot-bypass": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-fw-fault-glitch-extract": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "DOM-can-frame-injection": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "DOM-pkes-relay-rollcode": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-telematics-ota-remote": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-rogue-ap-eviltwin": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-wpa-handshake-crack": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-ble-rfid-relay-clone": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "DOM-rf-deauth-jam-replay": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
  "F2a-oauth-scope-speed": {
   "result": "confirmed",
   "rc": 0
