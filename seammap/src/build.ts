@@ -9,6 +9,7 @@ import { gapsRegister, gapStats } from "./gap-engine.ts";
 import { buildTree, buildMatrix } from "./projections.ts";
 import { CLS, EGQ, egqIsCandidate } from "./scheduler.ts";
 import { predictComposites, predictChains3 } from "./compose.ts";
+import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "web", "dataset.json");
@@ -19,6 +20,9 @@ const tree = buildTree(ds);
 const matrix = buildMatrix(ds);
 const composites = predictComposites(ds, 40);
 const chains3 = predictChains3(ds, 15);
+const priorities = rankPriorities(ds, 40);
+const optimized = optimizeUnderBudget(ds, 25);
+const cov = coverage(ds);
 
 // Pre-compute per-seam scores so the web Path view and edge detail need no scorer logic.
 const scored = ds.seams.map((s) => ({
@@ -46,6 +50,7 @@ const bundle = {
       m[g.validity ?? "unrated"] = (m[g.validity ?? "unrated"] ?? 0) + 1; return m;
     }, {}),
     test_artifacts: ds.seams.filter((s) => s.test_artifact).length,
+    coverage: cov,
   },
   primitives: ds.primitives,
   principals: ds.principals,
@@ -58,6 +63,8 @@ const bundle = {
   matrix,
   composites,
   chains3,
+  priorities,
+  optimized,
 };
 
 writeFileSync(OUT, JSON.stringify(bundle, null, 2));

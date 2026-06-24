@@ -6,6 +6,7 @@ import { loadDataset } from "./model.ts";
 import { gapsRegister, autoSpawn } from "./gap-engine.ts";
 import { buildTree, buildMatrix, everyCellTyped } from "./projections.ts";
 import { predictComposites } from "./compose.ts";
+import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 import type { Dataset, Principal, Seam } from "./types.ts";
 
 let failures = 0;
@@ -233,6 +234,22 @@ const ds = loadDataset();
       /authoriz|lab|non-prod|RoE|owned|contracted/i.test(a.authorization);
   });
   log(wellFormed, `Artifacts: every artifact has an authorization gate, a runnable script, and a success criterion`);
+}
+
+// ---------------------------------------------------------------------------
+// 10. DATA-DRIVEN OPTIMIZER — priorities derive from the data layers, and the
+// budget-constrained optimum respects its budget. Self-measured coverage present.
+// ---------------------------------------------------------------------------
+{
+  const pr = rankPriorities(ds, 30);
+  log(pr.length > 0 && pr.every((p) => p.score >= 0 && p.drivers.length >= 0),
+    `Optimizer: ranks ${pr.length} data-driven priorities (yield/effort with explainable drivers)`);
+  const opt = optimizeUnderBudget(ds, 25);
+  log(opt.totalEffort <= 25 && opt.selected.length > 0,
+    `Optimizer: budget-constrained optimum respects budget (effort ${opt.totalEffort} <= 25, ${opt.selected.length} seams)`);
+  const cov = coverage(ds);
+  log(cov.artifact_coverage > 0 && cov.validation_coverage > 0,
+    `Optimizer: self-measured coverage — ${(cov.artifact_coverage * 100).toFixed(0)}% have PoCs, ${(cov.validation_coverage * 100).toFixed(0)}% validated`);
 }
 
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);

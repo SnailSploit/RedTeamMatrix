@@ -70,6 +70,7 @@ export interface TestArtifact {
   success_criterion: string;
   cleanup: string;
   safety: string;
+  result?: string; // smoke-test outcome when recorded: "confirmed" | "refuted" | undefined
 }
 
 export interface Seam {

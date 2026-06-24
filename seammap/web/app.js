@@ -32,7 +32,7 @@ async function init() {
   // Build each view independently: a failure in one must never blank the others.
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
     ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
-    ["predict", buildPredict], ["path", buildPath]]) {
+    ["predict", buildPredict], ["optimize", buildOptimize], ["path", buildPath]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
   }
 }
@@ -368,6 +368,31 @@ function buildPredict() {
       list.append(card);
     });
   }
+}
+
+// --------------------------------------------------------------------------- optimize (data-driven priority) view
+function buildOptimize() {
+  const m = DS.meta, cov = m.coverage || {};
+  $("#opt-intro").innerHTML = `<b style="color:#e6edf3">Data-driven optimizer.</b> Priority = yield/effort, computed only from the data layers each seam carries — validity verdict, detection/tooling gap, operator weights, maturity, and whether a runnable PoC exists. As validations and PoC results are added, the ranking re-optimizes. This is the scheduler's "what to operationalize next."`;
+  $("#opt-cov").innerHTML = `<div class="matrix-key">
+    <span><b style="background:#7ee787"></b>PoC coverage: ${(cov.artifact_coverage*100||0).toFixed(0)}% (${cov.poc_confirmed||0} confirmed)</span>
+    <span><b style="background:#58a6ff"></b>validated: ${(cov.validation_coverage*100||0).toFixed(0)}%</span>
+    <span><b style="background:#f0a93b"></b>budget-optimum: ${(DS.optimized||{}).selected?.length||0} seams · yield ${(DS.optimized||{}).totalYield||0} @ effort ≤25</span>
+  </div>`;
+  const list = $("#opt-list"); list.innerHTML = "";
+  (DS.priorities || []).forEach((p, i) => {
+    const s = SEAM[p.id];
+    const row = el("div", "gaprow");
+    row.style.borderLeft = "3px solid #58a6ff";
+    row.innerHTML = `<div class="top">
+        <span class="score" style="float:none;color:var(--accent);font-weight:700">#${i+1} · ${p.score}</span>
+        <span class="chip prim" style="background:${primColor(p.primitive)}">${p.primitive}</span>
+        ${s ? `<span class="edge" style="cursor:pointer" onclick="showSeam('${p.id}')">${s.techniques[0].name}</span>` : `<span class="edge">${p.id}</span>`}
+        ${s && s.test_artifact ? '<span class="chip" style="border-color:#7ee787;color:#7ee787">PoC</span>' : ''}
+      </div>
+      <div class="rat">yield ${p.yield} / effort ${p.effort} · drivers: ${p.drivers.map((d)=>`<span class="chip op">${d}</span>`).join(" ") || "—"}</div>`;
+    list.append(row);
+  });
 }
 
 // --------------------------------------------------------------------------- path (kill-chain) view
