@@ -32,7 +32,7 @@ async function init() {
   // Build each view independently: a failure in one must never blank the others.
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
     ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
-    ["predict", buildPredict], ["optimize", buildOptimize], ["path", buildPath]]) {
+    ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover], ["path", buildPath]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
   }
 }
@@ -393,6 +393,40 @@ function buildOptimize() {
       <div class="rat">yield ${p.yield} / effort ${p.effort} · drivers: ${p.drivers.map((d)=>`<span class="chip op">${d}</span>`).join(" ") || "—"}</div>`;
     list.append(row);
   });
+}
+
+// --------------------------------------------------------------------------- discover (relation-graph) view
+const KINDLABEL = { "analogical-transfer": "analogical transfer", "transitive-chain": "transitive chain", "structural-hole": "structural hole" };
+const KINDCOLOR = { "analogical-transfer": "#bd93f9", "transitive-chain": "#ff8c42", "structural-hole": "#56d4dd" };
+function buildDiscover() {
+  $("#disc-intro").innerHTML = `<b style="color:#e6edf3">Relation-graph threat discovery.</b> The system locates candidate new threats from the graph's <i>structure</i>, not by enumerating cells — three signals, each with the structural reason it was proposed (for analyst triage): <span style="color:${KINDCOLOR['analogical-transfer']}">analogical transfer</span> (a seam moves to a structurally-similar node), <span style="color:${KINDCOLOR['transitive-chain']}">transitive chain</span> (untrusted → laundering node → privileged), <span style="color:${KINDCOLOR['structural-hole']}">structural hole</span> (a missing edge the topology expects).`;
+  const c = $("#disc-controls");
+  c.innerHTML = `<select id="df-kind"><option value="">all modes</option>${Object.keys(KINDLABEL).map((k)=>`<option value="${k}">${KINDLABEL[k]}</option>`).join("")}</select>
+    <select id="df-prim"><option value="">all primitives</option>${DS.primitives.map((p)=>`<option value="${p.id}">${p.id} ${p.name}</option>`).join("")}</select>`;
+  ["#df-kind","#df-prim"].forEach((s)=>$(s).addEventListener("input", renderDiscover));
+  renderDiscover();
+}
+function renderDiscover() {
+  const kind = $("#df-kind").value, prim = $("#df-prim").value;
+  const list = $("#disc-list"); list.innerHTML = "";
+  let shown = 0;
+  for (const d of (DS.discoveries || [])) {
+    if (kind && d.kind !== kind) continue;
+    if (prim && d.primitive !== prim) continue;
+    shown++;
+    const row = el("div", "gaprow");
+    row.style.borderLeft = `3px solid ${KINDCOLOR[d.kind]}`;
+    row.innerHTML = `<div class="top">
+        <span class="score" style="float:none;color:var(--accent);font-weight:700">${d.score}</span>
+        <span class="chip" style="border-color:${KINDCOLOR[d.kind]};color:${KINDCOLOR[d.kind]}">${KINDLABEL[d.kind]}</span>
+        <span class="chip prim" style="background:${primColor(d.primitive)}">${d.primitive}</span>
+        <span class="edge">${PNAME[d.source]||d.source} → ${PNAME[d.target]||d.target}</span>
+        ${d.basis ? `<span class="muted">basis: ${d.basis.split("+").map((b)=>SEAM[b]?`<span style='cursor:pointer' onclick="showSeam('${b}')">${b}</span>`:b).join(" + ")}</span>` : ""}
+      </div>
+      <div class="rat">${esc(d.reason)}</div>`;
+    list.append(row);
+  }
+  if (!shown) list.append(el("div", "muted", "no located threats match the filter."));
 }
 
 // --------------------------------------------------------------------------- path (kill-chain) view
