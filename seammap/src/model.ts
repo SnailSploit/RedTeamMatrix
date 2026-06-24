@@ -37,6 +37,12 @@ export function loadDataset(): Dataset {
     }
   } catch { /* validations.json not present yet */ }
 
+  // Join red-team validation artifacts (artifacts.json) onto seams. Absent file => no-op.
+  try {
+    const artifacts: Record<string, any> = readJson("artifacts.json");
+    for (const s of seams) if (artifacts[s.id]) s.test_artifact = artifacts[s.id];
+  } catch { /* artifacts.json not present yet */ }
+
   return { primitives, principals, seams, frontier_seams, coverage };
 }
 

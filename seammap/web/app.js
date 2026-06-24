@@ -80,8 +80,17 @@ function showSeam(id) {
       <div class="k">refuted if</div><div class="v">${s.validation.falsifier}</div>
       ${s.validation.prerequisites ? `<div class="k">prerequisites</div><div class="v">${s.validation.prerequisites}</div>` : ""}
       ${s.validation.existing_controls ? `<div class="k">existing controls</div><div class="v">${s.validation.existing_controls}</div>` : ""}` : ""}
+    ${s.test_artifact ? `<div class="k">red-team validation artifact</div>
+      <div class="v"><b>${s.test_artifact.name}</b> <span class="chip op">${s.test_artifact.language}</span></div>
+      <div class="rat" style="color:#d4a0a0">⚠ ${s.test_artifact.authorization}</div>
+      ${s.test_artifact.setup ? `<div class="v muted">setup: ${esc(s.test_artifact.setup)}</div>` : ""}
+      <pre class="artifact"><code>${esc(s.test_artifact.script)}</code></pre>
+      <div class="v"><b style="color:#7ee787">success:</b> ${esc(s.test_artifact.success_criterion)}</div>
+      <div class="v muted">cleanup: ${esc(s.test_artifact.cleanup)} · safety: ${esc(s.test_artifact.safety)}</div>` : ""}
   `;
 }
+
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
 function showText(html) { const d = $("#detail"); d.classList.remove("empty"); d.innerHTML = html; }
 

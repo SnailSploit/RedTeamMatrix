@@ -220,5 +220,20 @@ const ds = loadDataset();
     `Recalibration: validation moved ${recalibrated.length}/${disc.length} gaps off raw frontier/none/none to calibrated status`);
 }
 
+// ---------------------------------------------------------------------------
+// 9. RED-TEAM VALIDATION ARTIFACTS — discovered/frontier seams carry runnable,
+// authorization-gated lab artifacts so a gap can actually be tested, not just read.
+// ---------------------------------------------------------------------------
+{
+  const withArt = ds.seams.filter((s) => s.test_artifact);
+  log(withArt.length >= 20, `Artifacts: ${withArt.length} seams ship a red-team validation artifact`);
+  const wellFormed = withArt.every((s) => {
+    const a = s.test_artifact!;
+    return a.script?.length > 40 && a.authorization?.length > 10 && a.success_criterion?.length > 10 &&
+      /authoriz|lab|non-prod|RoE|owned|contracted/i.test(a.authorization);
+  });
+  log(wellFormed, `Artifacts: every artifact has an authorization gate, a runnable script, and a success criterion`);
+}
+
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);
 process.exit(failures === 0 ? 0 : 1);

@@ -59,6 +59,19 @@ export interface ValidationInfo {
   recalibrate?: { maturity?: Maturity; tooling_status?: Status; detection_status?: Status };
 }
 
+// A red-team validation artifact: a runnable, authorized-lab PoC / audit that confirms the
+// seam. Authorization-gated, defanged, non-destructive by construction.
+export interface TestArtifact {
+  name: string;
+  language: string;
+  authorization: string;
+  setup: string;
+  script: string;
+  success_criterion: string;
+  cleanup: string;
+  safety: string;
+}
+
 export interface Seam {
   id: string;
   primitive: PrimitiveId;
@@ -79,6 +92,7 @@ export interface Seam {
   rationale?: string;          // AGENT-DISCOVERED only
   suggested_research?: string; // AGENT-DISCOVERED only
   validation?: ValidationInfo; // attached at load from validations.json
+  test_artifact?: TestArtifact; // attached at load from artifacts.json
 }
 
 export interface FrontierSeam {

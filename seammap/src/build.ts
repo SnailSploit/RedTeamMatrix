@@ -45,6 +45,7 @@ const bundle = {
     validity: register.filter((g) => g.origin === "AGENT-DISCOVERED").reduce((m: any, g) => {
       m[g.validity ?? "unrated"] = (m[g.validity ?? "unrated"] ?? 0) + 1; return m;
     }, {}),
+    test_artifacts: ds.seams.filter((s) => s.test_artifact).length,
   },
   primitives: ds.primitives,
   principals: ds.principals,
