@@ -2,3 +2,6 @@ node_modules/
 *.log
 .DS_Store
 seammap/shot-*.png
+seammap/all-*.png
+seammap/allshot.cjs
+seammap/fshot*.cjs
