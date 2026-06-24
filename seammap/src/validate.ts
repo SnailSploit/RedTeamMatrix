@@ -7,6 +7,7 @@ import { gapsRegister, autoSpawn } from "./gap-engine.ts";
 import { buildTree, buildMatrix, everyCellTyped } from "./projections.ts";
 import { predictComposites } from "./compose.ts";
 import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
+import { discoverThreats } from "./discover.ts";
 import type { Dataset, Principal, Seam } from "./types.ts";
 
 let failures = 0;
@@ -250,6 +251,19 @@ const ds = loadDataset();
   const cov = coverage(ds);
   log(cov.artifact_coverage > 0 && cov.validation_coverage > 0,
     `Optimizer: self-measured coverage — ${(cov.artifact_coverage * 100).toFixed(0)}% have PoCs, ${(cov.validation_coverage * 100).toFixed(0)}% validated`);
+}
+
+// ---------------------------------------------------------------------------
+// 11. RELATION-GRAPH DISCOVERY — the graph locates new threats via three structural
+// signals, each candidate carrying an auditable structural reason.
+// ---------------------------------------------------------------------------
+{
+  const found = discoverThreats(ds, { simThreshold: 0.55, limit: 60 });
+  const kinds = new Set(found.map((f) => f.kind));
+  log(found.length >= 10 && kinds.size === 3,
+    `Discovery: relation graph locates ${found.length} new-threat candidates across all 3 modes (${[...kinds].join(", ")})`);
+  log(found.every((f) => f.reason.length > 40),
+    `Discovery: every located threat carries an auditable structural reason`);
 }
 
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);

@@ -10,6 +10,7 @@ import { buildTree, buildMatrix } from "./projections.ts";
 import { CLS, EGQ, egqIsCandidate } from "./scheduler.ts";
 import { predictComposites, predictChains3 } from "./compose.ts";
 import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
+import { discoverThreats } from "./discover.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "web", "dataset.json");
@@ -23,6 +24,7 @@ const chains3 = predictChains3(ds, 15);
 const priorities = rankPriorities(ds, 40);
 const optimized = optimizeUnderBudget(ds, 25);
 const cov = coverage(ds);
+const discoveries = discoverThreats(ds, { simThreshold: 0.55, limit: 60 });
 
 // Pre-compute per-seam scores so the web Path view and edge detail need no scorer logic.
 const scored = ds.seams.map((s) => ({
@@ -51,6 +53,8 @@ const bundle = {
     }, {}),
     test_artifacts: ds.seams.filter((s) => s.test_artifact).length,
     coverage: cov,
+    discoveries: discoveries.length,
+    mitre_absent: ds.seams.filter((s) => s.techniques.every((t) => !t.attack_ids || t.attack_ids.length === 0)).length,
   },
   primitives: ds.primitives,
   principals: ds.principals,
@@ -65,6 +69,7 @@ const bundle = {
   chains3,
   priorities,
   optimized,
+  discoveries,
 };
 
 writeFileSync(OUT, JSON.stringify(bundle, null, 2));

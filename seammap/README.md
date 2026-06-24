@@ -119,7 +119,7 @@ numbers. Path priority gives frontier edges a bonus: research yield is highest o
 
 ## Views (`web/`) — projections of the one dataset
 
-Open `web/index.html` (static, no backend; cytoscape is vendored at `web/vendor/`, so it works offline). Six views
+Open `web/index.html` (static, no backend; cytoscape is vendored at `web/vendor/`, so it works offline). Eight views
 over `web/dataset.json`, toggle without losing state:
 
 - **Graph** — force-directed typed hypergraph. Edge color = primitive; dashed = frontier; glow = scalable+auto+ai;
@@ -130,6 +130,8 @@ over `web/dataset.json`, toggle without losing state:
   every source-map leaf re-homed to a seam (enforced by the leaf-coverage test).
 - **Gaps** — the register, filterable by type/primitive/text; AGENT-DISCOVERED and frontier first.
 - **Predict** — ranked emergent composites from `src/compose.ts` (old×new merges the graph predicts).
+- **Optimize** — the data-driven priority queue (yield÷effort) + coverage + budget-constrained optimum.
+- **Discover** — relation-graph located new threats (analogical transfer / transitive chain / structural hole), each with its structural reason.
 - **Path** — pick source + target principal; scored traversals (kill chains); multiple parallel paths surfaced.
 
 ## Run it
