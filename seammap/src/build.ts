@@ -8,6 +8,7 @@ import { loadDataset, isHyperedge, frameOf } from "./model.ts";
 import { gapsRegister, gapStats } from "./gap-engine.ts";
 import { buildTree, buildMatrix } from "./projections.ts";
 import { CLS, EGQ, egqIsCandidate } from "./scheduler.ts";
+import { predictComposites } from "./compose.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "web", "dataset.json");
@@ -16,6 +17,7 @@ const ds = loadDataset();
 const register = gapsRegister(ds);
 const tree = buildTree(ds);
 const matrix = buildMatrix(ds);
+const composites = predictComposites(ds, 40);
 
 // Pre-compute per-seam scores so the web Path view and edge detail need no scorer logic.
 const scored = ds.seams.map((s) => ({
@@ -37,6 +39,7 @@ const bundle = {
     frontier_seams: ds.frontier_seams.length,
     register_size: register.length,
     gap_stats: gapStats(register),
+    predicted_composites: composites.length,
   },
   primitives: ds.primitives,
   principals: ds.principals,
@@ -47,6 +50,7 @@ const bundle = {
   register,
   tree,
   matrix,
+  composites,
 };
 
 writeFileSync(OUT, JSON.stringify(bundle, null, 2));

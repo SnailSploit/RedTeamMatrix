@@ -16,6 +16,11 @@
     { "id": "soc",         "name": "SOC / Defense",              "class": "defense",   "era_introduced": 2005, "maturity": "emerging", "note": "Detection stack, increasingly ML/LLM. A parser pointed at telemetry." },
     { "id": "doc",         "name": "Document / File",            "class": "conduit",   "era_introduced": 1990, "maturity": "mature",   "note": "Text-ingress conduit: any file is potential control for an LLM." },
     { "id": "web",         "name": "Web / Fetch",                "class": "conduit",   "era_introduced": 1991, "maturity": "mature",   "note": "Untrusted read surface; fetch/browse ingress." },
-    { "id": "email",       "name": "Email / Messaging",          "class": "conduit",   "era_introduced": 1971, "maturity": "mature",   "note": "Delivery + text-ingress conduit." }
+    { "id": "email",       "name": "Email / Messaging",          "class": "conduit",   "era_introduced": 1971, "maturity": "mature",   "note": "Delivery + text-ingress conduit." },
+    { "id": "ot",          "name": "OT / ICS / SCADA",           "class": "substrate", "era_introduced": 1975, "maturity": "mature",   "note": "PLCs, engineering workstations, field buses (Modbus/DNP3/S7). Insecure-by-design; safety-critical." },
+    { "id": "mobile",      "name": "Mobile (iOS / Android)",     "class": "substrate", "era_introduced": 2008, "maturity": "mature",   "note": "Apps, MDM/profiles, IPC/intents, mobile session tokens." },
+    { "id": "hardware",    "name": "Hardware / IoT / Firmware",  "class": "substrate", "era_introduced": 1995, "maturity": "mature",   "note": "Firmware, secure boot, debug interfaces (JTAG/UART), side channels." },
+    { "id": "auto",        "name": "Automotive / CAN",           "class": "substrate", "era_introduced": 2010, "maturity": "emerging", "note": "CAN bus, ECUs, key fobs (PKES), telematics/OTA." },
+    { "id": "wireless",    "name": "Wireless / RF",              "class": "substrate", "era_introduced": 1999, "maturity": "mature",   "note": "Wi-Fi, Bluetooth/BLE, RFID/NFC, SDR-reachable RF medium." }
   ]
 }

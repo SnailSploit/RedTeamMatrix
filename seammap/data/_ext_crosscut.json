@@ -1,0 +1,187 @@
+[
+  { "id": "XC-saml-token-confusion", "primitive": "P2", "kind": "classic", "source": ["identity","web"], "target": ["cloud","ad"],
+    "maturity": "available", "tactics": ["TA0001","TA0006"], "classic_branches": ["Identity & Federation Attacks"],
+    "trust_assumption": "A service provider trusts a SAML/OIDC assertion that is signed and names its own entity, treating the Audience/Recipient and InResponseTo fields as a faithful binding to the request it actually issued.",
+    "violation": "An attacker forges or replays an assertion whose signature wrapping, comment-injected NameID, or mismatched audience still passes the SP's relaxed validation, letting a token minted for one party or one request be accepted as authentication for another.",
+    "techniques": [
+      { "name": "SAML signature wrapping (XSW) and comment-injection NameID confusion", "attack_ids": ["T1606.002"], "cwe_ids": ["CWE-347","CWE-290"] },
+      { "name": "OIDC audience/azp spoof and token reuse across relying parties", "attack_ids": ["T1606.002"], "cwe_ids": ["CWE-345","CWE-287"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-mfa-push-fatigue", "primitive": "P6", "kind": "classic", "source": ["human","identity"], "target": ["identity","cloud"],
+    "maturity": "mature", "tactics": ["TA0001","TA0006"], "classic_branches": ["Identity & Federation Attacks"],
+    "trust_assumption": "An IdP trusts that an approved MFA push reflects the legitimate user's deliberate consent at that moment, treating the tap as proof the user intended to authorize the session that triggered it.",
+    "violation": "Holding a valid password, the attacker repeatedly triggers push prompts until a worn-down or confused user approves one, so a momentary tap stands in for intent and the IdP completes a login the user never started.",
+    "techniques": [
+      { "name": "MFA push bombing / prompt fatigue to harvest approval", "attack_ids": ["T1621","T1110.003"], "cwe_ids": ["CWE-287","CWE-308"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-prt-device-code-phish", "primitive": "P3", "kind": "classic", "source": ["human","web"], "target": ["identity","cloud"],
+    "maturity": "mature", "tactics": ["TA0001","TA0006"], "classic_branches": ["Identity & Federation Attacks"],
+    "trust_assumption": "The IdP trusts that a device-code or primary-refresh-token flow is being completed on the same enrolled device and by the same user that initiated it, treating possession of the code or PRT as proof of device-bound provenance.",
+    "violation": "An attacker initiates the flow and tricks the user into authenticating the attacker's pending code, or extracts a PRT and its session key from a compromised host, replaying device-bound tokens to mint sessions from elsewhere.",
+    "techniques": [
+      { "name": "Device-code authentication phishing", "attack_ids": ["T1566","T1528"], "cwe_ids": ["CWE-290","CWE-287"] },
+      { "name": "Primary Refresh Token theft and session-key replay (ROADtoken, pass-the-PRT)", "attack_ids": ["T1528","T1550.001"], "cwe_ids": ["CWE-522","CWE-384"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-cross-tenant-federation", "primitive": "P3", "kind": "classic", "source": ["identity","cloud"], "target": ["cloud","ad"],
+    "maturity": "available", "tactics": ["TA0003","TA0008"], "classic_branches": ["Identity & Federation Attacks"],
+    "trust_assumption": "A tenant trusts assertions from any external IdP or federation realm it has added to its trust configuration, accepting that the foreign issuer authenticated and authorized the subject it vouches for.",
+    "violation": "An attacker who controls or has tampered with a federated trust (added a rogue domain, forged a Golden SAML token with the stolen token-signing key, or abused B2B/guest federation) mints assertions a trusting tenant accepts as fully authenticated identities.",
+    "techniques": [
+      { "name": "Golden SAML forged token-signing key abuse", "attack_ids": ["T1606.002"], "cwe_ids": ["CWE-347","CWE-345"] },
+      { "name": "Rogue federated domain / cross-tenant trust addition", "attack_ids": ["T1484.002"], "cwe_ids": ["CWE-441","CWE-290"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-ppe-pipeline-exec", "primitive": "P1", "kind": "classic", "source": ["supplychain","web"], "target": ["container","cloud"],
+    "maturity": "mature", "tactics": ["TA0002","TA0001"], "classic_branches": ["CI/CD & Build Pipeline"],
+    "trust_assumption": "A CI runner trusts the pipeline definition and the scripts it references in the repository as authoritative build steps, executing whatever the checked-out config tells it to run with the pipeline's privileges.",
+    "violation": "An attacker who can influence the pipeline file or a referenced script (direct push, a pull_request build that runs untrusted code, or an injectable build parameter) turns repo-supplied data into runner-side command execution.",
+    "techniques": [
+      { "name": "Poisoned Pipeline Execution via controllable CI config/scripts (D-PPE/I-PPE)", "attack_ids": ["T1059"], "cwe_ids": ["CWE-94","CWE-913"] },
+      { "name": "Workflow command / build-parameter injection in CI logs", "attack_ids": ["T1059"], "cwe_ids": ["CWE-77","CWE-78"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-ci-secret-oidc-exfil", "primitive": "P2", "kind": "classic", "source": ["container","supplychain"], "target": ["cloud","identity"],
+    "maturity": "mature", "tactics": ["TA0006","TA0008"], "classic_branches": ["CI/CD & Build Pipeline"],
+    "trust_assumption": "A cloud provider trusts the short-lived OIDC token a CI runner presents as proof that the named workflow on the named branch is requesting access, and the runner trusts in-process steps to see only their own secrets.",
+    "violation": "Code running in the build reads injected secrets and the runner's OIDC/identity token from environment or the token endpoint and exfiltrates them, assuming a workflow's machine identity to reach the cloud control plane from outside the pipeline.",
+    "techniques": [
+      { "name": "CI secret and environment exfiltration from build step", "attack_ids": ["T1552.001","T1552.005"], "cwe_ids": ["CWE-522","CWE-200"] },
+      { "name": "OIDC id-token theft / overbroad federated subject claim abuse", "attack_ids": ["T1528"], "cwe_ids": ["CWE-287","CWE-863"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-runner-takeover-cache-poison", "primitive": "P4", "kind": "classic", "source": ["supplychain","container"], "target": ["container","supplychain","cloud"],
+    "maturity": "available", "tactics": ["TA0003","TA0002"], "classic_branches": ["CI/CD & Build Pipeline"],
+    "trust_assumption": "A pipeline trusts a self-hosted runner and the build caches it restores to be clean and dedicated, treating cached dependencies and a persistent runner's prior state as untainted inputs inherited into every job.",
+    "violation": "An attacker who lands one job on a non-ephemeral runner or who can write to a shared cache key plants tooling, dependencies, or state that later jobs and other repositories silently inherit and execute with their own trust.",
+    "techniques": [
+      { "name": "Self-hosted runner persistence and cross-job contamination", "attack_ids": ["T1543","T1554"], "cwe_ids": ["CWE-668","CWE-913"] },
+      { "name": "Build cache poisoning across jobs/repositories", "attack_ids": ["T1195.001"], "cwe_ids": ["CWE-349","CWE-345"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "XC-artifact-tag-mutation", "primitive": "P3", "kind": "classic", "source": ["supplychain","cloud"], "target": ["container","cloud"],
+    "maturity": "available", "tactics": ["TA0001","TA0003"], "classic_branches": ["CI/CD & Build Pipeline"],
+    "trust_assumption": "A deployer trusts that a mutable artifact tag (a container :latest, a moving release tag, a registry repository name) still points at the reviewed, signed build it pulled before, treating the human-readable label as a stable identity.",
+    "violation": "An attacker with push access repoints or overwrites a tag, or wins a dependency-confusion/typosquat name race, so consumers resolving the same label pull a swapped image whose digest never matched what was approved.",
+    "techniques": [
+      { "name": "Registry tag mutation / image overwrite (mutable tags)", "attack_ids": ["T1195.002"], "cwe_ids": ["CWE-345","CWE-494"] },
+      { "name": "Dependency confusion and registry typosquatting", "attack_ids": ["T1195.001"], "cwe_ids": ["CWE-427","CWE-829"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-bola-idor", "primitive": "P2", "kind": "classic", "source": ["web"], "target": ["web","cloud"],
+    "maturity": "mature", "tactics": ["TA0001","TA0006"], "classic_branches": ["API & Business-Logic Abuse"],
+    "trust_assumption": "An API trusts a client-supplied object identifier as authorization, assuming that because the caller knows or was handed an object id, the caller is entitled to act on that object.",
+    "violation": "An attacker enumerates or substitutes object ids (BOLA/IDOR) and reaches records belonging to other users or tenants, because the endpoint authenticates the caller but never checks that this caller owns the referenced object.",
+    "techniques": [
+      { "name": "Broken Object Level Authorization / IDOR enumeration", "attack_ids": [], "cwe_ids": ["CWE-639","CWE-862","CWE-285"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-mass-assignment-pollution", "primitive": "P1", "kind": "classic", "source": ["web"], "target": ["web","cloud"],
+    "maturity": "available", "tactics": ["TA0001","TA0004"], "classic_branches": ["API & Business-Logic Abuse"],
+    "trust_assumption": "An API trusts that the request body and parameter set contain only the fields the client is meant to set, binding incoming keys directly onto internal objects and assuming the parser's last-wins or array handling matches the security layer's.",
+    "violation": "An attacker adds privileged attributes (role, isAdmin, owner) the UI never exposes, or duplicates/pollutes parameters so the auth check and the business logic read different values, smuggling state changes past validation.",
+    "techniques": [
+      { "name": "Mass assignment / auto-binding of unexpected fields", "attack_ids": [], "cwe_ids": ["CWE-915","CWE-863"] },
+      { "name": "HTTP parameter pollution and parser-disagreement bypass", "attack_ids": [], "cwe_ids": ["CWE-235","CWE-20"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-jwt-alg-confusion", "primitive": "P3", "kind": "classic", "source": ["web"], "target": ["web","cloud"],
+    "maturity": "mature", "tactics": ["TA0001","TA0006"], "classic_branches": ["API & Business-Logic Abuse"],
+    "trust_assumption": "A JWT verifier trusts the token's own alg header to choose the verification key and algorithm, letting the attacker-controlled token dictate how its own signature will be checked.",
+    "violation": "An attacker sets alg to none, or flips RS256 to HS256 so the public key is used as an HMAC secret, or swaps the kid to a key they control, producing a token the verifier validates as authentically signed.",
+    "techniques": [
+      { "name": "JWT alg=none / RS256-to-HS256 key confusion / kid injection", "attack_ids": [], "cwe_ids": ["CWE-347","CWE-345","CWE-290"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-ratelimit-workflow-bypass", "primitive": "P6", "kind": "classic", "source": ["web"], "target": ["web","cloud"],
+    "maturity": "available", "tactics": ["TA0006","TA0040"], "classic_branches": ["API & Business-Logic Abuse"],
+    "trust_assumption": "An API trusts that a multi-step workflow advances in order and that its rate counters observe every attempt, assuming clients reach each state only through the prior, validated step and at the throttled pace.",
+    "violation": "An attacker replays, races, or skips directly to a later endpoint, or splits requests across keys/casing to dodge counters, so a guard that was true at one step is never re-checked when state is acted on or limits are evaded.",
+    "techniques": [
+      { "name": "Workflow / state-machine step skipping and forced browsing", "attack_ids": [], "cwe_ids": ["CWE-841","CWE-840"] },
+      { "name": "Rate-limit and anti-automation bypass via key/race manipulation", "attack_ids": ["T1110.001"], "cwe_ids": ["CWE-799","CWE-307"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-email-auth-spoof", "primitive": "P3", "kind": "classic", "source": ["email","web"], "target": ["email","human","identity"],
+    "maturity": "mature", "tactics": ["TA0001"], "classic_branches": ["Email & Collaboration Abuse"],
+    "trust_assumption": "A receiving mail system and its readers trust SPF/DKIM/DMARC alignment and the visible From header as proof of sender identity, assuming envelope and header fields that pass policy belong to the claimed organization.",
+    "violation": "An attacker exploits permissive or missing DMARC, header/display-name mismatch, or a confusable lookalike domain so a forged or impersonating message passes authentication checks and presents as a trusted sender to the recipient.",
+    "techniques": [
+      { "name": "SPF/DKIM/DMARC spoofing and header-from alignment abuse", "attack_ids": ["T1566.001","T1656"], "cwe_ids": ["CWE-290","CWE-345"] },
+      { "name": "Lookalike / IDN homograph domain impersonation", "attack_ids": ["T1583.001"], "cwe_ids": ["CWE-1007"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "XC-oauth-app-mailrule-persist", "primitive": "P2", "kind": "classic", "source": ["email","identity"], "target": ["cloud","email"],
+    "maturity": "mature", "tactics": ["TA0003","TA0006"], "classic_branches": ["Email & Collaboration Abuse"],
+    "trust_assumption": "A cloud collaboration suite trusts a user-consented OAuth application's granted scopes as a durable, non-interactive grant, and trusts user-defined mailbox rules as the account owner's standing intent independent of any login.",
+    "violation": "An attacker phishes consent for a malicious app (illicit consent grant) or plants forwarding/hiding inbox rules, establishing token-backed mailbox access and silent exfiltration that survive password resets and need no re-authentication.",
+    "techniques": [
+      { "name": "Illicit OAuth consent-grant application persistence", "attack_ids": ["T1528","T1098.003"], "cwe_ids": ["CWE-287","CWE-863"] },
+      { "name": "Malicious mailbox / inbox forwarding rule persistence", "attack_ids": ["T1137.005","T1114.003"], "cwe_ids": ["CWE-269"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-collab-guest-link-abuse", "primitive": "P2", "kind": "classic", "source": ["email","web"], "target": ["cloud","human","identity"],
+    "maturity": "available", "tactics": ["TA0001","TA0008"], "classic_branches": ["Email & Collaboration Abuse"],
+    "trust_assumption": "A collaboration platform trusts that messages, files, and links arriving inside a tenant workspace come from vetted internal participants, extending in-platform familiarity to external guests and federated tenants.",
+    "violation": "An attacker abuses guest access, external federation, or a permissive sharing link to deliver payloads and pretexts inside the trusted Teams/Slack surface, where the platform's perceived-internal context lowers the recipient's guard.",
+    "techniques": [
+      { "name": "Teams/Slack external-guest and tenant-federation phishing", "attack_ids": ["T1566.003","T1199"], "cwe_ids": ["CWE-290","CWE-862"] },
+      { "name": "Open sharing-link / anonymous-access file delivery", "attack_ids": ["T1080"], "cwe_ids": ["CWE-732"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "partial", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "XC-weak-signature-collision", "primitive": "P3", "kind": "classic", "source": ["identity","host"], "target": ["host","network","identity"],
+    "maturity": "available", "tactics": ["TA0001","TA0002"], "classic_branches": ["Cryptography & PKI"],
+    "trust_assumption": "A verifier trusts that a valid digital signature or matching hash uniquely binds to the exact content it was computed over, assuming no second input can produce the same digest or satisfy the same signature.",
+    "violation": "An attacker exploits a broken or downgradable primitive (MD5/SHA-1 chosen-prefix collision, length-extension, or a malleable signature) to craft a second document or token that verifies against a signature or hash issued for benign content.",
+    "techniques": [
+      { "name": "Hash-collision and chosen-prefix forgery (MD5/SHA-1, length-extension)", "attack_ids": [], "cwe_ids": ["CWE-327","CWE-328"] },
+      { "name": "Signature malleability / verification bypass", "attack_ids": [], "cwe_ids": ["CWE-347","CWE-325"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "XC-ca-misissuance-trust", "primitive": "P3", "kind": "classic", "source": ["identity","network"], "target": ["network","host","identity"],
+    "maturity": "available", "tactics": ["TA0001","TA0006"], "classic_branches": ["Cryptography & PKI"],
+    "trust_assumption": "A relying party trusts any certificate that chains to a root in its trust store, regardless of how that leaf was issued, equating a valid chain with authority over the named identity.",
+    "violation": "An attacker who obtains a mis-issued or fraudulent certificate, abuses a weak ACME/domain-validation path, or plants a rogue root impersonates the certified identity and is accepted by every party trusting the chain.",
+    "techniques": [
+      { "name": "Certificate mis-issuance and domain-validation abuse", "attack_ids": ["T1649","T1588.004"], "cwe_ids": ["CWE-295","CWE-296"] },
+      { "name": "Rogue / installed root-CA trust injection", "attack_ids": ["T1553.004"], "cwe_ids": ["CWE-295"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "XC-padding-oracle-nonce-reuse", "primitive": "P5", "kind": "classic", "source": ["network","web"], "target": ["host","web","network"],
+    "maturity": "available", "tactics": ["TA0006"], "classic_branches": ["Cryptography & PKI"],
+    "trust_assumption": "A cryptosystem trusts that ciphertext reveals nothing about plaintext, assuming error responses are uniform and that each encryption uses a unique IV/nonce so structure never leaks across messages.",
+    "violation": "An attacker exploits distinguishable padding/decrypt errors or a repeated IV/nonce to recover or forge plaintext byte by byte, turning an oracle or keystream reuse into a format-boundary leak the design assumed was sealed.",
+    "techniques": [
+      { "name": "Padding-oracle plaintext recovery and CBC bit-flipping", "attack_ids": [], "cwe_ids": ["CWE-209","CWE-696"] },
+      { "name": "IV/nonce reuse keystream recovery (CTR/GCM, ECB patterning)", "attack_ids": [], "cwe_ids": ["CWE-323","CWE-329"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "XC-tls-downgrade-rollback", "primitive": "P6", "kind": "classic", "source": ["network"], "target": ["network","web","host"],
+    "maturity": "available", "tactics": ["TA0006","TA0008"], "classic_branches": ["Cryptography & PKI"],
+    "trust_assumption": "Two endpoints trust the negotiated protocol version and ciphersuite to be the strongest both support, assuming the handshake messages that select it cannot be tampered with by the path between them.",
+    "violation": "A man-in-the-middle strips, blocks, or rewrites negotiation so the parties settle on an obsolete version or weak/export cipher, rolling back to a primitive whose break lets the attacker read or forge the now-degraded session.",
+    "techniques": [
+      { "name": "TLS/SSH version and ciphersuite downgrade (FREAK, Logjam, POODLE-class)", "attack_ids": ["T1562.010","T1557"], "cwe_ids": ["CWE-757","CWE-326"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" }
+]

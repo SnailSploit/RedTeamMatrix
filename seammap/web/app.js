@@ -31,7 +31,8 @@ async function init() {
 
   // Build each view independently: a failure in one must never blank the others.
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
-    ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps], ["path", buildPath]]) {
+    ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
+    ["predict", buildPredict], ["path", buildPath]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
   }
 }
@@ -300,6 +301,23 @@ function renderGaps() {
     list.append(row);
   }
   if (!shown) list.append(el("div", "muted", "no gaps match the filter."));
+}
+
+// --------------------------------------------------------------------------- predict (emergent composites) view
+function buildPredict() {
+  const intro = $("#predict-intro");
+  intro.innerHTML = `<b style="color:#e6edf3">Predicted emergent composites.</b> The merge of old and new tech yields vulnerabilities that look unpredictable — but the typed graph predicts them mechanically: a <span style="color:var(--frontier)">frontier (undetected) entry seam</span> feeding a <span style="color:#7ee787">mature (reliable) propagation seam</span> through a shared principal. Each card inherits the entry's lack of detection and the propagation's reliability. ${(DS.composites || []).length} ranked.`;
+  const list = $("#predict-list"); list.innerHTML = "";
+  (DS.composites || []).forEach((c, i) => {
+    const B = SEAM[c.entry_seam], A = SEAM[c.propagate_seam];
+    const card = el("div", "pathcard");
+    card.innerHTML = `<div><span class="score">score ${c.score}</span><b>composite ${i + 1}</b> <span class="muted">at ${PNAME[c.node] || c.node}</span></div>
+      <div style="margin:6px 0">${c.prediction}</div>
+      <div class="pathstep" onclick="showSeam('${c.entry_seam}')"><span class="fr" style="color:var(--frontier)">entry ◆</span> <span class="pdot" style="background:${primColor(c.primitives[0])}"></span>${c.primitives[0]} ${B ? B.techniques[0].name : c.entry_seam} <span class="muted">[${B ? B.detection_status : "?"} detection]</span></div>
+      <div class="pathstep" onclick="showSeam('${c.propagate_seam}')"><span style="color:#7ee787">propagate ▸</span> <span class="pdot" style="background:${primColor(c.primitives[1])}"></span>${c.primitives[1]} ${A ? A.techniques[0].name : c.propagate_seam} <span class="muted">[${A ? A.tooling_status : "?"} tooling]</span></div>
+      <div class="rat" style="margin-top:6px">${c.why_predictable}</div>`;
+    list.append(card);
+  });
 }
 
 // --------------------------------------------------------------------------- path (kill-chain) view

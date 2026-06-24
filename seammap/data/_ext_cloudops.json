@@ -1,0 +1,162 @@
+[
+  { "id": "CO-cross-account-confused-deputy", "primitive": "P2", "kind": "classic", "source": ["cloud","identity"], "target": ["cloud"],
+    "maturity": "mature", "tactics": ["TA0008","TA0004"], "classic_branches": ["Cloud Attacks"],
+    "trust_assumption": "A cross-account IAM role trusts that any principal presenting the agreed external-id shared secret in its AssumeRole call is the intended third party, so a role with a missing, blank, or guessable external-id is treated as if only the partner could invoke it.",
+    "violation": "An attacker in an unrelated account assumes a role whose trust policy omits or uses a predictable external-id, becoming a confused deputy that wields the target account's permissions without ever compromising a credential.",
+    "techniques": [
+      { "name": "AssumeRole external-id confused-deputy (missing/guessable external id, wildcard principal trust policy)", "attack_ids": ["T1199","T1078.004"], "cwe_ids": ["CWE-441","CWE-639"] },
+      { "name": "Cross-tenant role/identity-federation chaining across vendor SaaS integrations", "attack_ids": ["T1199"], "cwe_ids": ["CWE-441"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-object-store-acl-default", "primitive": "P3", "kind": "classic", "source": ["cloud"], "target": ["cloud","web","identity"],
+    "maturity": "mature", "tactics": ["TA0007","TA0009"], "classic_branches": ["Cloud Attacks"],
+    "trust_assumption": "An object store, disk snapshot, or machine-image registry trusts that whatever ACL or sharing scope is set is the owner's deliberate intent, so a bucket left public, a snapshot shared with all-accounts, or an AMI marked public is served as authorized distribution rather than misconfiguration.",
+    "violation": "An attacker enumerates and reads world-readable buckets, public EBS/RDS snapshots, and public AMIs, harvesting credentials, source, and data from stores whose permissive defaults were mistaken for intentional sharing.",
+    "techniques": [
+      { "name": "Public object-store enumeration and download (S3/GCS/Azure Blob anonymous or all-users ACL)", "attack_ids": ["T1530","T1619"], "cwe_ids": ["CWE-732","CWE-284"] },
+      { "name": "Public snapshot / shared-AMI plunder for embedded secrets and data", "attack_ids": ["T1580","T1530"], "cwe_ids": ["CWE-732"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "CO-serverless-event-injection", "primitive": "P1", "kind": "classic", "source": ["cloud","web"], "target": ["cloud"],
+    "maturity": "emerging", "tactics": ["TA0002","TA0004"], "classic_branches": ["Cloud Attacks"],
+    "trust_assumption": "A serverless function trusts that the event record delivered by its event source (S3 notification, queue message, API Gateway request, DynamoDB stream) is inert data describing what happened, not attacker-controlled instructions, so attacker-influenced fields flow unsanitized into queries, command lines, and downstream calls.",
+    "violation": "An attacker who can write to the event source plants payloads in object keys, message bodies, or request fields that the function interprets as control — injecting commands, NoSQL/SQL, or SSRF — turning a passive trigger into code execution under the function's role.",
+    "techniques": [
+      { "name": "Event-source data-as-control injection (S3/SQS/SNS/API-Gateway event field into eval/query/exec)", "attack_ids": ["T1059","T1190"], "cwe_ids": ["CWE-94","CWE-74"] },
+      { "name": "Function event-payload poisoning leading to privilege use of the execution role", "attack_ids": ["T1648"], "cwe_ids": ["CWE-20"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "partial", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-longlived-access-key", "primitive": "P2", "kind": "classic", "source": ["identity"], "target": ["cloud"],
+    "maturity": "mature", "tactics": ["TA0004","TA0008","TA0003"], "classic_branches": ["Cloud Attacks"],
+    "trust_assumption": "The cloud control-plane API trusts a valid long-lived access-key / secret pair as conclusive proof of the principal's identity regardless of where, when, or how it is used, so a leaked static key authenticates an attacker exactly as it would the owner with no session, device, or origin binding.",
+    "violation": "An attacker who recovers a static access key from code, CI logs, dotfiles, or a phished console session calls the control plane directly, persisting and escalating because the key carries no contextual binding the operator could not replicate.",
+    "techniques": [
+      { "name": "Long-lived access-key abuse (leaked AWS keys / GCP SA keys / Azure SP secrets used from attacker host)", "attack_ids": ["T1078.004","T1552.001"], "cwe_ids": ["CWE-798","CWE-522"] },
+      { "name": "Key-based privilege enumeration and IAM self-escalation (PassRole / policy attach / version set)", "attack_ids": ["T1098.001","T1484"], "cwe_ids": ["CWE-269"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "CO-cloud-logging-tamper", "primitive": "P6", "kind": "classic", "source": ["identity","cloud"], "target": ["cloud","soc"],
+    "maturity": "mature", "tactics": ["TA0005"], "classic_branches": ["Cloud Attacks"],
+    "trust_assumption": "Cloud detection trusts that the trail of control-plane events it receives is complete and authoritative — that CloudTrail/GuardDuty/Activity-Log coverage reflects all activity — so a principal with logging-admin rights can shrink the observable timeline by disabling, redirecting, or filtering the very source the SOC reasons over.",
+    "violation": "An attacker with config permissions stops trails, deletes log buckets, removes regions from coverage, or suspends GuardDuty/Defender detectors, so subsequent actions occur inside a manufactured blind spot the SOC cannot see because it trusts the feed as the ground truth.",
+    "techniques": [
+      { "name": "Cloud-trail / activity-log disable, delete, or selective filter", "attack_ids": ["T1562.008","T1562.001"], "cwe_ids": ["CWE-778"] },
+      { "name": "Threat-detector (GuardDuty/Defender/SCC) suspension or finding suppression", "attack_ids": ["T1562.008"], "cwe_ids": ["CWE-778"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-imdsv1-token-vs-network", "primitive": "P2", "kind": "classic", "source": ["cloud","network"], "target": ["cloud"],
+    "maturity": "mature", "tactics": ["TA0006","TA0004"], "classic_branches": ["Cloud Attacks"],
+    "trust_assumption": "The IMDSv1 metadata endpoint trusts mere network reachability to the link-local address as authorization to mint role credentials, requiring no session token, so any process or proxied request that can reach 169.254.169.254 is treated as the instance itself.",
+    "violation": "An attacker leverages a request-forwarding primitive or on-box foothold to GET the IMDSv1 credentials path with no token challenge, harvesting the instance role's temporary keys — a token-less, network-only trust that IMDSv2's PUT-token hop was introduced to revoke.",
+    "techniques": [
+      { "name": "IMDSv1 token-less credential retrieval (no PUT-token session required)", "attack_ids": ["T1552.005"], "cwe_ids": ["CWE-441","CWE-306"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "CO-k8s-network-as-authz", "primitive": "P2", "kind": "classic", "source": ["network"], "target": ["container","cloud"],
+    "maturity": "mature", "tactics": ["TA0008","TA0004","TA0007"], "classic_branches": ["Container & Orchestration"],
+    "trust_assumption": "Cluster control-plane and node components trust that network reachability to their ports equals authorization, so an exposed kubelet read/write API, an anonymous-auth API server, or an unauthenticated etcd treats any client that can open the socket as a fully entitled caller.",
+    "violation": "An attacker reachable on the cluster network drives the kubelet exec/run endpoints, calls an anonymous API server, or reads/writes etcd directly, gaining pod execution and secret access because the component conflated being-reachable with being-authorized.",
+    "techniques": [
+      { "name": "Unauthenticated kubelet API exec/run on port 10250", "attack_ids": ["T1610","T1609"], "cwe_ids": ["CWE-306"] },
+      { "name": "Anonymous-auth / unauthenticated API server access", "attack_ids": ["T1609"], "cwe_ids": ["CWE-306","CWE-862"] },
+      { "name": "Direct etcd read/write of cluster state and secrets", "attack_ids": ["T1552.007"], "cwe_ids": ["CWE-306"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "CO-privileged-pod-namespace-share", "primitive": "P4", "kind": "classic", "source": ["container"], "target": ["host","container"],
+    "maturity": "mature", "tactics": ["TA0004","TA0008"], "classic_branches": ["Container & Orchestration"],
+    "trust_assumption": "The node trusts that a pod admitted with hostPID, hostNetwork, hostPath, or privileged-securityContext was deliberately granted shared access to host namespaces and devices, so a workload running in those inherited contexts is treated as entitled to the host's processes, mounts, and kernel interfaces.",
+    "violation": "An attacker who lands in a pod scheduled with shared host namespaces or a hostPath mount inherits the node's PID namespace, root filesystem, or device nodes and operates on the host directly — escalating through legitimately-granted context inheritance rather than a kernel escape bug.",
+    "techniques": [
+      { "name": "hostPID / hostNetwork process and socket access from pod", "attack_ids": ["T1611"], "cwe_ids": ["CWE-668","CWE-250"] },
+      { "name": "hostPath mount of node root filesystem or docker socket", "attack_ids": ["T1611","T1610"], "cwe_ids": ["CWE-668"] },
+      { "name": "Privileged securityContext device and capability abuse", "attack_ids": ["T1611"], "cwe_ids": ["CWE-250","CWE-269"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "CO-sa-token-overmount", "primitive": "P2", "kind": "classic", "source": ["container","identity"], "target": ["container","cloud"],
+    "maturity": "mature", "tactics": ["TA0006","TA0004","TA0008"], "classic_branches": ["Container & Orchestration"],
+    "trust_assumption": "The API server trusts a presented service-account JWT as the identity of whoever holds it, and the kubelet auto-mounts that token into every pod by default, so a token readable from a compromised container authenticates the attacker as the service account regardless of which workload actually read it.",
+    "violation": "An attacker reads the auto-mounted /var/run/secrets token (or a broadly-scoped projected token) from a foothold pod and replays it against the API server, assuming the service account's RBAC — a bearer credential whose mere possession the operator could not have prevented from being copied.",
+    "techniques": [
+      { "name": "Auto-mounted service-account token theft and replay", "attack_ids": ["T1528","T1552.001"], "cwe_ids": ["CWE-522","CWE-668"] },
+      { "name": "Over-scoped projected/bound token reuse for cloud workload-identity federation", "attack_ids": ["T1550.001"], "cwe_ids": ["CWE-269"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-untrusted-image-pull", "primitive": "P3", "kind": "classic", "source": ["supplychain","container"], "target": ["container","cloud"],
+    "maturity": "mature", "tactics": ["TA0001","TA0003","TA0002"], "classic_branches": ["Container & Orchestration"],
+    "trust_assumption": "The cluster trusts that an image pulled from a registry by tag is the genuine, vetted artifact that name implies, so an unsigned image, a mutable tag, or a typosquatted/public registry reference is run as if its provenance had been verified.",
+    "violation": "An attacker publishes or substitutes a malicious image under a trusted-looking name or repoints a mutable tag, and the cluster schedules and executes it because tag-as-identity stood in for cryptographic provenance the admission path never checked.",
+    "techniques": [
+      { "name": "Malicious / typosquatted public-registry image pull", "attack_ids": ["T1610","T1525"], "cwe_ids": ["CWE-494","CWE-829"] },
+      { "name": "Mutable-tag substitution and missing image-signature (cosign/notary) verification", "attack_ids": ["T1525"], "cwe_ids": ["CWE-345","CWE-494"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-cluster-secrets-exposure", "primitive": "P3", "kind": "classic", "source": ["container"], "target": ["container","cloud","identity"],
+    "maturity": "mature", "tactics": ["TA0006","TA0007"], "classic_branches": ["Container & Orchestration"],
+    "trust_assumption": "The cluster trusts that secret material placed into environment variables, ConfigMaps, or base64-only Kubernetes Secret objects is shielded by namespace and RBAC boundaries, so credentials surfaced into a workload's process environment or an unencrypted etcd object are treated as confined to their intended consumer.",
+    "violation": "An attacker with read on a pod, ConfigMap, or the Secret API dumps the process environment, reads plaintext ConfigMaps, or decodes base64 Secrets (unencrypted at rest in etcd), harvesting database, registry, and cloud credentials that namespace trust assumed were private.",
+    "techniques": [
+      { "name": "Secrets-in-environment-variable and /proc/environ harvest", "attack_ids": ["T1552.001","T1552.007"], "cwe_ids": ["CWE-526","CWE-312"] },
+      { "name": "ConfigMap plaintext and base64 Secret decode (no etcd encryption-at-rest)", "attack_ids": ["T1552.007"], "cwe_ids": ["CWE-312","CWE-261"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-admission-policy-bypass", "primitive": "P3", "kind": "classic", "source": ["container","identity"], "target": ["container","cloud"],
+    "maturity": "emerging", "tactics": ["TA0005","TA0004"], "classic_branches": ["Container & Orchestration"],
+    "trust_assumption": "The admission layer trusts that the manifest it evaluates is the manifest that will run and that its policy set covers every entry path, so a request shaped to dodge a label selector, hit a failure-open webhook, or mutate after evaluation is admitted as if it had satisfied OPA/Gatekeeper/Kyverno rules.",
+    "violation": "An attacker exploits failure-open webhook timeouts, namespace/label exemptions, or mutate-after-validate ordering to land a privileged or non-compliant workload, defeating policy whose verdict was trusted as binding over the actual runtime spec.",
+    "techniques": [
+      { "name": "Validating-webhook failure-open / timeout bypass", "attack_ids": ["T1562.001"], "cwe_ids": ["CWE-636","CWE-693"] },
+      { "name": "Policy exemption / selector gap and mutate-after-validate ordering abuse", "attack_ids": ["T1480"], "cwe_ids": ["CWE-863","CWE-693"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "partial", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "CO-domain-aging-reputation", "primitive": "P3", "kind": "classic", "source": ["web","network"], "target": ["web","soc"],
+    "maturity": "mature", "tactics": ["TA0011","TA0010"], "classic_branches": ["Infrastructure / OPSEC"],
+    "trust_assumption": "The web proxy and reputation engine trust that a domain's registration age, established WHOIS history, and assigned content-category reflect an organic legitimate purpose, so an aged or categorized domain is allow-listed as benign without re-inspecting who actually controls it now.",
+    "violation": "The operator pre-ages, buys expired-but-reputable, or pre-submits domains for benign categorization (banking/health) so that when they go live as C2, the proxy passes them on a reputation signal the operator manufactured rather than earned.",
+    "techniques": [
+      { "name": "Domain aging / expired-domain repurposing for proxy-category trust", "attack_ids": ["T1583.001","T1584.001"], "cwe_ids": ["CWE-290"] },
+      { "name": "Pre-submitted content-categorization abuse (category-as-benignity)", "attack_ids": ["T1583.001"], "cwe_ids": ["CWE-290"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-tls-cert-provenance-ct-blindspot", "primitive": "P3", "kind": "classic", "source": ["web","network"], "target": ["web","soc"],
+    "maturity": "mature", "tactics": ["TA0011","TA0005"], "classic_branches": ["Infrastructure / OPSEC"],
+    "trust_assumption": "The inspector trusts that a CA-issued, valid TLS certificate signals an accountable, monitorable identity and that Certificate Transparency logs give defenders early visibility into an operator's domains, so a freely-issued cert on a plausible hostname is read as legitimacy and CT is assumed to surface new infrastructure.",
+    "violation": "The operator obtains automated free certificates on benign-looking hostnames and exploits CT blind spots — wildcard certs, pre-cert-only logging, and ad-hoc internal CAs — so cert validity launders the host as trustworthy while CT monitoring never sees the leaf actually fronting C2.",
+    "techniques": [
+      { "name": "Free-CA cert issuance for benign-appearing C2 hostnames", "attack_ids": ["T1608.003","T1587.003"], "cwe_ids": ["CWE-295","CWE-296"] },
+      { "name": "Certificate-Transparency evasion via wildcard / unlogged-leaf certificates", "attack_ids": ["T1588.004"], "cwe_ids": ["CWE-295"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-residential-proxy-egress-reputation", "primitive": "P3", "kind": "classic", "source": ["network","identity"], "target": ["web","soc"],
+    "maturity": "mature", "tactics": ["TA0011","TA0010","TA0005"], "classic_branches": ["Infrastructure / OPSEC"],
+    "trust_assumption": "Fraud, geo, and IP-reputation engines trust that the source IP's network type and location stand in for the actor's identity and intent — a residential/mobile ASN from the expected country reads as a real local user, while datacenter and Tor ranges read as suspicious.",
+    "violation": "The operator routes traffic through residential-proxy and mobile-LTE egress pools so requests inherit the clean reputation and plausible geolocation of real subscribers, laundering automated or out-of-region activity as a trusted local human and defeating ASN/geo risk scoring.",
+    "techniques": [
+      { "name": "Residential / mobile proxy egress for geo and IP-reputation laundering", "attack_ids": ["T1090.002","T1090.003"], "cwe_ids": ["CWE-290","CWE-291"] },
+      { "name": "Egress rotation to evade rate-limit and source-reputation blocking", "attack_ids": ["T1090"], "cwe_ids": ["CWE-307"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "CO-sockpuppet-account-aging", "primitive": "P3", "kind": "classic", "source": ["identity","web"], "target": ["web","human","soc"],
+    "maturity": "mature", "tactics": ["TA0001"], "classic_branches": ["Infrastructure / OPSEC"],
+    "trust_assumption": "Platforms and human targets trust that an account's age, accumulated post/connection history, and established activity pattern are evidence of an authentic person, so a seasoned profile with a credible backstory is treated as more legitimate and lower-risk than a fresh registration.",
+    "violation": "The operator builds and ages sock-puppet accounts — warming them with organic-looking activity and connections over months — so that when used for phishing, social engineering, or platform abuse they pass the account-history legitimacy heuristic the defender relies on instead of identity proof.",
+    "techniques": [
+      { "name": "Aged burner / sock-puppet persona cultivation for platform trust", "attack_ids": ["T1585.001","T1585.002"], "cwe_ids": ["CWE-290"] },
+      { "name": "Established-persona social-engineering and connection-graph priming", "attack_ids": ["T1586.001","T1456"], "cwe_ids": ["CWE-290"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" }
+]

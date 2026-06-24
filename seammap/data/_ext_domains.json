@@ -1,0 +1,171 @@
+[
+  { "id": "DOM-fieldbus-no-auth", "primitive": "P2", "kind": "classic", "source": ["ot"], "target": ["ot"],
+    "maturity": "mature", "tactics": ["TA0040","TA0002"], "classic_branches": ["OT / ICS Attacks"],
+    "trust_assumption": "Insecure-by-design fieldbus protocols (Modbus, DNP3, S7comm) have no source authentication: a PLC trusts that any station on the control network issuing a well-formed read/write function code is an authorized master.",
+    "violation": "An attacker with control-network reach crafts protocol-valid function codes to read or overwrite coils, registers, and setpoints, commanding the process directly because the field device cannot distinguish the engineer's HMI from a hostile host.",
+    "techniques": [
+      { "name": "SCADA/ICS Modbus/DNP3/S7 unauthenticated coil & register write", "attack_ids": ["T0855","T0836"], "cwe_ids": ["CWE-306"] },
+      { "name": "Protocol fuzzing & function-code abuse (Metasploit modbusclient, smod)", "attack_ids": ["T0846"], "cwe_ids": ["CWE-285"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-ews-logic-download", "primitive": "P3", "kind": "classic", "source": ["ot"], "target": ["ot"],
+    "maturity": "mature", "tactics": ["TA0002","TA0040"], "classic_branches": ["OT / ICS Attacks"],
+    "trust_assumption": "A PLC trusts any host on the control network presenting itself as the engineering workstation to download ladder logic, accepting a program transfer as authentic and authorized engineering with no signature on the project.",
+    "violation": "An attacker reaching the PLC programming protocol pushes attacker-authored ladder/STL logic or firmware, redefining the process control program itself because the controller never verifies the provenance of the code it loads.",
+    "techniques": [
+      { "name": "Rogue EWS program/logic download (TIA Portal, Studio 5000 protocol replay)", "attack_ids": ["T0843","T0873"], "cwe_ids": ["CWE-345","CWE-306"] },
+      { "name": "Controller firmware overwrite", "attack_ids": ["T0857"], "cwe_ids": ["CWE-494"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-sis-sensor-spoof", "primitive": "P6", "kind": "classic", "source": ["ot"], "target": ["ot"],
+    "maturity": "emerging", "tactics": ["TA0040"], "classic_branches": ["OT / ICS Attacks"],
+    "trust_assumption": "A safety-instrumented system and its controllers trust reported process variables and the integrity of safety logic state, assuming sensor values and SIS state reflect true physical conditions at the moment they are read.",
+    "violation": "An attacker spoofs or replays sensor telemetry and manipulates or bypasses the safety controller's state so a real hazardous condition is hidden or the trip is suppressed, defeating the independent protection layer that should fail the process to a safe state.",
+    "techniques": [
+      { "name": "Safety controller manipulation / SIS bypass (Triton/TRISIS-class)", "attack_ids": ["T0880","T0858"], "cwe_ids": ["CWE-693"] },
+      { "name": "Process-variable / sensor spoofing & stale-value replay", "attack_ids": ["T0856"], "cwe_ids": ["CWE-294"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "nascent", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "DOM-mobile-repackaged-app", "primitive": "P3", "kind": "classic", "source": ["mobile"], "target": ["mobile"],
+    "maturity": "mature", "tactics": ["TA0001","TA0002"], "classic_branches": ["Mobile Attacks"],
+    "trust_assumption": "A user (and the OS sideload path) trusts that an installable package which looks like a known app, and carries a valid-looking signature, was built and shipped by the legitimate developer.",
+    "violation": "An attacker repackages a popular app with injected malware or hosts a lookalike on a third-party store, and the user grants it the trust of the brand it imitates because nothing ties the running binary to the genuine publisher.",
+    "techniques": [
+      { "name": "App repackaging & trojanized sideload", "attack_ids": ["T1661","T1604"], "cwe_ids": ["CWE-494","CWE-345"] },
+      { "name": "Fake/lookalike store distribution", "attack_ids": ["T1475"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-mobile-mdm-profile-abuse", "primitive": "P2", "kind": "classic", "source": ["mobile"], "target": ["mobile"],
+    "maturity": "mature", "tactics": ["TA0002","TA0001"], "classic_branches": ["Mobile Attacks"],
+    "trust_assumption": "A mobile device trusts an installed configuration/MDM profile (or a passed root/jailbreak integrity check) as a legitimate management authority entitled to set policy, install CAs, and provision apps.",
+    "violation": "An attacker convinces the user to install a malicious management profile or roots/jailbreaks the device, inheriting management-level authority to push a trusted CA, VPN, and apps, or to disable the integrity controls other apps relied on.",
+    "techniques": [
+      { "name": "Malicious MDM / configuration-profile enrollment", "attack_ids": ["T1626"], "cwe_ids": ["CWE-1188","CWE-295"] },
+      { "name": "Jailbreak/root trust abuse & integrity-check bypass", "attack_ids": ["T1404"], "cwe_ids": ["CWE-693"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-mobile-intent-injection", "primitive": "P1", "kind": "classic", "source": ["mobile"], "target": ["mobile"],
+    "maturity": "mature", "tactics": ["TA0001","TA0002"], "classic_branches": ["Mobile Attacks"],
+    "trust_assumption": "An app trusts data arriving over IPC surfaces (deep links, intents, exported components, custom URL schemes) as coming from a cooperative, authorized caller carrying benign parameters.",
+    "violation": "A malicious app or web page crafts a deep link or intent that drives an exported component into privileged actions or feeds attacker data into a parser, because the receiver treats inter-process input as trusted control rather than untrusted data.",
+    "techniques": [
+      { "name": "Deep-link / URL-scheme hijack & parameter injection", "attack_ids": ["T1416"], "cwe_ids": ["CWE-939","CWE-927"] },
+      { "name": "Exported-component / intent injection", "attack_ids": ["T1474"], "cwe_ids": ["CWE-926","CWE-749"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-fw-unsigned-downgrade", "primitive": "P3", "kind": "classic", "source": ["hardware"], "target": ["hardware"],
+    "maturity": "mature", "tactics": ["TA0002","TA0040"], "classic_branches": ["Hardware / IoT / Firmware"],
+    "trust_assumption": "A device's update mechanism trusts any image offered over its OTA/local update channel that passes a weak or absent signature check, and trusts version numbers, accepting older signed images as valid.",
+    "violation": "An attacker flashes an unsigned, modified, or older-but-vulnerable firmware image, gaining persistent control of the device because provenance and anti-rollback are not enforced on the update it accepts as authentic.",
+    "techniques": [
+      { "name": "Unsigned/modified firmware flash", "attack_ids": ["T1542.001"], "cwe_ids": ["CWE-494","CWE-345"] },
+      { "name": "Firmware downgrade / anti-rollback bypass", "attack_ids": [], "cwe_ids": ["CWE-757"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-fw-debug-interface", "primitive": "P2", "kind": "classic", "source": ["hardware"], "target": ["hardware"],
+    "maturity": "mature", "tactics": ["TA0001","TA0006"], "classic_branches": ["Hardware / IoT / Firmware"],
+    "trust_assumption": "A device trusts that anyone with physical access to its debug ports (JTAG, SWD, UART) is an authorized developer, granting full register/memory/console authority with no authentication on the interface.",
+    "violation": "An attacker with the board in hand connects to an exposed debug interface and gains a root console or full memory and CPU control, because the production hardware never disabled or locked the development-time authority of those pins.",
+    "techniques": [
+      { "name": "JTAG/SWD halt-and-dump & memory control", "attack_ids": ["T1542"], "cwe_ids": ["CWE-1191","CWE-1244"] },
+      { "name": "UART root-console / bootloader interrupt", "attack_ids": [], "cwe_ids": ["CWE-1191","CWE-489"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "none", "origin": "seed" },
+
+  { "id": "DOM-fw-secureboot-bypass", "primitive": "P4", "kind": "classic", "source": ["hardware"], "target": ["hardware"],
+    "maturity": "emerging", "tactics": ["TA0002","TA0040"], "classic_branches": ["Hardware / IoT / Firmware"],
+    "trust_assumption": "Each stage of a secure-boot chain trusts that the prior stage verified it, so once a root-of-trust link is satisfied the inheriting stage assumes everything loaded after it is equally trustworthy.",
+    "violation": "An attacker breaks one link of the chain of trust (a TOCTOU gap, an unverified config or stage, a fuse misconfiguration) and the inherited trust propagates upward, letting unsigned code run as if the whole boot chain had validated it.",
+    "techniques": [
+      { "name": "Secure-boot / chain-of-trust link bypass", "attack_ids": ["T1542.001"], "cwe_ids": ["CWE-1326","CWE-347"] },
+      { "name": "Unverified boot stage / config inheritance (TOCTOU)", "attack_ids": [], "cwe_ids": ["CWE-367","CWE-1280"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "none", "origin": "seed" },
+
+  { "id": "DOM-fw-fault-glitch-extract", "primitive": "P6", "kind": "classic", "source": ["hardware"], "target": ["hardware"],
+    "maturity": "emerging", "tactics": ["TA0006","TA0002"], "classic_branches": ["Hardware / IoT / Firmware"],
+    "trust_assumption": "A secure element / MCU trusts that its instructions execute deterministically and that secret-dependent computations leak nothing observable, assuming clean power, clock, and timing at the instant a security check or crypto operation runs.",
+    "violation": "An attacker injects a voltage/clock/EM glitch at the precise moment of a check or measures power/timing side-channels, skipping the comparison or recovering key bits because the silicon's correctness and confidentiality assumptions break under physical perturbation.",
+    "techniques": [
+      { "name": "Voltage/clock/EM fault injection (auth & secure-boot skip)", "attack_ids": [], "cwe_ids": ["CWE-1247","CWE-1332"] },
+      { "name": "Power/timing side-channel key extraction (DPA/CPA)", "attack_ids": [], "cwe_ids": ["CWE-1300","CWE-208"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "none", "origin": "seed" },
+
+  { "id": "DOM-can-frame-injection", "primitive": "P1", "kind": "classic", "source": ["auto"], "target": ["auto"],
+    "maturity": "mature", "tactics": ["TA0002","TA0040"], "classic_branches": ["Automotive / CAN"],
+    "trust_assumption": "A CAN bus has no source authentication: any node that can write a frame is trusted as any ECU, and every ECU accepts a frame purely by arbitration ID regardless of who actually transmitted it.",
+    "violation": "An attacker with bus access transmits forged frames with another ECU's arbitration ID (or floods to win arbitration), and target ECUs act on the spoofed commands as if they came from the legitimate controller, actuating brakes, steering, or doors.",
+    "techniques": [
+      { "name": "CAN frame spoofing by arbitration ID", "attack_ids": [], "cwe_ids": ["CWE-306","CWE-345"] },
+      { "name": "Bus-off / arbitration-flood DoS of an ECU", "attack_ids": [], "cwe_ids": ["CWE-940"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-pkes-relay-rollcode", "primitive": "P6", "kind": "classic", "source": ["wireless"], "target": ["auto"],
+    "maturity": "mature", "tactics": ["TA0001"], "classic_branches": ["Automotive / CAN"],
+    "trust_assumption": "Passive keyless entry/start trusts proximity of the key fob's RF response as proof the owner is present, and rolling-code receivers trust that any code in the valid forward window was freshly produced by the fob.",
+    "violation": "An attacker relays the fob-vehicle RF exchange across distance to forge proximity, or captures and replays/forwards rolling codes within the acceptance window, unlocking and starting the car without ever holding the key.",
+    "techniques": [
+      { "name": "PKES relay attack (RF link extension)", "attack_ids": [], "cwe_ids": ["CWE-294","CWE-301"] },
+      { "name": "Rolling-code capture & replay (RollJam-style)", "attack_ids": [], "cwe_ids": ["CWE-294"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "none", "origin": "seed" },
+
+  { "id": "DOM-telematics-ota-remote", "primitive": "P3", "kind": "classic", "source": ["network"], "target": ["auto"],
+    "maturity": "mature", "tactics": ["TA0001","TA0008"], "classic_branches": ["Automotive / CAN"],
+    "trust_assumption": "A vehicle trusts its telematics/infotainment unit and the OTA backend channel as authentic, and trusts that the head unit is isolated from the powertrain buses, so messages arriving through the cellular/OTA path are treated as authorized.",
+    "violation": "An attacker compromises the remotely reachable telematics or infotainment stack (or its OTA channel) and pivots across the internal gateway onto the CAN buses, turning a remote network foothold into physical vehicle control.",
+    "techniques": [
+      { "name": "Telematics/infotainment remote compromise (Jeep-class remote pivot)", "attack_ids": ["T1190"], "cwe_ids": ["CWE-668","CWE-787"] },
+      { "name": "Malicious/unsigned OTA update push", "attack_ids": [], "cwe_ids": ["CWE-494","CWE-345"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "DOM-rogue-ap-eviltwin", "primitive": "P2", "kind": "classic", "source": ["wireless"], "target": ["mobile"],
+    "maturity": "mature", "tactics": ["TA0001","TA0006"], "classic_branches": ["Wireless / RF Attacks"],
+    "trust_assumption": "A Wi-Fi client trusts an access point that broadcasts a known SSID as the legitimate network, and many clients trust APs that simply answer their probe requests for remembered networks.",
+    "violation": "An attacker stands up an evil-twin or Karma AP advertising the trusted SSID, the victim's device associates and routes traffic through the attacker, who then captures credentials or serves a captive-portal phish as the man in the middle.",
+    "techniques": [
+      { "name": "Evil-twin / rogue AP MITM", "attack_ids": ["T1557"], "cwe_ids": ["CWE-290","CWE-300"] },
+      { "name": "Karma / probe-response & captive-portal credential harvest", "attack_ids": ["T1056"], "cwe_ids": ["CWE-290"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "DOM-wpa-handshake-crack", "primitive": "P6", "kind": "classic", "source": ["wireless"], "target": ["network"],
+    "maturity": "mature", "tactics": ["TA0006","TA0001"], "classic_branches": ["Wireless / RF Attacks"],
+    "trust_assumption": "WPA2/WPA3-PSK trusts that the secrecy of the pre-shared key is preserved because the over-the-air handshake only ever exposes a key-confirmation derivable from the passphrase, assuming that material is not reversible offline.",
+    "violation": "An attacker captures the 4-way handshake or solicits a PMKID and grinds the passphrase offline at attacker pace and scale, recovering the network key without any online interaction the AP could rate-limit or detect.",
+    "techniques": [
+      { "name": "WPA2 4-way handshake capture & offline crack", "attack_ids": ["T1110.002"], "cwe_ids": ["CWE-916","CWE-521"] },
+      { "name": "PMKID clientless capture (hashcat 22000)", "attack_ids": ["T1110.002"], "cwe_ids": ["CWE-916"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "none", "origin": "seed" },
+
+  { "id": "DOM-ble-rfid-relay-clone", "primitive": "P3", "kind": "classic", "source": ["wireless"], "target": ["hardware"],
+    "maturity": "mature", "tactics": ["TA0001"], "classic_branches": ["Wireless / RF Attacks"],
+    "trust_assumption": "BLE/RFID/NFC access systems trust that a tag or device responding with the expected identifier is the genuine credential physically present at the reader, treating the RF response as proof of an authentic, proximate token.",
+    "violation": "An attacker clones a tag's static identifier or relays the live BLE/NFC exchange between a distant genuine credential and the reader, presenting a forged or proxied token that the reader accepts as the real, present credential.",
+    "techniques": [
+      { "name": "RFID/NFC tag cloning (static UID/Mifare)", "attack_ids": [], "cwe_ids": ["CWE-294","CWE-345"] },
+      { "name": "BLE/NFC relay attack (link extension)", "attack_ids": [], "cwe_ids": ["CWE-294","CWE-301"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "none", "origin": "seed" },
+
+  { "id": "DOM-rf-deauth-jam-replay", "primitive": "P6", "kind": "classic", "source": ["wireless"], "target": ["wireless"],
+    "maturity": "mature", "tactics": ["TA0040","TA0001"], "classic_branches": ["Wireless / RF Attacks"],
+    "trust_assumption": "Wireless links trust unauthenticated management/control signaling and the integrity of the shared RF medium, assuming frames like deauth are genuine and that the spectrum carries only legitimate transmitters' signals.",
+    "violation": "An attacker injects forged management frames or jams the band to deny service and force re-association (priming captures), or replays previously captured RF commands, manipulating availability and state because the medium and its signaling authenticate nothing.",
+    "techniques": [
+      { "name": "802.11 deauthentication / disassociation flood", "attack_ids": ["T1498"], "cwe_ids": ["CWE-306","CWE-940"] },
+      { "name": "RF jamming & SDR capture-replay", "attack_ids": [], "cwe_ids": ["CWE-294"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" }
+]

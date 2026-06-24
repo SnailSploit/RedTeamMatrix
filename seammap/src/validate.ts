@@ -1,9 +1,11 @@
 // DEFINITION OF DONE — the structural invariants from the brief, as runnable tests.
 // Run: `node src/validate.ts`. Exits non-zero if any invariant is violated.
 
+import { readFileSync } from "node:fs";
 import { loadDataset } from "./model.ts";
 import { gapsRegister, autoSpawn } from "./gap-engine.ts";
 import { buildTree, buildMatrix, everyCellTyped } from "./projections.ts";
+import { predictComposites } from "./compose.ts";
 import type { Dataset, Principal, Seam } from "./types.ts";
 
 let failures = 0;
@@ -105,7 +107,7 @@ const ds = loadDataset();
   const synthetic: Seam = {
     id: "__synthetic_probe", primitive: "P1", kind: "classic",
     source: ["web"], target: ["host"], maturity: "mature",
-    tactics: ["TA0040"], classic_branches: ["Reporting"],
+    tactics: ["TA0040"], classic_branches: ["Impact"],
     trust_assumption: "synthetic probe assumption unique-string-zzz",
     violation: "synthetic", techniques: [{ name: "ProbeTechnique", attack_ids: [], cwe_ids: [] }],
     operator: { scalable: 0, automatable: 0, ai_augmentable: 0 },
@@ -115,10 +117,10 @@ const ds = loadDataset();
   const tree1 = buildTree(ds2);
   const matrix1 = buildMatrix(ds2);
 
-  const inTree = tree1.find((b) => b.branch === "Reporting")?.leaves.some((l) => l.seam_id === "__synthetic_probe");
+  const inTree = tree1.find((b) => b.branch === "Impact")?.leaves.some((l) => l.seam_id === "__synthetic_probe");
   const inMatrix = matrix1.cells["host"]["TA0040"].seam_ids.includes("__synthetic_probe");
   const notInBaseline =
-    !tree0.find((b) => b.branch === "Reporting")?.leaves.some((l) => l.seam_id === "__synthetic_probe") &&
+    !tree0.find((b) => b.branch === "Impact")?.leaves.some((l) => l.seam_id === "__synthetic_probe") &&
     !matrix0.cells["host"]["TA0040"].seam_ids.includes("__synthetic_probe");
   log(Boolean(inTree && inMatrix && notInBaseline),
     `Projection: editing the graph propagates to BOTH tree and matrix (derived, not authored)`);
@@ -138,6 +140,64 @@ const ds = loadDataset();
   const wanted = ["populated", "honest-na", "frontier", "under-tooled"];
   const missing = wanted.filter((w) => !seen.has(w));
   log(missing.length === 0, `Typing: matrix exercises all gap states (${[...seen].sort().join(", ")})`);
+}
+
+// ---------------------------------------------------------------------------
+// 6. LEAF COVERAGE — the model must not regress below the source mind map.
+// Every leaf of the source hackinarticles map is re-homed to >=1 seam (keyword
+// match against seam technique names / trust assumption / violation), or its
+// branch is operator-side honest-na. Fails if any leaf is silently dropped.
+// ---------------------------------------------------------------------------
+{
+  const src = JSON.parse(
+    readFileSync(new URL("../data/mindmap-source.json", import.meta.url), "utf8"),
+  );
+  const naSourceBranches = new Set([
+    "Planning & Scoping", "Frameworks & Methodologies", "Tooling", "Adversary Emulation", "Reporting & Debrief",
+  ]);
+  const STOP = new Set(["the","and","for","with","via","from","over","into","your","scope","attack","based",
+    "data","access","using","known","new","old","etc","aka","or","of","to","in","on","a","an","internal","external","site"]);
+  const corpus = ds.seams.map((s) =>
+    (s.techniques.map((t) => t.name).join(" ") + " " + s.trust_assumption + " " + s.violation + " " + s.classic_branches.join(" "))
+      .toLowerCase()).join(" || ");
+  const tokenize = (leaf: string) =>
+    leaf.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 4 && !STOP.has(t));
+  // A token matches on exact, singular (-s), or a 6-char stem (covers -y/-ic/-ing variants).
+  const matches = (t: string) =>
+    corpus.includes(t) || corpus.includes(t.replace(/s$/, "")) || (t.length >= 7 && corpus.includes(t.slice(0, 6)));
+
+  const uncovered: string[] = [];
+  let leafCount = 0;
+  for (const b of src.branches) {
+    if (naSourceBranches.has(b.name)) continue;
+    for (const leaf of b.leaves) {
+      leafCount++;
+      const toks = tokenize(leaf);
+      const hit = toks.length === 0 || toks.some(matches);
+      if (!hit) uncovered.push(`${b.name} :: ${leaf}`);
+    }
+  }
+  log(uncovered.length === 0,
+    `Leaf coverage: all ${leafCount} source-map technique leaves re-homed to a seam` +
+    (uncovered.length ? ` — UNCOVERED: ${uncovered.join(" | ")}` : ""));
+}
+
+// ---------------------------------------------------------------------------
+// 7. COMPOSITION PREDICTOR — old + new tech composes into emergent vulns the graph
+// can PREDICT. Every predicted composite must reference a real frontier entry seam
+// and a real mature propagation seam meeting at a shared principal.
+// ---------------------------------------------------------------------------
+{
+  const seamById = new Map(ds.seams.map((s) => [s.id, s]));
+  const composites = predictComposites(ds, 40);
+  log(composites.length >= 10, `Composition predictor: emits ${composites.length} predicted emergent composites`);
+  const wellFormed = composites.every((c) => {
+    const B = seamById.get(c.entry_seam), A = seamById.get(c.propagate_seam);
+    return A && B && B.target.includes(c.node) && A.source.includes(c.node) &&
+      (B.detection_status === "none" || B.detection_status === "nascent") &&
+      (A.tooling_status === "mature" || A.tooling_status === "available");
+  });
+  log(wellFormed, `Composition predictor: every prediction = real undetected-entry x real mature-propagation at a shared node`);
 }
 
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);

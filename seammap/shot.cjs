@@ -30,7 +30,7 @@ const server = http.createServer((req, res) => {
   await page.goto("http://localhost:8123/index.html", { waitUntil: "networkidle0", timeout: 60000 });
   await new Promise((r) => setTimeout(r, 2500)); // let cose layout settle
 
-  const views = ["graph", "matrix", "tree", "gaps", "path"];
+  const views = ["graph", "matrix", "tree", "gaps", "predict", "path"];
   for (const v of views) {
     await page.click(`nav button[data-view="${v}"]`);
     await new Promise((r) => setTimeout(r, v === "graph" ? 2500 : 900));
