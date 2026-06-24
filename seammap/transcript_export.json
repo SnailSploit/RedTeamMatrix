@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "text": "here is my key AKIA-FAKE-TOKEN-LAB please use it once"
+  },
+  {
+    "role": "assistant",
+    "text": "ok"
+  }
+]

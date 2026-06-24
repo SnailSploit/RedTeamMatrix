@@ -1,0 +1,192 @@
+[
+ {
+  "id": "F7d-detector-feedback-poison",
+  "validation_method": "Stand up a SOC pipeline that auto-retrains/auto-tunes a detector from analyst dispositions (e.g., a Splunk/Elastic ML job or allowlist generator seeded by 'closed as FP' tickets). Over a controlled window, inject a benign-looking traffic/behavior pattern repeatedly from a sandbox host until analysts (or the auto-tuner) close it as FP and the pattern is suppressed/whitelisted. Then run the malicious variant reusing the exact same feature signature and observe whether the detector now scores it below threshold / suppresses the alert.",
+  "falsifier": "The malicious reuse still alerts at normal severity because retraining is gated by labeled-incident review, drift checks, or the suppression keys on features the attacker cannot fully control (so FP closure does not transfer to the malicious instance).",
+  "prerequisites": "Ability to generate observable activity into the monitored environment over time; knowledge that the SOC auto-tunes from dispositions; patience across a retraining cycle. No privileged access required.",
+  "existing_controls": "Human-in-the-loop label review, retraining on curated incident sets rather than raw FP closes, drift/poisoning monitoring on training data, suppression rules scoped narrowly and time-boxed.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "nascent" }
+ },
+ {
+  "id": "X-mcp-transport-desync",
+  "validation_method": "Place an MCP broker/proxy in front of a backend MCP server (stdio or streamable-HTTP). Craft JSON-RPC frames that exploit framing ambiguity: e.g., for HTTP/SSE transport, send a request whose Content-Length / chunked framing or NDJSON boundary differs between broker and backend, or batch/concatenate two JSON-RPC objects where one party splits on newlines and the other on length. Observe whether a second (unauthorized) tool call is parsed by the backend that the broker did not see/authorize, or whether one logical call is split.",
+  "falsifier": "Broker and backend use the same strict JSON-RPC parser with unambiguous length-delimited framing and reject trailing/embedded bytes, so no smuggled or split call is interpretable by the backend that diverges from the broker's view.",
+  "prerequisites": "A man-in-the-middle position between broker and backend, or control of a malicious tool/client that speaks raw transport frames; a heterogeneous broker+backend parser pair.",
+  "existing_controls": "Strict single-parser JSON-RPC framing, length-delimited transport, rejecting batched/trailing content, broker performing semantic (not byte-level passthrough) re-serialization of each call.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "none" }
+ },
+ {
+  "id": "GH1-rendered-ui-ground-truth",
+  "validation_method": "Build a page where a 'Confirm/Cancel' control's accessibility-tree label or off-viewport DOM text differs from human-visible rendering (CSS-hidden but a11y-exposed text, an overlay, or an adversarial patch on the screenshot region). Run a computer-use/browser-use agent (e.g., a vision+DOM agent) against it on a benign task and observe whether it clicks/acts based on the injected label while a human watching the rendered pixels would understand a different action.",
+  "falsifier": "The agent consistently acts on the same rendered state a human sees (e.g., it grounds on screenshot pixels with viewport clipping and ignores hidden a11y text), so the injected divergence does not change its action.",
+  "prerequisites": "Ability to serve attacker-controlled web/document content to the agent; the agent uses DOM/a11y tree or is susceptible to visual patches. No host access.",
+  "existing_controls": "Action confirmation grounded on visible-pixel screenshots with viewport clipping, human confirmation for high-consequence clicks, ignoring off-viewport/hidden nodes; this is an active research area with partial mitigations.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH1-lora-adapter-provenance",
+  "validation_method": "Fine-tune a LoRA adapter on a vetted base model with a trigger-conditioned backdoor (benign on normal inputs, alignment-stripped or attacker-behavior on a chosen trigger string). Distribute/load it as a 'behavioral delta' onto the base, then evaluate: (1) normal eval suite passes and looks like the trusted base; (2) on the trigger, safety/refusal behavior is overridden. Confirms composition silently inherits base trust while activating hidden behavior.",
+  "falsifier": "The adapter cannot encode a reliable trigger-gated safety override that survives the base model's safety layer, OR loading pipeline runs an adapter-level safety/behavioral diff eval that flags the deviation before deployment.",
+  "prerequisites": "Ability to publish/distribute an adapter that a victim loads on a trusted base; compute to fine-tune. Backdoored-LoRA feasibility is documented in academic literature.",
+  "existing_controls": "Adapter provenance/signing, behavioral diff evals and trigger-scanning before load, restricting adapters to vetted sources; detection of fine-tune backdoors is an open research problem.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH1-subagent-context-inheritance",
+  "validation_method": "Set up a parent agent that ingests an untrusted document/web result containing an injection, then spawns a sub-agent (with broader tools, e.g., shell/MCP) passing along task context. Embed an instruction in the untrusted content targeting the sub-agent. Observe whether the injected intent executes in the sub-agent with no boundary re-validation at the spawn (e.g., sub-agent runs an attacker-chosen tool call).",
+  "falsifier": "The spawn boundary re-sanitizes or re-classifies inherited content as untrusted (data vs instruction separation), so the sub-agent does not treat absorbed untrusted text as parent tasking and the injection does not fire.",
+  "prerequisites": "Control of content the parent ingests; a multi-agent system that passes context to sub-agents without re-validation. No privileged access.",
+  "existing_controls": "Trust-tagging/provenance on context, treating inherited data as untrusted at spawn, tool-scope minimization on sub-agents, spotlighting/delimiting of external content. Indirect prompt injection generally is well-demonstrated; the subagent-spawn variant specifically is mechanism-sound.",
+  "validity": "plausible",
+  "confidence": "high",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH2-passkey-sync-fabric-recovery-downgrade",
+  "validation_method": "Two falsifiable sub-tests. (a) Sync export: compromise a test platform account (iCloud Keychain / Google Password Manager) and verify whether the synced passkey private key becomes usable on a newly added attacker device without touching the original hardware. (b) Downgrade: on an RP that enrolled a passkey but retains weaker fallback (SMS/OTP/password reset), authenticate via the fallback and confirm account takeover without the passkey. Observe whether the RP accepts the off-device or downgraded path.",
+  "falsifier": "The passkey is hardware-bound (non-synced, e.g., a security key or device-bound credential) so it cannot be exported via account compromise, AND the RP refuses authentication via any factor weaker than the registered passkey (no downgrade path).",
+  "prerequisites": "(a) Compromise of the platform/cloud account or its recovery path; (b) for downgrade, only that the RP keeps weaker fallback factors enabled. Synced passkeys are confirmed cloud-replicated by design.",
+  "existing_controls": "Device-bound passkeys/security keys for high assurance, removing weaker fallback factors after passkey enrollment, account-recovery hardening, AAL/authenticator-attachment policy. The downgrade-to-fallback risk is widely acknowledged.",
+  "validity": "plausible",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH2-workload-identity-federation-misbind",
+  "validation_method": "Configure a cloud WIF trust policy (e.g., AWS IAM OIDC role or GCP Workload Identity Federation) with an over-broad subject condition (wildcard repo/branch, missing 'sub'/'aud' pinning — e.g., trusting an issuer with only a partial claim match). From a different repo/branch/service-account under the same issuer, mint an OIDC token whose claims satisfy the loose condition and attempt the AssumeRoleWithWebIdentity / STS exchange. Observe whether cloud creds are granted to the unintended principal.",
+  "falsifier": "The trust policy pins exact sub+aud (and where supported, additional claims) such that only the intended workload's token satisfies the condition, so the foreign-but-same-issuer token is rejected at the exchange.",
+  "prerequisites": "Ability to obtain a token from the same trusted issuer (e.g., another GitHub repo/branch, another K8s SA namespace) and an over-broad/wildcarded trust policy. This is a documented real-world misconfiguration class.",
+  "existing_controls": "Exact sub/aud claim pinning, repository/branch and audience conditions, GitHub OIDC custom claims, scoped service accounts. Provider docs explicitly warn against wildcards; cloud security scanners flag loose conditions.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "partial", "detection_status": "partial" }
+ },
+ {
+  "id": "GH3-agent-fleet-telematics-to-can",
+  "validation_method": "In a test/staging fleet-telematics environment, give an LLM agent the dispatcher's remote-command scope and feed it a poisoned support ticket/route note containing an injection instructing bulk remote actuation (unlock/remote-start). Observe whether the agent emits the bulk commands and whether the backend relays them as authentic dispatcher intent to (simulated) vehicle gateways.",
+  "falsifier": "The agent's tool to issue remote commands is gated by human approval / rate limits / out-of-band confirmation, OR the backend re-authenticates per-command against a verified dispatcher action, so injected text cannot translate into relayed bulk actuation.",
+  "prerequisites": "An LLM agent holding live dispatcher telematics scope, an injection channel (ticket/note) it reads, and a backend that relays agent-issued commands without independent authorization. Chained capabilities; not yet a common deployment.",
+  "existing_controls": "Human approval for actuation, per-command authorization separate from the agent, rate/anomaly limits on bulk commands, scoping agents to read-only telematics. Indirect prompt injection is demonstrated; the full chain to CAN actuation is not publicly demonstrated.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH3-agent-confused-deputy-ca-issuance",
+  "validation_method": "Give an LLM PKI-ops agent issuance/approval authority against a test internal CA or ACME endpoint. Feed it a ticket/domain string/service descriptor containing injected instructions to request or approve a certificate for a name the requester does not control. Observe whether the agent issues/approves the cert (or installs a trust anchor) for the attacker-chosen name without independent domain-control validation.",
+  "falsifier": "Issuance is still gated by independent domain-control validation (ACME challenge, CAA, RA approval) that the agent cannot satisfy for names it doesn't control, so the agent's confused request fails validation regardless of its intent.",
+  "prerequisites": "An agent with issuance/approval authority and an injection channel it reads; a pipeline where the agent's call is treated as authorized intent without separate domain-control proof. Chained, not common.",
+  "existing_controls": "Mandatory domain-control validation independent of requester, RA dual-control/approval, CAA records, scoping agents away from approval authority, certificate transparency monitoring for mis-issuance.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "frontier", "tooling_status": "none", "detection_status": "partial" }
+ },
+ {
+  "id": "GH4-training-data-reconstruction-at-scale",
+  "validation_method": "Train/fine-tune a model with planted canary records, deploy behind ordinary inference. Run extraction/membership-inference attacks (prefix-completion probes, divergence/repetition 'poem poem' style attacks, canary-targeting prompts) and measure verbatim regurgitation rate of canaries/PII and whether membership can be confirmed above chance.",
+  "falsifier": "Extraction yields no verbatim memorized records above baseline and membership-inference is near chance (e.g., due to dedup, DP training, output filtering), so inference output is not a usable read channel on the corpus.",
+  "prerequisites": "Query access to the deployed model; for the controlled test, ability to plant canaries. The general technique (verbatim extraction, MIA) is published and demonstrated against real LLMs.",
+  "existing_controls": "Training-data deduplication, differential privacy, output filters / regurgitation detectors, rate limiting, repetition-attack mitigations (which several vendors deployed after public extraction demos).",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "partial", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH4-synthetic-identity-aged-graph",
+  "validation_method": "Construct a synthetic identity with an aged cross-source footprint (long-lived email, seeded social graph, manufactured thin-file credit history, planted data-broker entries) and submit it to an onboarding/KYC risk-decisioning system that scores existence via cross-source corroboration. Observe whether the fabricated person clears existence and risk checks because the correlated signals were all attacker-seeded.",
+  "falsifier": "Onboarding requires a liveness/biometric + authoritative government/issuer verification that the synthetic graph cannot satisfy, so cross-source footprint alone does not admit the identity.",
+  "prerequisites": "Time and resources to seed and age the synthetic graph; targeting systems that weight aged cross-source correlation as existence proof. Synthetic identity fraud is a well-documented, large-scale real-world phenomenon.",
+  "existing_controls": "Document + liveness biometric verification, authoritative-source (SSA eCBSV) checks, synthetic-identity fraud models, velocity/correlation-anomaly detection. Detection tooling exists in the fraud industry but is imperfect against patiently aged graphs.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "partial", "detection_status": "partial" }
+ },
+ {
+  "id": "GH5-pqc-hybrid-negotiation-downgrade",
+  "validation_method": "Set up a hybrid PQC-capable client/server (classical+ML-KEM, e.g., X25519MLKEM768) plus a posture/compliance logger that records the connection as 'PQC-protected'. As an on-path attacker, strip the hybrid group from the ClientHello supported_groups (or force the classical-only fallback the dual-stack deployment still accepts). Observe whether the session completes classical-only while the telemetry/audit still labels it quantum-safe.",
+  "falsifier": "The endpoints refuse to complete (or the posture logger flags) any session that did not negotiate the PQC group — i.e., hybrid is mandatory and downgrade causes handshake failure, not a silently-mislabeled classical session.",
+  "prerequisites": "On-path position to modify the handshake; a dual-stack deployment that still accepts classical-only for legacy reach; posture logging that infers PQC from capability rather than negotiated group.",
+  "existing_controls": "TLS downgrade protections cover classical version/cipher rollback; mandating the hybrid group (fail-closed) and logging the actually-negotiated group rather than capability. Note: hybrid KEX itself resists downgrade if hybrid is required, so the seam depends on a permissive fallback config.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH5-secrets-lease-rotation-window-race",
+  "validation_method": "Configure a secrets manager (e.g., Vault dynamic DB creds) issuing short-lived leases to a workload, with a downstream datastore that has its own credential cache/grace. Capture a leased credential, trigger rotation, and during the overlap window attempt to authenticate to the downstream resource with the rotated-out credential. Measure whether it is still honored after the manager marks it rotated.",
+  "falsifier": "Rotation atomically revokes the old credential at the resource (immediate invalidation, no grace), so the captured credential fails the moment rotation occurs — no usable overlap window.",
+  "prerequisites": "Possession of a leased credential and timing knowledge of rotation; a downstream resource with non-atomic/grace credential acceptance. Common in dynamic-secret + caching architectures.",
+  "existing_controls": "Atomic revocation at the resource, short overlap windows with active session termination, lease-bound source-IP/mTLS constraints, monitoring for use of rotated-out credentials. Rotation overlap is a recognized operational hazard.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH6-bridge-lightclient-finality-reorg-mint",
+  "validation_method": "On a testnet, deploy a bridge with an on-target light client minting at a fixed confirmation depth N. Deposit on source, let destination mint at depth N, then induce a source-chain reorg deeper than N (or a finality-gadget stall / validator-set rotation orphaning the proven block). Observe whether the destination retains the minted/released asset while the source deposit is rolled back, yielding a double-spend across the seam.",
+  "falsifier": "The light client requires economic/BFT finality (not just a depth heuristic) and rejects or reverses any proof whose source block does not reach irreversible finality, so a reorg cannot leave a minted asset standing.",
+  "prerequisites": "Ability to cause/observe a source-chain reorg deeper than the bridge's confirmation depth (PoW hashpower, validator influence, or a chain with reconfigurable/probabilistic finality); a bridge using fixed-depth confirmation. Bridge finality/reorg exploits are a documented incident class.",
+  "existing_controls": "Waiting for true finality (e.g., Casper FFG finalized checkpoints) rather than fixed depth, conservative confirmation depths, fraud-proof/optimistic windows, pausing mint on reorg detection.",
+  "validity": "plausible",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH6-dao-governance-flashstake-snapshot-capture",
+  "validation_method": "On a testnet DAO whose voting weight is read from token balance at a snapshot block within the same flash-loan-able transaction (no time-lock/escrow lock), flash-borrow governance tokens, cast a self-dealing vote at the snapshot, and unwind in the same transaction. Observe whether the snapshot counted the borrowed weight and the proposal passed.",
+  "falsifier": "Governance measures weight via a past/lagged snapshot block (checkpointed before the proposal, e.g., ERC20Votes getPastVotes) or requires locked vote-escrow, so flash-borrowed weight present only momentarily is not counted.",
+  "prerequisites": "A DAO that snapshots weight at a manipulable/current block and a deep flash-loan market for the governance token. Flash-loan governance attacks (e.g., Beanstalk) are a documented real-world incident class.",
+  "existing_controls": "Past-block vote snapshots (ERC20Votes), vote-escrow with lockups, proposal time-locks, quorum + delay, flash-loan-resistant snapshot timing.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "partial", "detection_status": "partial" }
+ },
+ {
+  "id": "GH7-satellite-uplink-command-format-trust",
+  "validation_method": "Against a representative COTS/CubeSat command handler (flatsat or HIL testbed) that authenticates on CCSDS/AX.25 framing + frequency rather than per-command crypto, transmit a well-formed telecommand via SDR on the legitimate uplink during a contact window. Observe whether the handler executes attacker commands (mode change, memory write) on format/frequency conformance alone.",
+  "falsifier": "The command handler enforces authenticated command counters / cryptographic command authentication (e.g., CCSDS SDLS) and rejects any frame lacking a valid MAC/counter, so a format-correct unauthenticated frame is dropped.",
+  "prerequisites": "SDR transmit capability, link budget to close the uplink, orbital/contact-window knowledge, and a target that lacks per-command authentication. Documented as a real risk for legacy/COTS smallsats.",
+  "existing_controls": "CCSDS SDLS authenticated telecommand, command counters/anti-replay, encrypted uplinks, ground-segment access control. Many legacy/COTS birds lack these; modern programs increasingly mandate SDLS.",
+  "validity": "plausible",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH7-time-window-trust-in-consensus-and-certs",
+  "validation_method": "In a test environment, feed a node a falsified time source (spoofed GNSS, manipulated NTP/PTP) and check time-bounded acceptance: (a) present a not-yet-valid or recently-expired certificate / expired JWT/TOTP and observe whether skewed 'now' makes it pass freshness/validity; (b) skew a set of consensus validators' clocks and observe whether block/slot timeliness decisions shift. Confirm falsified shared time becomes an authorization/liveness lever.",
+  "falsifier": "Validity/freshness checks use an authenticated/attested time source (Roughtime, multi-source NTP with sanity bounds, monotonic constraints) so single-source clock manipulation does not move the acceptance windows; consensus uses median-of-peers time bounded against manipulation.",
+  "prerequisites": "Ability to shift the time source feeding target nodes (GNSS spoofing, NTP/PTP MITM); nodes that trust local clock as absolute. NTP-shifting-cert-validity is individually demonstrated; the coordinated-consensus variant is less so.",
+  "existing_controls": "Authenticated time (Roughtime/NTS), multi-source clock sanity bounds, monotonic clocks, median-time-past rules in consensus, GNSS anti-spoofing. NTP/cert-window manipulation is documented; broad coordinated quorum skew is harder.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "nascent", "detection_status": "nascent" }
+ },
+ {
+  "id": "GH8-model-hub-config-deserialization-trust",
+  "validation_method": "Publish (to a private/test hub) a model artifact embedding a pickle/__reduce__ payload or a config requiring trust_remote_code=True / a custom processor that runs code on load. Load it with the standard library (e.g., torch.load / from_pretrained) on a sandbox host and observe whether code executes merely from loading the 'data'.",
+  "falsifier": "The loader refuses code execution by default (safetensors-only weights, trust_remote_code defaults to False, pickle scanning blocks the payload), so loading the artifact does not run attacker code without an explicit opt-in.",
+  "prerequisites": "Ability to get a victim to load an attacker-published artifact; victim uses pickle-based weights or enables remote code. Malicious-pickle model attacks are publicly demonstrated and found in the wild on public hubs.",
+  "existing_controls": "safetensors format, trust_remote_code=False default, Hugging Face/Protect AI pickle scanning (picklescan), sandboxed loading, artifact signing. Both tooling and detection exist and are deployed.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": { "maturity": "mature", "tooling_status": "available", "detection_status": "available" }
+ },
+ {
+  "id": "GH8-agent-authored-iac-policy-compliance-drift",
+  "validation_method": "Prompt an LLM/agent to author Terraform/K8s/cloud IaC for a realistic request and scan the output for silent policy drift (over-broad IAM principals, public-by-default storage, disabled control-plane logging, wildcard security groups). Compare against the team's policy baseline; then run it through (or bypass) policy-as-code gates to confirm non-compliant resources would be applied under a quick-skim review.",
+  "falsifier": "Comprehensive policy-as-code gates (OPA/Conftest, Checkov/tfsec, cloud config rules) catch every relevant drift before apply, so agent-authored non-compliance cannot reach production regardless of reviewer trust.",
+  "prerequisites": "An ops workflow that applies agent-authored IaC on light review and policy-as-code coverage gaps. Both LLM-generated insecure IaC and the general 'misconfigured IaC reaches prod' class are well-documented.",
+  "existing_controls": "policy-as-code in CI (OPA/Rego, Checkov, tfsec, KICS), least-privilege linting, mandatory plan review, drift detection. Scanners exist and are mature; coverage gaps and skim-review are the residual risk.",
+  "validity": "plausible",
+  "confidence": "high",
+  "recalibrate": { "maturity": "emerging", "tooling_status": "available", "detection_status": "available" }
+ }
+]

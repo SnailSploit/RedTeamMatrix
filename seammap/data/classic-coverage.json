@@ -1,0 +1,75 @@
+{
+  "$schema": "Drives the non-deletion invariant (NEW DOES NOT CANCEL OLD) and the leaf-coverage invariant. Every substantive branch must resolve to >=1 seam; operator-side branches are explicitly honest-na. The taxonomy EXCEEDS the source mind map: classic kill-chain branches + cross-cutting categories the source buried (Identity, CI/CD, API, Email, Crypto) + specialized domains as first-class (OT, Mobile, Hardware, Automotive, Wireless) + Cloud/Container/OPSEC + AI/Agent.",
+
+  "classic_branches": [
+    "Reconnaissance",
+    "Initial Access",
+    "Execution",
+    "Persistence",
+    "Privilege Escalation",
+    "Defense Evasion",
+    "Credential Access",
+    "Discovery",
+    "Lateral Movement",
+    "Collection",
+    "Command and Control",
+    "Exfiltration",
+    "Impact",
+    "Identity & Federation Attacks",
+    "Cloud Attacks",
+    "Container & Orchestration",
+    "CI/CD & Build Pipeline",
+    "API & Business-Logic Abuse",
+    "Email & Collaboration Abuse",
+    "Cryptography & PKI",
+    "AI / Agent Attacks",
+    "OT / ICS Attacks",
+    "Mobile Attacks",
+    "Hardware / IoT / Firmware",
+    "Automotive / CAN",
+    "Wireless / RF Attacks",
+    "Infrastructure / OPSEC",
+    "Planning & Scoping",
+    "Frameworks & Methodologies",
+    "Tooling",
+    "Adversary Emulation",
+    "Reporting & Debrief"
+  ],
+
+  "attack_tactics": [
+    { "id": "TA0043", "name": "Reconnaissance" },
+    { "id": "TA0042", "name": "Resource Development" },
+    { "id": "TA0001", "name": "Initial Access" },
+    { "id": "TA0002", "name": "Execution" },
+    { "id": "TA0003", "name": "Persistence" },
+    { "id": "TA0004", "name": "Privilege Escalation" },
+    { "id": "TA0005", "name": "Defense Evasion" },
+    { "id": "TA0006", "name": "Credential Access" },
+    { "id": "TA0007", "name": "Discovery" },
+    { "id": "TA0008", "name": "Lateral Movement" },
+    { "id": "TA0009", "name": "Collection" },
+    { "id": "TA0011", "name": "Command and Control" },
+    { "id": "TA0010", "name": "Exfiltration" },
+    { "id": "TA0040", "name": "Impact" }
+  ],
+
+  "branch_honest_na": [
+    { "branch": "Planning & Scoping", "reason": "Engagement governance (RoE, scope, legal authorization, deconfliction, KPIs). Operator-side process; violates no victim trust relationship, so it has no seam." },
+    { "branch": "Frameworks & Methodologies", "reason": "MITRE ATT&CK, Kill Chains, PTES, OWASP, NIST 800-115 are methodologies the model is mapped AGAINST (see attack_ids/tactics on every seam), not seams themselves." },
+    { "branch": "Tooling", "reason": "Tools (Nmap, BloodHound, Cobalt Strike, Mimikatz, Evilginx...) are folded into each seam's techniques[] as the means of exploiting a seam, not seams in their own right." },
+    { "branch": "Adversary Emulation", "reason": "Atomic Red Team, CALDERA, purple-teaming exercise the seams already in the model; they are a defender/validation practice, not an offensive trust violation." },
+    { "branch": "Reporting & Debrief", "reason": "The red-team deliverable phase (findings, CVSS, ATT&CK mapping, retest). Operator-side; no victim trust relationship to violate." }
+  ],
+
+  "honest_na_cells": [
+    { "principal": "ad",          "tactic": "TA0011", "reason": "Active Directory has no command-and-control channel of its own; C2 rides the host/network. Permanent honest-na." },
+    { "principal": "ad",          "tactic": "TA0010", "reason": "AD is not an egress; exfiltration leaves via host/network, not the directory service. Permanent." },
+    { "principal": "vectorstore", "tactic": "TA0011", "reason": "A passive retrieval index does not beacon. C2 that abuses it is modeled as memory-as-dead-drop on the agent, not the store. Permanent." },
+    { "principal": "vectorstore", "tactic": "TA0040", "reason": "An index has no destructive impact surface of its own; impact lands on the agent/host it feeds. Permanent." },
+    { "principal": "doc",         "tactic": "TA0011", "reason": "A document is an ingress conduit, not a control channel. Permanent." },
+    { "principal": "doc",         "tactic": "TA0006", "reason": "A file conduit holds no credentials to access; credential access targets stores, not the conduit. Permanent." },
+    { "principal": "email",       "tactic": "TA0040", "reason": "The messaging conduit carries impact payloads but is not itself the impacted resource. Permanent." },
+    { "principal": "web",         "tactic": "TA0040", "reason": "The fetch conduit is a delivery/ingress surface, not a destruction target. Permanent." },
+    { "principal": "wireless",    "tactic": "TA0009", "reason": "The RF medium is a transit/access surface, not a data store to collect from. Permanent." }
+  ]
+}

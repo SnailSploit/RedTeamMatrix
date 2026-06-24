@@ -1,0 +1,136 @@
+[
+  { "id": "C2-malleable-beacon", "primitive": "P3", "kind": "classic", "source": ["host"], "target": ["network","soc"],
+    "maturity": "mature", "tactics": ["TA0011"], "classic_branches": ["Command and Control"],
+    "trust_assumption": "Network and EDR defenses trust that traffic matching a configurable, attacker-defined profile (URIs, headers, sleep, jitter) is indistinguishable from a benign application, and that one signature describes one tool.",
+    "violation": "Malleable command-and-control frameworks reshape every byte of the beacon — request shape, encoding, sleep cadence — so signatures and behavioral baselines built for one campaign never match the next, laundering implant traffic as ordinary application chatter.",
+    "techniques": [
+      { "name": "Malleable beacon frameworks (Cobalt Strike / Sliver / Mythic / Havoc / Brute Ratel / Empire)", "attack_ids": ["T1071.001","T1573","T1029"], "cwe_ids": ["CWE-506"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-dns-tunnel", "primitive": "P5", "kind": "classic", "source": ["host"], "target": ["network"],
+    "maturity": "mature", "tactics": ["TA0011"], "classic_branches": ["Command and Control"],
+    "trust_assumption": "The resolver and firewall trust recursive DNS as naming infrastructure that must always be allowed out, not as a bidirectional data channel.",
+    "violation": "Commands and responses are tunneled inside DNS query/answer fields (TXT/NULL/CNAME labels), smuggling a full C2 link through a port nobody blocks because resolution conformance is mistaken for benignity.",
+    "techniques": [
+      { "name": "DNS tunneling (iodine / dnscat2 / DNS over recursive resolvers)", "attack_ids": ["T1071.004"], "cwe_ids": ["CWE-923"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-icmp-covert", "primitive": "P5", "kind": "classic", "source": ["host"], "target": ["network"],
+    "maturity": "available", "tactics": ["TA0011"], "classic_branches": ["Command and Control"],
+    "trust_assumption": "The firewall trusts ICMP echo as a diagnostic/keepalive protocol whose payload is meaningless padding, not a carrier for arbitrary data.",
+    "violation": "C2 traffic is encoded into the data portion of ICMP echo request/reply packets, tunneling a control channel through ping because the inspector validates the type field, not the payload.",
+    "techniques": [
+      { "name": "ICMP covert channel (icmptunnel / ptunnel / echo-payload C2)", "attack_ids": ["T1095"], "cwe_ids": ["CWE-923"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-domain-fronting", "primitive": "P3", "kind": "classic", "source": ["host"], "target": ["network","cloud"],
+    "maturity": "mature", "tactics": ["TA0011"], "classic_branches": ["Command and Control"],
+    "trust_assumption": "The TLS inspector trusts the visible SNI / outer Host as the true destination, assuming the front domain seen on the wire is where the connection actually terminates behind a shared CDN.",
+    "violation": "The TLS SNI presents a reputable fronted domain while the inner HTTP Host routes to attacker infrastructure on the same CDN, so reputation and SNI-based allow-listing pass traffic to a destination the inspector never saw.",
+    "techniques": [
+      { "name": "Domain fronting / CDN-fronted C2", "attack_ids": ["T1090.004","T1071.001"], "cwe_ids": ["CWE-923"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-saas-chat-channel", "primitive": "P3", "kind": "classic", "source": ["host"], "target": ["web","network"],
+    "maturity": "mature", "tactics": ["TA0011"], "classic_branches": ["Command and Control"],
+    "trust_assumption": "Egress filtering trusts popular collaboration SaaS domains (Slack/Discord/Telegram/Teams) as universally benign and rarely inspected, since blocking them breaks legitimate business.",
+    "violation": "Implants poll and post to Slack/Discord/Telegram bot APIs as their C2 transport, riding the platform's TLS and reputation so beacon traffic blends into sanctioned chat usage.",
+    "techniques": [
+      { "name": "Web-service C2 via chat platforms (Slack / Discord / Telegram bot APIs)", "attack_ids": ["T1102","T1102.002"], "cwe_ids": ["CWE-923"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-redirector-profile", "primitive": "P3", "kind": "classic", "source": ["host","network"], "target": ["soc","network"],
+    "maturity": "mature", "tactics": ["TA0011"], "classic_branches": ["Command and Control"],
+    "trust_assumption": "The defender trusts that traffic shape, TLS fingerprint (JA3/JA3S), and apparent source server are stable identifiers it can fingerprint and attribute as benign.",
+    "violation": "Redirectors, malleable C2 profiles, and randomized/spoofed TLS fingerprints decouple the beacon's observable shape from its real origin, so JA3 baselining and infrastructure attribution chase a façade instead of the team server.",
+    "techniques": [
+      { "name": "Redirectors / malleable profiles / JA3 spoofing", "attack_ids": ["T1090","T1001.003"], "cwe_ids": ["CWE-290"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-saas-upload-exfil", "primitive": "P3", "kind": "classic", "source": ["host"], "target": ["web","cloud"],
+    "maturity": "mature", "tactics": ["TA0010"], "classic_branches": ["Exfiltration"],
+    "trust_assumption": "DLP and egress controls trust uploads to sanctioned, reputable file-sharing SaaS (Dropbox / Google Drive / Mega) as authorized business activity not requiring content inspection.",
+    "violation": "Stolen data is POSTed over HTTPS to a trusted cloud-storage provider, so the destination's reputation and the encrypted channel launder a bulk exfil as a routine sanctioned upload.",
+    "techniques": [
+      { "name": "Exfiltration to trusted cloud storage (Dropbox / Drive / Mega via HTTPS POST)", "attack_ids": ["T1567.002"], "cwe_ids": ["CWE-200"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-dns-exfil", "primitive": "P5", "kind": "classic", "source": ["host"], "target": ["network"],
+    "maturity": "mature", "tactics": ["TA0010"], "classic_branches": ["Exfiltration"],
+    "trust_assumption": "The resolver trusts outbound DNS queries as lookups whose subdomain labels carry only names to be resolved, never the payload being stolen.",
+    "violation": "Data is encoded into query labels and leaked to an attacker-controlled authoritative server one chunk per lookup, exfiltrating through a protocol that is always permitted and rarely content-inspected.",
+    "techniques": [
+      { "name": "DNS exfiltration (encoded subdomain labels to attacker NS)", "attack_ids": ["T1048.003","T1071.004"], "cwe_ids": ["CWE-923"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-steganography-exfil", "primitive": "P5", "kind": "classic", "source": ["host"], "target": ["web","network"],
+    "maturity": "available", "tactics": ["TA0010"], "classic_branches": ["Exfiltration"],
+    "trust_assumption": "The inspector trusts a carrier file's declared type and visible meaning — an image, audio clip, or document is what it appears to be — and ignores its lossless bit-level capacity.",
+    "violation": "Secret data is embedded in the redundant bits of an innocuous carrier (LSB images, audio, document metadata) so a benign-looking file smuggles the payload past DLP that only reads the surface content.",
+    "techniques": [
+      { "name": "Steganographic exfiltration (LSB image/audio embedding, doc metadata)", "attack_ids": ["T1027.003","T1001.002"], "cwe_ids": ["CWE-918"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "available", "detection_status": "nascent", "origin": "seed" },
+
+  { "id": "C2-chunked-encrypted-exfil", "primitive": "P6", "kind": "classic", "source": ["host"], "target": ["network","web"],
+    "maturity": "available", "tactics": ["TA0010"], "classic_branches": ["Exfiltration"],
+    "trust_assumption": "DLP trusts that small, encrypted, rate-limited transfers spread over time are unrelated events, not slices of one dataset, because it inspects each flow in isolation without temporal correlation.",
+    "violation": "A large dataset is encrypted, split into sub-threshold chunks, and trickled out under size/rate limits, defeating volume-based and content-based detection that never reassembles the pieces across time.",
+    "techniques": [
+      { "name": "Chunked, encrypted, rate-limited exfiltration", "attack_ids": ["T1030","T1560","T1029"], "cwe_ids": ["CWE-311"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-removable-media-exfil", "primitive": "P4", "kind": "classic", "source": ["human","host"], "target": ["host"],
+    "maturity": "mature", "tactics": ["TA0010"], "classic_branches": ["Exfiltration"],
+    "trust_assumption": "The endpoint trusts a mounted USB / removable volume as authorized local storage whose write operations are ordinary file activity inside the security boundary.",
+    "violation": "Data is copied to removable media and physically carried out, exfiltrating across an air gap or around network DLP entirely because the device inherits the trust of a logged-on user at a sanctioned workstation.",
+    "techniques": [
+      { "name": "Exfiltration over removable / physical media", "attack_ids": ["T1052.001","T1025"], "cwe_ids": ["CWE-1273"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "C2-tier0-domain-admin", "primitive": "P2", "kind": "classic", "source": ["identity"], "target": ["ad","host","cloud"],
+    "maturity": "mature", "tactics": ["TA0040"], "classic_branches": ["Impact"],
+    "trust_assumption": "Every domain-joined resource trusts a Domain Admin / Tier-0 principal absolutely — its tickets and tokens are honored everywhere without question as the root of directory authority.",
+    "violation": "Once a Tier-0 credential or Kerberos golden ticket is held, the attacker exercises unconditional control over all domain resources, the forged or stolen identity granting impact across the entire estate.",
+    "techniques": [
+      { "name": "Domain Admin / Tier-0 takeover (DCSync, golden ticket, full estate control)", "attack_ids": ["T1003.006","T1558.001","T1098"], "cwe_ids": ["CWE-269"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-crown-jewel-access", "primitive": "P2", "kind": "classic", "source": ["identity","agent"], "target": ["cloud","vectorstore","doc"],
+    "maturity": "mature", "tactics": ["TA0040"], "classic_branches": ["Impact"],
+    "trust_assumption": "Crown-jewel data stores trust that any principal holding a valid authorization grant has a legitimate business need for the PII, IP, or financial records it can read.",
+    "violation": "An over-broad or compromised grant is exercised to reach and stage the organization's most sensitive datasets, the bare presence of authorization mistaken for entitlement to the crown jewels.",
+    "techniques": [
+      { "name": "Crown-jewel data access (PII / IP / financial record staging)", "attack_ids": ["T1530","T1213","T1005"], "cwe_ids": ["CWE-285"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-business-process-disruption", "primitive": "P6", "kind": "classic", "source": ["identity","human"], "target": ["cloud","host"],
+    "maturity": "available", "tactics": ["TA0040"], "classic_branches": ["Impact"],
+    "trust_assumption": "A business workflow trusts that an authenticated operator acting at the right step and time intends the operation, with no out-of-band check that the state transition is legitimate.",
+    "violation": "An attacker abuses authorized access to halt, corrupt, or reorder a critical business process — stopping pipelines, altering state, denying availability — because the workflow conflates authentication with legitimate intent at that moment.",
+    "techniques": [
+      { "name": "Business-process disruption / availability denial", "attack_ids": ["T1489","T1531","T1486"], "cwe_ids": ["CWE-840"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "C2-fraudulent-transaction", "primitive": "P2", "kind": "classic", "source": ["identity","human"], "target": ["cloud","human"],
+    "maturity": "available", "tactics": ["TA0040"], "classic_branches": ["Impact"],
+    "trust_assumption": "The financial workflow trusts that a request approved by an authenticated operator with the right role is a legitimate, intended transaction requiring no independent confirmation of the counterparty.",
+    "violation": "An attacker with operator access or session control initiates and self-approves a fraudulent wire / payment, the authenticated approval laundering a theft into a sanctioned transaction the controls were built to honor.",
+    "techniques": [
+      { "name": "Fraudulent wire transfer / payment fraud path", "attack_ids": ["T1657"], "cwe_ids": ["CWE-602"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "available", "origin": "seed" }
+]

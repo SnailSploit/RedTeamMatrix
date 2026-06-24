@@ -1,0 +1,20 @@
+{
+  "name": "seammap",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Seam-based red-team trust hypergraph, self-auditing for gaps.",
+  "scripts": {
+    "build": "node src/build.ts",
+    "validate": "node src/validate.ts",
+    "spawn-demo": "node src/spawn-demo.ts",
+    "shot": "node shot.cjs"
+  },
+  "dependencies": {
+    "cytoscape": "3.30.2"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.2.0"
+  },
+  "comment": "cytoscape is vendored at web/vendor/cytoscape.min.js so the site is fully static/offline; the dep just pins the version. puppeteer is dev-only (shot.cjs renders the five views headless for verification)."
+}

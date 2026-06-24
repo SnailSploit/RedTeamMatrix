@@ -1,0 +1,28 @@
+{
+  "$schema": "Principals = nodes of the trust hypergraph. class in {substrate, human, defense, broker, conduit}. era_introduced = year the trust surface became real. maturity in {mature, emerging, frontier}. This set is a SEED and is expandable; adding a node auto-spawns frontier gap edges (see gap-engine auto-spawn rule).",
+  "principals": [
+    { "id": "host",        "name": "Host / Endpoint",            "class": "substrate", "era_introduced": 1970, "maturity": "mature",   "note": "OS, processes, local memory, peripherals." },
+    { "id": "ad",          "name": "Active Directory",           "class": "substrate", "era_introduced": 2000, "maturity": "mature",   "note": "Domain trust, Kerberos, AD CS, delegation." },
+    { "id": "network",     "name": "Network",                    "class": "substrate", "era_introduced": 1969, "maturity": "mature",   "note": "L2-L7 transit, proxies, egress, transit trust." },
+    { "id": "cloud",       "name": "Cloud Control Plane",        "class": "substrate", "era_introduced": 2006, "maturity": "mature",   "note": "AWS/Azure/GCP IAM, metadata, control APIs." },
+    { "id": "container",   "name": "Container / K8s",            "class": "substrate", "era_introduced": 2014, "maturity": "mature",   "note": "Image, runtime, orchestrator, ServiceAccount." },
+    { "id": "supplychain", "name": "Supply Chain / Build",       "class": "substrate", "era_introduced": 2015, "maturity": "mature",   "note": "Registries, CI/CD, dependencies, artifacts." },
+    { "id": "identity",    "name": "Identity & Federation",      "class": "substrate", "era_introduced": 2014, "maturity": "emerging", "note": "Entra/SAML/OAuth/OIDC. A full peer node: it bridges trust across every other substrate, not a leaf." },
+    { "id": "agent",       "name": "AI Agent",                   "class": "substrate", "era_introduced": 2023, "maturity": "frontier", "note": "LLM-driven autonomous actor. A parser with no grammar." },
+    { "id": "mcp",         "name": "MCP / Tool-Broker",          "class": "broker",    "era_introduced": 2024, "maturity": "frontier", "note": "Holds creds to N backends; selects tools from model output. Confused deputy by construction." },
+    { "id": "vectorstore", "name": "Vector Store / RAG Index",   "class": "substrate", "era_introduced": 2023, "maturity": "emerging", "note": "Write-side open (ingestion), read-side privileged (query-time injection into context)." },
+    { "id": "memory",      "name": "Agent Long-Term Memory",     "class": "substrate", "era_introduced": 2024, "maturity": "frontier", "note": "Write-once, trigger-many, cross-session. The agent polls its own state." },
+    { "id": "human",       "name": "Human Operator / User",      "class": "human",     "era_introduced": 0,    "maturity": "mature",   "note": "The principal whose scope and judgment the agent borrows." },
+    { "id": "soc",         "name": "SOC / Defense",              "class": "defense",   "era_introduced": 2005, "maturity": "emerging", "note": "Detection stack, increasingly ML/LLM. A parser pointed at telemetry." },
+    { "id": "doc",         "name": "Document / File",            "class": "conduit",   "era_introduced": 1990, "maturity": "mature",   "note": "Text-ingress conduit: any file is potential control for an LLM." },
+    { "id": "web",         "name": "Web / Fetch",                "class": "conduit",   "era_introduced": 1991, "maturity": "mature",   "note": "Untrusted read surface; fetch/browse ingress." },
+    { "id": "email",       "name": "Email / Messaging",          "class": "conduit",   "era_introduced": 1971, "maturity": "mature",   "note": "Delivery + text-ingress conduit." },
+    { "id": "ot",          "name": "OT / ICS / SCADA",           "class": "substrate", "era_introduced": 1975, "maturity": "mature",   "note": "PLCs, engineering workstations, field buses (Modbus/DNP3/S7). Insecure-by-design; safety-critical." },
+    { "id": "mobile",      "name": "Mobile (iOS / Android)",     "class": "substrate", "era_introduced": 2008, "maturity": "mature",   "note": "Apps, MDM/profiles, IPC/intents, mobile session tokens." },
+    { "id": "hardware",    "name": "Hardware / IoT / Firmware",  "class": "substrate", "era_introduced": 1995, "maturity": "mature",   "note": "Firmware, secure boot, debug interfaces (JTAG/UART), side channels." },
+    { "id": "auto",        "name": "Automotive / CAN",           "class": "substrate", "era_introduced": 2010, "maturity": "emerging", "note": "CAN bus, ECUs, key fobs (PKES), telematics/OTA." },
+    { "id": "wireless",    "name": "Wireless / RF",              "class": "substrate", "era_introduced": 1999, "maturity": "mature",   "note": "Wi-Fi, Bluetooth/BLE, RFID/NFC, SDR-reachable RF medium." },
+    { "id": "chain",       "name": "Blockchain / Smart Contract","class": "substrate", "era_introduced": 2015, "maturity": "emerging", "note": "Smart contracts, bridges, oracles, wallets/key custody, DeFi, on-chain governance, DePIN." },
+    { "id": "pnt",         "name": "PNT / GNSS / Space-Ground",  "class": "substrate", "era_introduced": 1995, "maturity": "mature",   "note": "Positioning/navigation/timing (GPS/GNSS), satellite links, ground stations, time-sync dependents." }
+  ]
+}

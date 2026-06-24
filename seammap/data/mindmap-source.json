@@ -1,0 +1,70 @@
+{
+  "$schema": "Authoritative thoroughness checklist: the full leaf enumeration of the source hackinarticles 'Red Teaming' mind map, transcribed verbatim. validate.ts asserts EVERY leaf is re-homed to >=1 seam (keyword/technique match) or its branch is declared honest-na. This is the enforcement that 'new does not cancel old' AND 'nothing is silently dropped' — the map cannot regress below the source.",
+  "branches": [
+    { "n": 1, "name": "Planning & Scoping", "leaves": [
+      "Rules of Engagement (RoE)", "Scope & Targets (in/out)", "Objectives / Crown Jewels", "Threat Modeling",
+      "Legal Authorization & NDA", "Communication Plan / Trusted Agents", "Deconfliction Procedures", "Success Criteria / KPIs" ] },
+    { "n": 2, "name": "Reconnaissance", "leaves": [
+      "Google Dorking", "Shodan / Censys / FOFA", "LinkedIn / Social Media", "GitHub / GitLab leaks", "Pastebin / Breach-data",
+      "WHOIS / DNS history", "Wayback Machine", "Service / Banner Grabbing", "Subdomain enumeration", "DNS Zone Transfer",
+      "Web crawling", "Tech stack fingerprinting", "Employee enumeration", "Org chart mapping", "Physical site survey" ] },
+    { "n": 3, "name": "Initial Access", "leaves": [
+      "Spear phishing (attachment / link)", "Whaling", "Vishing / Smishing", "OAuth consent phishing", "Pretexting",
+      "Web vulns (RCE, SSRF, SQLi, deserialization)", "VPN / Citrix / Edge appliance CVEs", "Exposed RDP / SSH",
+      "Supply Chain", "Valid Accounts (breach creds / password spray)", "Drive-by Compromise / Watering Hole",
+      "USB drop / HID attacks", "Tailgating / Badge cloning", "Lock picking", "Rogue access point / Wi-Fi pineapple" ] },
+    { "n": 4, "name": "Execution", "leaves": [
+      "PowerShell / cmd / WMIC", "Bash / Python / Perl", "Scheduled Task / Cron", "Native API / WSUS",
+      "Office Macros / VBA / XLM", "Container / serverless exec" ] },
+    { "n": 5, "name": "Persistence", "leaves": [
+      "Registry Run keys / Startup folder", "Scheduled Tasks / Cron", "Services (new / hijack)", "WMI Event Subscription",
+      "DLL Search Order Hijack / Sideloading", "Bootkit / Rootkit", "Account Manipulation (SSH keys, cloud IAM)",
+      "Web Shells", "Golden / Silver Ticket" ] },
+    { "n": 6, "name": "Privilege Escalation", "leaves": [
+      "Kernel / OS exploits", "Token Impersonation / SeImpersonate", "UAC Bypass", "Unquoted Service Path",
+      "Weak Service / File Permissions", "Sudo misconfig / SUID binaries", "Linux Capabilities abuse",
+      "Cloud privesc (IAM role chaining)", "Container escape" ] },
+    { "n": 7, "name": "Defense Evasion", "leaves": [
+      "Obfuscation (Invoke-Obfuscation, AMSI bypass)", "Process Injection / Hollowing", "Reflective DLL / PE loading",
+      "Disable / Tamper EDR (BYOVD, hooking)", "Living off the Land (LOLBAS / GTFOBins)", "Timestomping",
+      "Log clearing", "DNS over HTTPS / Domain fronting" ] },
+    { "n": 8, "name": "Credential Access", "leaves": [
+      "LSASS dumping (Mimikatz)", "Kerberoasting / AS-REP Roasting", "DCSync / DCShadow", "NTDS.dit extraction",
+      "Password spraying / Brute force", "Credential phishing portals (Evilginx)", "Browser / cookie / session theft",
+      "Keylogging", "Cloud token theft (AWS keys, Azure tokens)" ] },
+    { "n": 9, "name": "Discovery", "leaves": [
+      "AD enumeration (BloodHound, SharpHound)", "Network scanning (internal Nmap)", "SMB / share enumeration",
+      "Cloud enumeration (ScoutSuite, Pacu, ROADrecon)", "Process / service / user discovery", "Trust relationships / forest mapping" ] },
+    { "n": 10, "name": "Lateral Movement", "leaves": [
+      "Pass-the-Hash / Pass-the-Ticket", "WMI / WinRM / PsExec", "RDP hijacking", "SSH pivoting",
+      "DCOM lateral movement", "Cloud pivoting (assume-role chaining)", "Tunneling (Chisel, Ligolo, SOCKS proxy)" ] },
+    { "n": 11, "name": "Collection", "leaves": [
+      "File / share staging", "Email / mailbox harvesting", "Database dumps", "Screenshots / clipboard capture",
+      "Source code repos (GitLab, Bitbucket)", "Cloud storage (S3, blob, GCS)" ] },
+    { "n": 12, "name": "Command and Control", "leaves": [
+      "Frameworks (Cobalt Strike, Sliver, Mythic, Havoc, Brute Ratel, Empire)", "HTTPS / HTTP beacon", "DNS tunneling",
+      "ICMP", "Domain fronting / CDN", "Slack / Discord / Telegram C2", "Redirectors / Malleable profiles" ] },
+    { "n": 13, "name": "Exfiltration", "leaves": [
+      "HTTPS POST to attacker (Dropbox, Drive, Mega)", "Cloud upload", "DNS exfiltration", "Steganography",
+      "Encrypted & chunked transfer", "Physical (removable media)" ] },
+    { "n": 14, "name": "Impact", "leaves": [
+      "Domain Admin / Tier-0 compromise", "Crown jewel access (PII, IP, financials)", "Ransomware simulation",
+      "Business process disruption", "Demonstrated wire transfer / fraud path" ] },
+    { "n": 15, "name": "Frameworks & Methodologies", "leaves": [
+      "MITRE ATT&CK", "Cyber Kill Chain", "TIBER-EU / CREST / CBEST", "PTES", "OWASP WSTG / MASTG", "NIST SP 800-115", "Unified Kill Chain" ] },
+    { "n": 16, "name": "Tooling", "leaves": [
+      "Recon tooling", "Scanning tooling", "Web tooling", "AD tooling", "Post-Ex tooling", "C2 tooling",
+      "Phishing tooling", "Wireless tooling", "Cloud tooling", "Container tooling" ] },
+    { "n": 17, "name": "Infrastructure / OPSEC", "leaves": [
+      "Attacker infra (VPS, redirectors, CDN)", "Domain categorization & aging", "TLS certs (Let's Encrypt)",
+      "VPN / Tor egress hygiene", "Burner identities & sock puppets", "Operator OPSEC checklists" ] },
+    { "n": 18, "name": "Adversary Emulation", "leaves": [
+      "Threat intel-driven TTP selection", "Atomic Red Team", "CALDERA", "Purple team exercises", "Detection engineering feedback loop" ] },
+    { "n": 19, "name": "Specialized Domains", "leaves": [
+      "Cloud (AWS / Azure / GCP)", "Kubernetes / Container", "Active Directory / Entra ID", "OT / ICS / SCADA",
+      "Mobile (iOS / Android)", "Hardware / IoT / Firmware", "AI / LLM red teaming", "Wireless (Wi-Fi, Bluetooth, RFID, SDR)", "Automotive / CAN bus" ] },
+    { "n": 20, "name": "Reporting & Debrief", "leaves": [
+      "Executive summary", "Attack narrative / timeline", "Findings & CVSS / risk rating", "Evidence (screenshots, hashes, logs)",
+      "MITRE ATT&CK mapping", "Remediation recommendations", "Detection / response gaps", "Purple team regression", "Retest / validation" ] }
+  ]
+}

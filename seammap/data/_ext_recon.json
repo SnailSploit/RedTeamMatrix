@@ -1,0 +1,143 @@
+[
+  { "id": "R-search-engine-index", "primitive": "P2", "kind": "classic", "source": ["web"], "target": ["host","web"],
+    "maturity": "mature", "tactics": ["TA0043"], "classic_branches": ["Reconnaissance"],
+    "trust_assumption": "A site assumes whatever a crawler indexes is content it intended to publish, so anything reachable by URL is fair game for public search.",
+    "violation": "Crafted operator queries surface admin panels, config files, and listings the owner never meant to be discoverable, turning the index into a vulnerability catalog.",
+    "techniques": [
+      { "name": "Google Dorking (advanced search-operator harvesting)", "attack_ids": ["T1593.002"], "cwe_ids": ["CWE-200"] },
+      { "name": "Tech stack fingerprinting (Wappalyzer/BuiltWith/favicon hashing)", "attack_ids": ["T1592.002","T1594"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "none", "origin": "seed" },
+
+  { "id": "R-repo-history-secrets", "primitive": "P3", "kind": "classic", "source": ["web","supplychain"], "target": ["identity","cloud"],
+    "maturity": "mature", "tactics": ["TA0043"], "classic_branches": ["Reconnaissance"],
+    "trust_assumption": "A public repository is trusted to contain no live secrets because developers believe deleting a file or rotating a key removes it from history.",
+    "violation": "Commit history and forks are mined for still-valid credentials, tokens, and keys whose forgeable 'it was removed' provenance never actually revoked them.",
+    "techniques": [
+      { "name": "GitHub/GitLab leak mining (TruffleHog/Gitleaks/git-dorks)", "attack_ids": ["T1593.003","T1552.001"], "cwe_ids": ["CWE-540","CWE-312"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "R-breach-paste-creds", "primitive": "P3", "kind": "classic", "source": ["web"], "target": ["identity","human"],
+    "maturity": "mature", "tactics": ["TA0043"], "classic_branches": ["Reconnaissance"],
+    "trust_assumption": "An authentication system trusts a username/password pair as proof of identity regardless of where that pair has previously appeared.",
+    "violation": "Reused credentials from prior breach dumps and pastes are replayed against the target, the leaked-elsewhere origin laundered into a valid login.",
+    "techniques": [
+      { "name": "Pastebin / breach-data credential harvesting", "attack_ids": ["T1589.001","T1597.002"], "cwe_ids": ["CWE-521"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "R-dns-zone-axfr", "primitive": "P2", "kind": "classic", "source": ["network"], "target": ["network","host"],
+    "maturity": "mature", "tactics": ["TA0043"], "classic_branches": ["Reconnaissance"],
+    "trust_assumption": "A misconfigured DNS server trusts any resolver that asks to be a secondary, serving the entire zone via AXFR as if to a peer.",
+    "violation": "An arbitrary external client requests a zone transfer and receives the full internal hostname inventory the zone was never meant to hand to strangers.",
+    "techniques": [
+      { "name": "DNS zone transfer (AXFR via dig/host)", "attack_ids": ["T1590.002"], "cwe_ids": ["CWE-200"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "R-dns-domain-footprint", "primitive": "P3", "kind": "classic", "source": ["web","network"], "target": ["network","host"],
+    "maturity": "mature", "tactics": ["TA0043"], "classic_branches": ["Reconnaissance"],
+    "trust_assumption": "Registration records, historical DNS, and certificate-transparency logs are treated as benign public bookkeeping rather than a map of the organization's footprint.",
+    "violation": "Aggregated WHOIS history, passive DNS, and subdomain enumeration reconstruct hidden and forgotten assets the owner assumed were obscure.",
+    "techniques": [
+      { "name": "WHOIS / DNS-history footprinting", "attack_ids": ["T1590.001","T1596.001"], "cwe_ids": [] },
+      { "name": "Subdomain enumeration (Amass/Subfinder/CT logs)", "attack_ids": ["T1590.002","T1596.002"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "none", "origin": "seed" },
+
+  { "id": "R-web-archive-crawl", "primitive": "P3", "kind": "classic", "source": ["web"], "target": ["web","host"],
+    "maturity": "mature", "tactics": ["TA0043"], "classic_branches": ["Reconnaissance"],
+    "trust_assumption": "An owner trusts that removing or changing content takes it offline, unaware that crawlers and archives preserve a forgeable-immutable snapshot of the old state.",
+    "violation": "Archived pages, old endpoints, and crawled link graphs resurface deleted parameters, paths, and data the live site no longer exposes.",
+    "techniques": [
+      { "name": "Wayback Machine / archive mining", "attack_ids": ["T1596.005"], "cwe_ids": ["CWE-200"] },
+      { "name": "Web crawling / spidering (gospider/katana/hidden-endpoint discovery)", "attack_ids": ["T1594"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "none", "origin": "seed" },
+
+  { "id": "R-physical-site-survey", "primitive": "P2", "kind": "classic", "source": ["human"], "target": ["host","human"],
+    "maturity": "mature", "tactics": ["TA0043"], "classic_branches": ["Reconnaissance"],
+    "trust_assumption": "A physical premises trusts that proximity and visibility to outsiders reveal nothing actionable about badges, layouts, wireless, or staff routines.",
+    "violation": "On-site observation captures badge formats, entry points, AP signals, and tailgating opportunities that a casual presence was assumed unable to gather.",
+    "techniques": [
+      { "name": "Physical site survey (badge/ingress/wireless recon)", "attack_ids": ["T1591.004","T1596"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 0, "automatable": 0, "ai_augmentable": 0 }, "tooling_status": "partial", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "R-ad-trust-graph", "primitive": "P2", "kind": "classic", "source": ["host","ad"], "target": ["ad"],
+    "maturity": "mature", "tactics": ["TA0007"], "classic_branches": ["Discovery"],
+    "trust_assumption": "Active Directory trusts any authenticated domain user to read the directory broadly enough to compute every ACL, group, and session relationship for usability.",
+    "violation": "A single low-privilege account derives the complete attack-path graph and shortest route to Domain Admin the directory never meant any one principal to see whole.",
+    "techniques": [
+      { "name": "AD trust-graph enumeration (BloodHound/SharpHound)", "attack_ids": ["T1087.002","T1069.002","T1482"], "cwe_ids": ["CWE-200"] },
+      { "name": "Forest/domain trust mapping", "attack_ids": ["T1482"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "R-internal-net-scan", "primitive": "P2", "kind": "classic", "source": ["host"], "target": ["network","host"],
+    "maturity": "mature", "tactics": ["TA0007"], "classic_branches": ["Discovery"],
+    "trust_assumption": "A flat internal network trusts that anything already inside the perimeter is allowed to reach and probe every other host and port.",
+    "violation": "A single foothold sweeps the internal address space and service ports, mapping reachable targets the segmentation model assumed it could not enumerate.",
+    "techniques": [
+      { "name": "Internal network scanning (Nmap/masscan host & port discovery)", "attack_ids": ["T1046","T1018"], "cwe_ids": ["CWE-200"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "R-smb-share-enum", "primitive": "P2", "kind": "classic", "source": ["host"], "target": ["host","ad"],
+    "maturity": "mature", "tactics": ["TA0007"], "classic_branches": ["Discovery"],
+    "trust_assumption": "An SMB/RPC service trusts a null or low-privilege session to list shares, users, and policies because that enumeration is treated as ordinary file-browsing convenience.",
+    "violation": "A near-anonymous session inventories shares, accounts, and ACLs across hosts, exposing the data and identity layout the server assumed required real authorization.",
+    "techniques": [
+      { "name": "SMB / share enumeration (CrackMapExec/enum4linux/smbclient)", "attack_ids": ["T1135","T1087.001","T1018"], "cwe_ids": ["CWE-200"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "R-cloud-iam-enum", "primitive": "P2", "kind": "classic", "source": ["cloud","identity"], "target": ["cloud"],
+    "maturity": "mature", "tactics": ["TA0007"], "classic_branches": ["Discovery"],
+    "trust_assumption": "Cloud control-plane APIs trust any valid principal to enumerate IAM, resource inventory, and network topology because read/list calls are treated as harmless management operations.",
+    "violation": "A foothold credential lists the entire account's roles, trust policies, and misconfigurations, revealing privilege-escalation paths the IAM model assumed stayed compartmentalized.",
+    "techniques": [
+      { "name": "Cloud enumeration (ScoutSuite/Pacu/ROADrecon)", "attack_ids": ["T1580","T1526","T1087.004","T1069.003"], "cwe_ids": ["CWE-200"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "R-host-local-enum", "primitive": "P2", "kind": "classic", "source": ["host"], "target": ["host"],
+    "maturity": "mature", "tactics": ["TA0007"], "classic_branches": ["Discovery"],
+    "trust_assumption": "An operating system trusts any code already running in a user session to enumerate local processes, services, and accounts as routine self-inspection.",
+    "violation": "An attacker's in-session process profiles running software, privileged services, and logged-on users to plan escalation the OS treats as benign introspection.",
+    "techniques": [
+      { "name": "Process / service / user discovery", "attack_ids": ["T1057","T1007","T1033","T1087.001"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "available", "origin": "seed" },
+
+  { "id": "R-share-mailbox-staging", "primitive": "P2", "kind": "classic", "source": ["host","email"], "target": ["host","email"],
+    "maturity": "mature", "tactics": ["TA0009"], "classic_branches": ["Collection"],
+    "trust_assumption": "File shares and mailboxes trust an authenticated principal to bulk-read and stage their contents because access control is assumed to bound what gets copied, not the act of copying.",
+    "violation": "A foothold sweeps shares and mailboxes wholesale into a staging area, exfiltrating documents and correspondence at a scale the per-file permission model never anticipated.",
+    "techniques": [
+      { "name": "File / share staging", "attack_ids": ["T1039","T1074.001","T1005"], "cwe_ids": [] },
+      { "name": "Email / mailbox harvesting", "attack_ids": ["T1114.001","T1114.002"], "cwe_ids": [] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "R-datastore-bulk-export", "primitive": "P2", "kind": "classic", "source": ["host","cloud"], "target": ["host","cloud"],
+    "maturity": "mature", "tactics": ["TA0009"], "classic_branches": ["Collection"],
+    "trust_assumption": "Databases, source repositories, and cloud object stores trust a credentialed reader to export them in full because read access is conflated with authorized bulk extraction.",
+    "violation": "A single valid grant dumps entire databases, code repos, and storage buckets, copying out the whole datastore the access model assumed would only be touched record-by-record.",
+    "techniques": [
+      { "name": "Database dumps", "attack_ids": ["T1005","T1213"], "cwe_ids": ["CWE-200"] },
+      { "name": "Source code repo collection (GitLab/Bitbucket)", "attack_ids": ["T1213.003"], "cwe_ids": [] },
+      { "name": "Cloud storage collection (S3/blob/GCS)", "attack_ids": ["T1530"], "cwe_ids": ["CWE-200"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 1 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" },
+
+  { "id": "R-session-surface-capture", "primitive": "P2", "kind": "classic", "source": ["host"], "target": ["host","human"],
+    "maturity": "mature", "tactics": ["TA0009"], "classic_branches": ["Collection"],
+    "trust_assumption": "A desktop session trusts any process running within it to read the framebuffer and clipboard, since on-screen and copied data are assumed visible only to the legitimate user.",
+    "violation": "Malicious in-session code grabs screenshots and clipboard contents, capturing credentials and sensitive data the windowing model never isolated from co-resident processes.",
+    "techniques": [
+      { "name": "Screenshots / clipboard capture", "attack_ids": ["T1113","T1115"], "cwe_ids": ["CWE-200"] }
+    ],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "mature", "detection_status": "partial", "origin": "seed" }
+]
