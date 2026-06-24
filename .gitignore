@@ -10,3 +10,11 @@ seammap/artshot.cjs
 seammap/opt-view.png
 seammap/oshot.cjs
 seammap/build_phys2.py
+seammap/adapter.json
+seammap/corpus.json
+seammap/*.eml
+seammap/*.wav
+seammap/*.wav.asr
+seammap/lab.jpg
+seammap/memory.json
+seammap/scratchpad/
