@@ -1,0 +1,192 @@
+{
+  "C-recon-infoleak": {
+    "name": "Recon info-leak audit — passive HTTP headers/metadata banner enumeration (owned host)",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "An OWNED test web endpoint at 127.0.0.1:8080 (or your scoped asset). curl present. No auth, GET only. Use a local mock if no asset: 'python3 -m http.server 8080'.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-ASSET ONLY. Read-only: a single HEAD/GET, no payloads, no fuzzing.\nset -euo pipefail\nTARGET=\"${1:-http://127.0.0.1:8080/}\"\necho \"[*] Passive info-leak audit against OWNED target: $TARGET\"\nHDRS=$(curl -s -D - -o /dev/null --max-time 5 \"$TARGET\" || true)\necho \"$HDRS\"\nLEAK=0\nfor h in 'Server:' 'X-Powered-By:' 'X-AspNet-Version:' 'X-Generator:' 'X-Debug'; do\n  if echo \"$HDRS\" | grep -qi \"$h\"; then echo \"[!] LEAK header present: $h\"; LEAK=1; fi\ndone\nfor p in '.git/HEAD' 'server-status' 'phpinfo.php' '.env'; do\n  CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 \"${TARGET%/}/$p\" || echo 000)\n  if [ \"$CODE\" = \"200\" ]; then echo \"[!] LEAK metadata reachable: /$p ($CODE)\"; LEAK=1; fi\ndone\n[ \"$LEAK\" = 1 ] && echo 'RESULT: VULNERABLE (information disclosure surface present)' || echo 'RESULT: PASS (no obvious banner/metadata leak)'\n",
+    "success_criterion": "Script prints 'VULNERABLE' when a version-disclosing header (Server/X-Powered-By) or a sensitive metadata path (.git/HEAD, .env, server-status) returns 200 — confirming the recon info-leak seam.",
+    "cleanup": "none (read-only); stop the local mock http.server if started.",
+    "safety": "Single read-only HEAD/GET per path, owned target only, no fuzzing or payloads, 5s timeout."
+  },
+  "C-osint-correlation": {
+    "name": "OSINT correlation — passive identity/email pivot query patterns (manual, no automated collection)",
+    "language": "text",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "Operator workstation with a browser. Targets are OWNED brand/domain (example.test) only. No scraping tooling; queries run by hand, one at a time, against public surfaces you are authorized to assess.",
+    "script": "OSINT CORRELATION PLAYBOOK (PASSIVE, MANUAL) — owned brand example.test only.\n\nGoal: demonstrate that public fragments correlate into an attack-useful identity graph.\n\nSeed: corp domain example.test, brand 'ACME-LAB' (your own).\n\n1. Email/username pivots (run by hand in browser, no bulk tooling):\n   - site:linkedin.com \"ACME-LAB\"          (employee names -> derive user@example.test)\n   - \"@example.test\" -filetype:pdf          (exposed corp addresses)\n   - intext:\"example.test\" site:github.com  (devs referencing the org)\n\n2. Naming-convention inference (correlation step):\n   - Observe firstname.lastname@example.test in any public footer/PDF.\n   - Cross-ref with LinkedIn name list -> predict full employee email roster.\n\n3. Infra pivot (passive):\n   - crt.sh/?q=example.test                  (subdomains via CT logs, no scanning)\n   - search engine: \"example.test\" \"powered by\" (tech stack hints)\n\n4. Correlation output (the finding): a single person row links\n   {full name, role, predicted email, public github handle, CT-log subdomain they own}.\n\nVERDICT: VULNERABLE if >=3 independent public sources fuse into one correlated\nidentity record per target without any authenticated/active access.\n\nNOTE: passive only. Do NOT automate mass collection, scrape behind auth, or query non-owned brands.",
+    "success_criterion": "A single correlated identity record (name + role + predicted email + public handle + owned subdomain) is assembled from 3+ independent passive public sources, confirming the OSINT-correlation seam.",
+    "cleanup": "none (passive OSINT; nothing written remotely).",
+    "safety": "Manual passive queries only, owned brand/domain, no automated scraping or authenticated access."
+  },
+  "C-discovery": {
+    "name": "Discovery — read-only service/host fingerprint on an OWNED loopback service",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "An OWNED service bound to 127.0.0.1 (e.g. 'python3 -m http.server 8080'). nmap optional; falls back to /dev/tcp. Scope = loopback only.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-ASSET ONLY. Read-only TCP connect discovery on loopback. No scripts/exploits.\nset -uo pipefail\nHOST=\"${1:-127.0.0.1}\"\ncase \"$HOST\" in 127.*|::1|localhost) : ;; *) echo 'REFUSING: target not loopback. Edit scope deliberately.'; exit 2;; esac\nPORTS=\"22 80 443 3306 5432 6379 8080 8443\"\necho \"[*] Discovery (connect-only) on OWNED $HOST\"\nFOUND=0\nfor p in $PORTS; do\n  if (echo > \"/dev/tcp/$HOST/$p\") 2>/dev/null; then echo \"[+] open: $HOST:$p\"; FOUND=$((FOUND+1)); fi\ndone\nfor p in 8080 80 8443; do\n  if (echo > \"/dev/tcp/$HOST/$p\") 2>/dev/null; then\n    printf 'HEAD / HTTP/1.0\\r\\n\\r\\n' | timeout 3 bash -c \"cat >/dev/tcp/$HOST/$p; cat </dev/tcp/$HOST/$p\" 2>/dev/null | head -3 || true; break; fi\ndone\n[ \"$FOUND\" -gt 0 ] && echo \"RESULT: VULNERABLE ($FOUND reachable service(s) discovered)\" || echo 'RESULT: PASS (no listening services discovered)'\n",
+    "success_criterion": "Script enumerates at least one open port and a banner line on the owned loopback host, confirming the discovery seam (services are reachable/fingerprintable).",
+    "cleanup": "none (read-only TCP connect); stop the local mock service if started.",
+    "safety": "TCP connect only (no SYN/exploit/NSE), hard-refuses non-loopback targets, short timeouts."
+  },
+  "C-collection": {
+    "name": "Collection — read-only sensitive-file discovery sweep on the operator's OWNED host",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "Run on the operator's OWNED workstation/lab VM. Read-only filesystem listing under a chosen root (default $HOME). No exfil, no network.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-HOST ONLY. Read-only: lists paths + sizes of likely-sensitive files. Never opens/reads contents.\nset -uo pipefail\nROOT=\"${1:-$HOME}\"\necho \"[*] Collection-surface sweep (metadata only) under: $ROOT\"\nHITS=0\nwhile IFS= read -r f; do\n  echo \"[+] candidate: $f ($(stat -c%s \"$f\" 2>/dev/null || echo '?') bytes)\"; HITS=$((HITS+1))\ndone < <(find \"$ROOT\" -maxdepth 4 -type f \\( -name '*.pem' -o -name 'id_rsa' -o -name 'id_ed25519' -o -name '*.kdbx' -o -name '.env' -o -name '*.ovpn' -o -name 'credentials' -o -name '*.pfx' -o -name '.npmrc' \\) 2>/dev/null | head -50)\n[ \"$HITS\" -gt 0 ] && echo \"RESULT: VULNERABLE ($HITS collectible secret-bearing file(s) located)\" || echo 'RESULT: PASS (no obvious collection targets)'\n",
+    "success_criterion": "Script lists one or more secret-bearing file paths (keys, .env, kdbx, credentials) by name/size, confirming the collection seam — sensitive material is locatable for staging.",
+    "cleanup": "none (read-only; file contents are never opened).",
+    "safety": "Metadata-only listing (path+size via stat/find), no content reads, no network, owned host only."
+  },
+  "R-search-engine-index": {
+    "name": "Search-engine index exposure — passive Google/Bing dork query set (owned domain)",
+    "language": "text",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "Browser only. Restrict all 'site:' operators to your OWNED domain example.test. Queries are typed manually; no automated scraping or API mass-collection.",
+    "script": "SEARCH-ENGINE INDEX EXPOSURE — PASSIVE DORKS (owned domain example.test only).\n\nPurpose: confirm whether sensitive assets are publicly indexed (the recon seam).\nUsage: paste one query at a time into a search engine. Do NOT automate.\n\nA. Exposed files / listings\n   site:example.test ext:sql | ext:bak | ext:env | ext:log\n   site:example.test intitle:\"index of\" (passwd | backup | .git)\n   site:example.test ext:xls | ext:csv \"password\"\n\nB. Credentials / config leakage\n   site:example.test intext:\"BEGIN RSA PRIVATE KEY\"\n   site:example.test intext:\"aws_access_key_id\"\n   site:example.test inurl:wp-config | inurl:.env\n\nC. Admin / internal surfaces\n   site:example.test inurl:admin | inurl:login | inurl:phpmyadmin\n   site:example.test intitle:\"dashboard\" -www\n\nD. Code/secret platforms (scoped to your org strings)\n   site:github.com \"example.test\" (password | secret | token)\n   site:pastebin.com \"example.test\"\n\nVERDICT: VULNERABLE if any query returns a live indexed result exposing config,\ncredentials, backups, or an unauthenticated admin surface for the owned domain.\n\nNOTE: passive read-only browsing only; never run automated mass dorking or target non-owned domains.",
+    "success_criterion": "At least one dork returns a live indexed result exposing config/credentials/backups or an unauthenticated admin surface on the owned domain — confirming search-engine index exposure.",
+    "cleanup": "none (passive search queries).",
+    "safety": "Manual passive search queries scoped to owned domain; no automation, no third-party targets."
+  },
+  "R-repo-history-secrets": {
+    "name": "Repo-history secrets — gitleaks-style regex over git log -p on a LOCAL repo",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "Run inside an OWNED/local git repository. Uses git + grep only. Creates a throwaway repo with a FAKE secret in history if run with 'demo' arg.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-REPO ONLY. Read-only scan of LOCAL git history for secret patterns.\nset -uo pipefail\nif [ \"${1:-}\" = demo ]; then\n  D=$(mktemp -d); cd \"$D\"; git init -q; git config user.email a@b.test; git config user.name t\n  printf 'aws_secret_access_key=FAKEwJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY\\n' > conf.env\n  git add . >/dev/null; git commit -qm init\n  printf 'cleaned\\n' > conf.env; git add .; git commit -qm 'remove secret' >/dev/null\n  echo \"[*] demo repo: $D (FAKE secret committed then 'removed')\"\nfi\necho '[*] Scanning LOCAL git history (git log -p) for secret patterns...'\nPAT='(aws_secret_access_key|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|password[\"'\\'' ]*[:=]|xox[baprs]-[0-9A-Za-z-]+|ghp_[0-9A-Za-z]{36})'\nHITS=$(git log -p --all 2>/dev/null | grep -nEi \"$PAT\" | head -20 || true)\nif [ -n \"$HITS\" ]; then echo \"$HITS\"; echo 'RESULT: VULNERABLE (secrets recoverable from git history)'; else echo 'RESULT: PASS (no secret patterns in history)'; fi\n",
+    "success_criterion": "git log -p surfaces a secret pattern (e.g. aws_secret_access_key / private key / token) from a past commit even after deletion from HEAD — confirming the repo-history-secrets seam.",
+    "cleanup": "Remove the throwaway demo repo dir printed by the 'demo' run; otherwise none (read-only).",
+    "safety": "Read-only git history scan on a local owned repo; demo uses a clearly FAKE example key."
+  },
+  "R-breach-paste-creds": {
+    "name": "Breach/paste credential exposure — passive HIBP-style check against a LOCAL mock corpus",
+    "language": "python",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "No network. Uses a LOCAL mock 'breach corpus' file of FAKE hashes to demonstrate the k-anonymity lookup pattern used against owned email/domain identities.",
+    "script": "#!/usr/bin/env python3\n# AUTHORIZED OWNED-IDENTITY ONLY. Offline mock of the passive breach/paste credential-exposure check.\n# Demonstrates the k-anonymity SHA1-prefix lookup pattern (as used by HIBP) WITHOUT contacting any service.\nimport hashlib\n\nfake_breach = {hashlib.sha1(p.encode()).hexdigest().upper(): c for p, c in {\n    'Password123!': 4521, 'Summer2024': 99, 'CorrectHorse': 1}.items()}\n\nowned_candidates = ['Password123!', 'Tr0ub4dor&3-unique-xyz']\n\nexposed = 0\nfor cand in owned_candidates:\n    h = hashlib.sha1(cand.encode()).hexdigest().upper()\n    prefix, suffix = h[:5], h[5:]\n    bucket = {k[5:]: v for k, v in fake_breach.items() if k[:5] == prefix}\n    if suffix in bucket:\n        print('[!] EXPOSED: candidate matches breach corpus, seen %d times (prefix %s)' % (bucket[suffix], prefix))\n        exposed += 1\n    else:\n        print('[ ] not found: prefix %s' % prefix)\nprint('RESULT: VULNERABLE (owned credential found in breach corpus)' if exposed else 'RESULT: PASS (no exposure in mock corpus)')\n",
+    "success_criterion": "A candidate credential for an owned identity matches the breach corpus (printed 'EXPOSED' with a seen-count) using only a hash-prefix lookup — confirming the breach/paste credential-exposure seam.",
+    "cleanup": "none (offline, in-memory mock corpus).",
+    "safety": "Fully offline mock; demonstrates k-anonymity prefix pattern so full credentials never leave the host."
+  },
+  "R-dns-zone-axfr": {
+    "name": "DNS zone transfer (AXFR) — attempt against an OWNED test zone (local mock default)",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "dig present. Default target is a LOCAL bind/nsd test zone (127.0.0.1, zone lab.example.test) you control. Replace only with an OWNED, in-scope zone.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-ZONE ONLY. Read-only AXFR attempt against your own test resolver.\nset -uo pipefail\nNS=\"${1:-127.0.0.1}\"\nZONE=\"${2:-lab.example.test}\"\ncase \"$NS\" in 127.*|::1|localhost) : ;; *) echo '[!] Non-loopback NS supplied — ensure this zone is OWNED/in-scope before proceeding.';; esac\necho \"[*] Attempting AXFR for OWNED zone $ZONE @ $NS\"\nOUT=$(dig +noall +answer +time=5 +tries=1 AXFR \"$ZONE\" \"@$NS\" 2>/dev/null || true)\nif [ -n \"$OUT\" ] && echo \"$OUT\" | grep -q SOA; then\n  echo \"$OUT\" | head -40\n  N=$(echo \"$OUT\" | wc -l)\n  echo \"RESULT: VULNERABLE (zone transfer allowed — $N records disclosed)\"\nelse\n  echo 'RESULT: PASS (AXFR refused / no transfer)'\nfi\n",
+    "success_criterion": "dig AXFR returns the full record set (SOA + multiple RRs) for the owned zone, confirming the DNS-zone-AXFR seam (transfer is unrestricted).",
+    "cleanup": "none (read-only query); tear down the local test zone/nsd if stood up for the demo.",
+    "safety": "Single read-only AXFR with 5s timeout against an owned/loopback nameserver; warns on non-loopback NS."
+  },
+  "R-dns-domain-footprint": {
+    "name": "DNS domain footprint — passive record + CT-log subdomain enumeration (owned domain)",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "dig present; optional curl for crt.sh (passive CT logs). Scope = your OWNED domain example.test. No brute-force, no zone walking.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-DOMAIN ONLY. Passive footprint via standard resolver queries + public CT logs.\nset -uo pipefail\nD=\"${1:-example.test}\"\necho \"[*] Passive DNS footprint for OWNED domain: $D\"\nfor rr in A AAAA MX NS TXT SOA CAA; do\n  ANS=$(dig +short \"$rr\" \"$D\" 2>/dev/null)\n  [ -n \"$ANS\" ] && echo \"--- $rr ---\" && echo \"$ANS\"\ndone\necho '--- SPF/DMARC posture ---'\ndig +short TXT \"$D\" | grep -i 'v=spf1' || echo '(no SPF)'\ndig +short TXT \"_dmarc.$D\" | grep -i 'v=DMARC1' || echo '(no DMARC)'\necho '--- CT-log subdomains (passive, crt.sh) ---'\nSUBS=$(curl -s --max-time 8 \"https://crt.sh/?q=%25.$D&output=json\" 2>/dev/null | grep -oE '\"name_value\":\"[^\"]+\"' | cut -d'\"' -f4 | tr ',' '\\n' | sort -u | head -30 || true)\nif [ -n \"$SUBS\" ]; then echo \"$SUBS\"; echo \"RESULT: VULNERABLE (footprint discloses records/subdomains)\"; else echo 'RESULT: PASS (minimal passive footprint)'; fi\n",
+    "success_criterion": "Resolver answers plus CT-log results enumerate the domain's records and previously-unlisted subdomains, confirming the DNS-domain-footprint seam.",
+    "cleanup": "none (passive lookups only).",
+    "safety": "Standard resolver queries + public CT-log read only; no brute-force, no zone walking, owned domain."
+  },
+  "R-web-archive-crawl": {
+    "name": "Web-archive crawl — passive Wayback CDX recon for stale/sensitive URLs (owned domain)",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "curl present. Queries the public Wayback CDX API (read-only) for your OWNED domain example.test. No live crawling of the site itself.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-DOMAIN ONLY. Passive: reads public web-archive index, not the live site.\nset -uo pipefail\nD=\"${1:-example.test}\"\necho \"[*] Passive Wayback CDX recon for OWNED domain: $D\"\nURL=\"http://web.archive.org/cdx/search/cdx?url=${D}/*&output=text&fl=original,statuscode&collapse=urlkey&limit=500\"\nDATA=$(curl -s --max-time 12 \"$URL\" 2>/dev/null || true)\nif [ -z \"$DATA\" ]; then echo 'RESULT: PASS (no archived snapshots / archive unreachable)'; exit 0; fi\necho \"$DATA\" | wc -l | xargs echo '[*] archived URLs:'\necho '[*] interesting historical paths:'\nHITS=$(echo \"$DATA\" | grep -iE '(admin|login|backup|\\.env|\\.sql|api|config|\\.git|token|key)' | head -30 || true)\nif [ -n \"$HITS\" ]; then echo \"$HITS\"; echo 'RESULT: VULNERABLE (archive exposes stale sensitive endpoints/paths)'; else echo 'RESULT: PASS (no sensitive historical paths in archive)'; fi\n",
+    "success_criterion": "Wayback CDX returns historical URLs for the owned domain that reference sensitive paths (admin/.env/.git/api/backup), confirming the web-archive-crawl recon seam.",
+    "cleanup": "none (passive archive index read).",
+    "safety": "Reads the public archive index only (no requests to the live target), owned domain, 12s timeout."
+  },
+  "R-physical-site-survey": {
+    "name": "Physical site survey — documented authorized walkthrough procedure",
+    "language": "text",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "On-site physical engagement at a CONTRACTED/OWNED facility with written authorization, a get-out-of-jail letter, and a named point of contact. Daylight badge-visible conduct only.",
+    "script": "PHYSICAL SITE SURVEY — AUTHORIZED WALKTHROUGH PROCEDURE (observation only)\n\nPre-conditions: signed RoE naming building(s), dates, and scope; carry the authorization\nletter and emergency POC at all times; do NOT defeat locks, tailgate, or remove property.\n\n1. Perimeter (from public sidewalk / contracted lot):\n   - Photograph (where permitted) entry points, fence lines, loading docks.\n   - Note camera coverage gaps, propped doors, smoking-area side entrances.\n\n2. Reception / lobby (as an announced visitor):\n   - Observe badge type (prox/HID/QR), visitor log handling, turnstile vs. honor-system.\n   - Note exposed monitors, wall-mounted network jacks, unattended kiosks.\n\n3. Common areas (escorted):\n   - Look for whiteboards with creds/IPs, printed sheets, unlocked comms/MDF closets,\n     desk-drawer key locations, conference-room VC credentials on display.\n\n4. Tech/structured-cabling observation:\n   - Identify accessible network drops, VoIP phones (passthrough port), guest Wi-Fi SSIDs,\n     and whether a planted device could persist (out of scope to plant — observe only).\n\n5. Findings record (the deliverable): a table of\n   {location, weakness observed, attack it enables, photo ref, severity}.\n\nVERDICT: VULNERABLE if any unescorted route to a network drop, an unlocked comms\ncloset, or exposed credentials is documented during the authorized walkthrough.\n\nNOTE: observation-only. No lock bypass, no tailgating, no device implant, no PII capture.\nStop immediately and present authorization if challenged.",
+    "success_criterion": "The walkthrough log documents at least one exploitable physical weakness (unescorted network drop, unlocked comms closet, or exposed credential) confirming the physical-site-survey seam.",
+    "cleanup": "none (observation only); return any visitor badge and sign out.",
+    "safety": "Observation-only, written authorization carried, no lock bypass/tailgating/implant/PII capture."
+  },
+  "R-ad-trust-graph": {
+    "name": "AD trust graph — authorized SharpHound/BloodHound collection reference (lab AD)",
+    "language": "text",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "An OWNED/lab Active Directory (e.g. dc.lab.example.test) with a low-priv domain account you control. BloodHound CE + SharpHound collector. Read/LDAP-only collection methods.",
+    "script": "AD TRUST-GRAPH COLLECTION — AUTHORIZED LAB REFERENCE (read-only LDAP enumeration)\n\nScope: domain lab.example.test, DC at 10.0.0.10, low-priv account LAB\\\\svc-recon (FAKE).\n\n1. Collect (least-intrusive, read-only methods — avoid session/loggedon noise unless scoped):\n   SharpHound.exe --CollectionMethods DCOnly,Trusts,ACL --Domain lab.example.test \\\n     --LdapUsername svc-recon --LdapPassword 'FAKE-pw' --OutputDirectory C:\\\\loot\n   (DCOnly pulls users/groups/ACLs/trusts straight from the DC via LDAP — no host touch.)\n\n2. Ingest the resulting .zip into BloodHound CE.\n\n3. Read the graph for the seam-confirming findings:\n   - 'Shortest Paths to Domain Admins' returns a path from svc-recon.\n   - 'Find Principals with DCSync Rights' (GetChanges + GetChangesAll on the domain head).\n   - Dangerous ACLs: GenericAll / WriteDacl / ForceChangePassword on privileged objects.\n   - Kerberoastable accounts with SPNs; unconstrained-delegation hosts; inbound forest trusts.\n\n4. Deliverable: the attack-path edge list from owned principal -> Domain Admin / DCSync.\n\nVERDICT: VULNERABLE if BloodHound returns any privilege-escalation path or DCSync\nright reachable from the supplied low-priv lab principal.\n\nNOTE: collection is read-only LDAP enumeration in an OWNED lab; do not run ACL/credential\ncollection against production or non-owned domains. Treat the collected graph as sensitive.",
+    "success_criterion": "BloodHound renders an attack path (e.g. svc-recon -> ... -> Domain Admin) or surfaces a DCSync/GenericAll right from the owned low-priv principal, confirming the AD-trust-graph collection seam.",
+    "cleanup": "Delete the SharpHound .zip/JSON from C:\\\\loot and purge the BloodHound DB after the engagement.",
+    "safety": "Read-only LDAP/DCOnly collection in an owned lab AD; FAKE credentials shown; graph handled as sensitive loot."
+  },
+  "R-internal-net-scan": {
+    "name": "Internal network scan — read-only nmap discovery over an OWNED RFC1918 lab range",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "nmap present. Scope is an OWNED RFC1918 lab subnet (default 192.0.2.0/29 doc-range / your own 10.x lab). Script refuses non-RFC1918/non-doc targets.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-LAB ONLY. Read-only host/port discovery. No NSE exploit scripts, no -O brute.\nset -uo pipefail\nRANGE=\"${1:-127.0.0.1}\"\ncase \"$RANGE\" in\n  10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|127.*|192.0.2.*) : ;;\n  *) echo 'REFUSING: target is not RFC1918/loopback/doc-range. Confirm ownership and edit deliberately.'; exit 2;;\nesac\necho \"[*] Read-only discovery scan over OWNED range: $RANGE\"\nif command -v nmap >/dev/null; then\n  nmap -sT -T3 --top-ports 50 -oG - \"$RANGE\" | tee /tmp/_netscan.gnmap\n  OPEN=$(grep -c 'Ports:' /tmp/_netscan.gnmap || echo 0)\n  rm -f /tmp/_netscan.gnmap\nelse\n  echo '[*] nmap absent; loopback /dev/tcp fallback'\n  OPEN=0; for p in 22 80 443 445 3389 8080; do (echo > \"/dev/tcp/127.0.0.1/$p\") 2>/dev/null && { echo \"open 127.0.0.1:$p\"; OPEN=1; }; done\nfi\n[ \"${OPEN:-0}\" -gt 0 ] && echo 'RESULT: VULNERABLE (reachable hosts/services discovered on internal range)' || echo 'RESULT: PASS (no responsive hosts/services)'\n",
+    "success_criterion": "Scan enumerates live hosts with open service ports inside the owned RFC1918 range, confirming the internal-net-scan seam (internal services are discoverable).",
+    "cleanup": "none (read-only); temp .gnmap is removed by the script.",
+    "safety": "TCP-connect discovery only (no exploit NSE), hard-refuses non-RFC1918/doc targets, owned lab only."
+  },
+  "R-smb-share-enum": {
+    "name": "SMB share enumeration — read-only listing against an OWNED host/lab",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "smbclient (and optionally nmap) present. Target = an OWNED SMB host on RFC1918/loopback (default 127.0.0.1). Read-only share listing; no file pulls.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-HOST ONLY. Read-only: lists shares, does not download files.\nset -uo pipefail\nHOST=\"${1:-127.0.0.1}\"\ncase \"$HOST\" in 10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|127.*|localhost) : ;; *) echo 'REFUSING: non-RFC1918/loopback target.'; exit 2;; esac\necho \"[*] Enumerating SMB shares on OWNED host: $HOST (read-only)\"\nif command -v smbclient >/dev/null; then\n  OUT=$(smbclient -L \"//$HOST\" -N 2>&1 || true)\n  echo \"$OUT\"\n  if echo \"$OUT\" | grep -qiE 'Disk|Sharename'; then\n    echo 'RESULT: VULNERABLE (shares enumerable, possibly anonymously)'\n  else\n    echo 'RESULT: PASS (no anonymous share listing)'\n  fi\nelse\n  echo '[!] smbclient not installed — install samba-client. (skipping)'; echo 'RESULT: INCONCLUSIVE'\nfi\n",
+    "success_criterion": "smbclient -L returns a non-empty share list (Disk/Sharename entries), especially anonymously (-N), confirming the SMB-share-enum seam.",
+    "cleanup": "none (read-only listing; no files retrieved).",
+    "safety": "Anonymous read-only share listing only, no file downloads, refuses non-RFC1918/loopback hosts."
+  },
+  "R-cloud-iam-enum": {
+    "name": "Cloud IAM enumeration — read-only AWS describe of an OWNED account",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "awscli v2 configured with read-only creds for an OWNED account (ACCOUNT_ID defanged). Only List*/Get*/describe* calls. Falls back to printing intended calls if creds absent.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-ACCOUNT ONLY. Strictly read-only IAM enumeration (List/Get only).\nset -uo pipefail\necho '[*] Read-only IAM enumeration of OWNED account (ACCOUNT_ID=000000000000 defanged)'\nif ! command -v aws >/dev/null || ! aws sts get-caller-identity >/dev/null 2>&1; then\n  echo '[!] awscli/creds absent — listing the read-only calls this artifact would run:'\n  cat <<'EOF'\n  aws sts get-caller-identity\n  aws iam list-users --output table\n  aws iam list-roles --query 'Roles[].RoleName'\n  aws iam list-attached-user-policies --user-name <u>\n  aws accessanalyzer list-findings\nEOF\n  echo 'RESULT: INCONCLUSIVE (no live creds; calls documented)'; exit 0\nfi\nWHO=$(aws sts get-caller-identity --query Arn --output text); echo \"[*] identity: $WHO\"\nFLAG=0\nfor u in $(aws iam list-users --query 'Users[].UserName' --output text); do\n  for p in $(aws iam list-attached-user-policies --user-name \"$u\" --query 'AttachedPolicies[].PolicyArn' --output text); do\n    case \"$p\" in *AdministratorAccess*) echo \"[!] $u has $p\"; FLAG=1;; esac\n  done\ndone\nfor u in $(aws iam list-users --query 'Users[].UserName' --output text); do\n  M=$(aws iam list-mfa-devices --user-name \"$u\" --query 'MFADevices' --output text)\n  [ -z \"$M\" ] && { echo \"[!] $u has NO MFA\"; FLAG=1; }\ndone\n[ \"$FLAG\" = 1 ] && echo 'RESULT: VULNERABLE (over-privileged / MFA-less principals enumerated)' || echo 'RESULT: PASS'\n",
+    "success_criterion": "Enumeration reveals a principal with AdministratorAccess or without MFA in the owned account, confirming the cloud-IAM-enum seam (excess privilege/weak auth is discoverable read-only).",
+    "cleanup": "none (read-only API calls; no resources created).",
+    "safety": "Only List*/Get*/sts calls against an owned account; defanged ACCOUNT_ID; documents calls when creds absent."
+  },
+  "R-host-local-enum": {
+    "name": "Host local enumeration — seatbelt-style read-only recon on the operator's OWNED box",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "Run on the operator's OWNED Linux host/lab VM. Standard coreutils only. Read-only; prints local privilege/credential surface.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-HOST ONLY. Read-only local enumeration (whoami/sudo/SUID/creds-on-disk).\nset -uo pipefail\necho '=== identity ==='; id; echo \"host: $(hostname)\"\necho '=== sudo rights (no password prompt) ==='; sudo -n -l 2>/dev/null || echo '(none / requires password)'\necho '=== SUID binaries (quick check) ==='\nfind / -perm -4000 -type f 2>/dev/null | head -15\necho '=== creds/config on disk (paths only) ==='\nfor f in \"$HOME/.aws/credentials\" \"$HOME/.ssh/id_rsa\" \"$HOME/.kube/config\" /var/lib/cloud/instance/user-data.txt; do\n  [ -r \"$f\" ] && echo \"[!] readable: $f\"\ndone\necho '=== history secrets grep (own shell history) ==='\ngrep -nEi '(password|token|secret|aws_secret)' \"$HOME/.bash_history\" 2>/dev/null | head -5 || echo '(none)'\nif sudo -n -l >/dev/null 2>&1 || find / -perm -4000 -type f 2>/dev/null | grep -q .; then echo 'RESULT: VULNERABLE (local priv-esc / credential surface present)'; else echo 'RESULT: PASS'; fi\n",
+    "success_criterion": "Enumeration surfaces a local escalation or credential vector (passwordless sudo, unexpected SUID binary, readable key/cred file, or secrets in shell history), confirming the host-local-enum seam.",
+    "cleanup": "none (read-only; no files modified).",
+    "safety": "Read-only local commands on the operator's own host; prints paths/metadata, never exfiltrates contents."
+  },
+  "R-share-mailbox-staging": {
+    "name": "Share/mailbox staging — read-only listing of an OWNED file share / mailbox for stageable data",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "An OWNED file share path (default a local mock dir) and/or mbox file. Read-only metadata listing; no copying, no message bodies opened.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-STORE ONLY. Read-only: lists what an actor could STAGE for exfil. No copy, no body reads.\nset -uo pipefail\nSHARE=\"${1:-$HOME/lab-share}\"\nMBOX=\"${2:-$HOME/lab-mail/Inbox.mbox}\"\nif [ \"${3:-}\" = demo ]; then mkdir -p \"$SHARE\"; printf 'FAKE board deck\\n' > \"$SHARE/Q3-financials.xlsx\"; printf 'pii\\n' > \"$SHARE/employees-ssn.csv\"; fi\necho \"[*] Read-only staging survey of OWNED share: $SHARE\"\nHITS=0\nwhile IFS= read -r f; do echo \"[+] stageable: $f ($(stat -c%s \"$f\" 2>/dev/null) bytes)\"; HITS=$((HITS+1)); done < <(find \"$SHARE\" -maxdepth 5 -type f \\( -iname '*.xlsx' -o -iname '*.csv' -o -iname '*.docx' -o -iname '*.pdf' -o -iname '*secret*' -o -iname '*ssn*' -o -iname '*financ*' \\) 2>/dev/null | head -50)\nif [ -r \"$MBOX\" ]; then\n  echo \"[*] mailbox present: $MBOX ($(grep -c '^From ' \"$MBOX\" 2>/dev/null) messages) — headers only, bodies not read\"; HITS=$((HITS+1))\nfi\n[ \"$HITS\" -gt 0 ] && echo \"RESULT: VULNERABLE ($HITS stageable sensitive item(s) located)\" || echo 'RESULT: PASS (no obvious staging targets)'\n",
+    "success_criterion": "Listing identifies sensitive stageable items (financials/PII/secret docs or a readable mailbox) by name/size, confirming the share/mailbox-staging seam without copying data.",
+    "cleanup": "Remove the demo dir/files if the 'demo' arg was used; otherwise none (read-only).",
+    "safety": "Metadata-only listing of an owned store; no file copies, no mail bodies opened, no exfiltration."
+  },
+  "R-datastore-bulk-export": {
+    "name": "Datastore bulk-export exposure — read-only row count / export-grant check on an OWNED DB",
+    "language": "python",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "Python3 with sqlite3 (stdlib). Demonstrates against a LOCAL owned sqlite DB seeded with FAKE PII. The pattern maps to read-only SELECT count / export-permission checks on any owned datastore.",
+    "script": "#!/usr/bin/env python3\n# AUTHORIZED OWNED-DATASTORE ONLY. Read-only: counts bulk-exportable sensitive rows. No bulk pull, no writes.\nimport sqlite3\n\ncon = sqlite3.connect(':memory:')\ncon.executescript(\"\"\"\nCREATE TABLE customers(id INT, name TEXT, ssn TEXT, email TEXT);\nINSERT INTO customers VALUES\n (1,'FAKE Alice','000-00-0001','alice@example.test'),\n (2,'FAKE Bob','000-00-0002','bob@example.test'),\n (3,'FAKE Carol','000-00-0003','carol@example.test');\n\"\"\")\n\nSENS = ('ssn','email','password','card','dob','phone')\nflag = 0\nfor (tbl,) in con.execute(\"SELECT name FROM sqlite_master WHERE type='table'\"):\n    cols = [r[1].lower() for r in con.execute('PRAGMA table_info(%s)' % tbl)]\n    sens = [c for c in cols if any(s in c for s in SENS)]\n    if sens:\n        n = con.execute('SELECT COUNT(*) FROM %s' % tbl).fetchone()[0]\n        print('[!] %s: %d rows, sensitive columns %s (bulk-exportable)' % (tbl, n, sens))\n        flag = 1\nprint('RESULT: VULNERABLE (sensitive bulk-export surface present)' if flag else 'RESULT: PASS')\n",
+    "success_criterion": "The check reports a table with sensitive columns (ssn/email/password/card) and a row count, confirming a bulk-exportable datastore surface — the datastore-bulk-export seam — using only COUNT/PRAGMA reads.",
+    "cleanup": "none (in-memory mock DB; vanishes on exit).",
+    "safety": "Read-only COUNT/schema introspection on an owned mock DB with FAKE PII; no bulk row export."
+  },
+  "R-session-surface-capture": {
+    "name": "Session-surface capture — enumerate local session tokens on the operator's OWNED box",
+    "language": "bash",
+    "authorization": "Authorized assessment of owned/contracted assets only, signed RoE.",
+    "setup": "Run on the operator's OWNED workstation. Standard tools (ls/find/grep). Read-only: locates session/token artifacts; never decrypts or transmits them.",
+    "script": "#!/usr/bin/env bash\n# AUTHORIZED OWNED-HOST ONLY. Read-only: enumerate local session/token surfaces. No decrypt, no secret-value read, no network.\nset -uo pipefail\necho '[*] Session-surface enumeration on operator OWNED host (paths/metadata only)'\nHITS=0\ncheck(){ for p in \"$@\"; do [ -e \"$p\" ] && { echo \"[+] session artifact: $p ($(stat -c%s \"$p\" 2>/dev/null) bytes)\"; HITS=$((HITS+1)); }; done; }\ncheck \"$HOME/.aws/credentials\" \"$HOME/.aws/sso/cache\" \"$HOME/.kube/config\" \"$HOME/.config/gcloud/credentials.db\"\ncheck \"$HOME/.config/google-chrome/Default/Cookies\" \"$HOME/.mozilla/firefox\"\ncheck /tmp/krb5cc_* ${SSH_AUTH_SOCK:-/nonexistent}\nif env | grep -iqE '^(AWS_SESSION_TOKEN|GITHUB_TOKEN|KUBE_TOKEN|VAULT_TOKEN)='; then env | grep -iE '^(AWS_SESSION_TOKEN|GITHUB_TOKEN|KUBE_TOKEN|VAULT_TOKEN)=' | sed 's/=.*/=<redacted>/'; HITS=$((HITS+1)); fi\n[ \"$HITS\" -gt 0 ] && echo \"RESULT: VULNERABLE ($HITS live session/token surface(s) capturable)\" || echo 'RESULT: PASS (no exposed session artifacts)'\n",
+    "success_criterion": "Enumeration locates live session/token artifacts (cloud CLI cache, browser cookie DB, kerberos ccache, SSH agent socket, or token env var) on the owned host, confirming the session-surface-capture seam.",
+    "cleanup": "none (read-only; token values are never read or copied, only paths/names listed).",
+    "safety": "Lists artifact paths/sizes only; never decrypts, reads, or transmits secret values; env values masked."
+  }
+}
