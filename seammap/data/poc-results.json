@@ -506,5 +506,509 @@
  "GH6-erc4337-paymaster-validation-execution-gap": {
   "result": "confirmed",
   "rc": 0
+ },
+ "C-phishing": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-vishing": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-physical": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-persistence": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-stage-capability": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-edge-appliance": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "IA-exposed-remote-service": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "IA-valid-accounts": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "IA-drive-by": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "IA-hid-emulation": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-physical-access-control": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-rogue-ap": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-script-interpreter": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "IA-native-api": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "IA-update-channel": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "IA-office-macro": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-service-control": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-wmi-subscription": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-dll-search-order": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-boot-chain": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-account-manipulation": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "IA-web-shell": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "IA-kerberos-ticket": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "XC-ppe-pipeline-exec": {
+  "result": "error",
+  "rc": 2
+ },
+ "XC-ci-secret-oidc-exfil": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "XC-runner-takeover-cache-poison": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "XC-artifact-tag-mutation": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CO-cross-account-confused-deputy": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CO-object-store-acl-default": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CO-serverless-event-injection": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "CO-longlived-access-key": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CO-cloud-logging-tamper": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CO-imdsv1-token-vs-network": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CO-k8s-network-as-authz": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CO-privileged-pod-namespace-share": {
+  "result": "error",
+  "rc": 2
+ },
+ "CO-sa-token-overmount": {
+  "result": "error",
+  "rc": 2
+ },
+ "CO-untrusted-image-pull": {
+  "result": "error",
+  "rc": 2
+ },
+ "CO-cluster-secrets-exposure": {
+  "result": "error",
+  "rc": 2
+ },
+ "CO-admission-policy-bypass": {
+  "result": "error",
+  "rc": 2
+ },
+ "CO-domain-aging-reputation": {
+  "result": "error",
+  "rc": 1
+ },
+ "CO-tls-cert-provenance-ct-blindspot": {
+  "result": "error",
+  "rc": 2
+ },
+ "CO-residential-proxy-egress-reputation": {
+  "result": "error",
+  "rc": 2
+ },
+ "CO-sockpuppet-account-aging": {
+  "result": "error",
+  "rc": 2
+ },
+ "C-tokenreplay": {
+  "result": "error",
+  "rc": 1
+ },
+ "C-saml-forge": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-mitm": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-lateral": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-dcsync": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-dcshadow": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-ntds-extract": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-password-spray": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "CR-aitm-evilginx": {
+  "result": "error",
+  "rc": 1
+ },
+ "CR-infostealer-cookie": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "CR-keylogging": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "CR-cloud-token-cache": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-rdp-hijack": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-ssh-agent-pivot": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-dcom-lateral": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-assume-role-chain": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "CR-socks-tunnel": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "F2a-oauth-scope-speed": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F2b-iam-ratelimit-void": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F2c-standing-session": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F6a-orchestrator-worker": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F6b-peer-agent-lateral": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F7a-detector-evade": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F7b-detector-poison": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F7c-analyst-inject": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "F8a-skill-compose": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-evasion": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-kernel-exploit": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-token-impersonation": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-uac-bypass": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-unquoted-service-path": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-weak-service-file-perms": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-suid-sudo-misconfig": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-linux-capabilities": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-iam-role-chaining": {
+  "result": "error",
+  "rc": 1
+ },
+ "PE-process-injection": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-reflective-load": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-byovd": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-edr-tamper-hooking": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-lolbas-gtfobins": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-timestomp": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-log-clearing": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "PE-doh-domain-fronting": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-recon-infoleak": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-osint-correlation": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-discovery": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-collection": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-search-engine-index": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-repo-history-secrets": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-breach-paste-creds": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "R-dns-zone-axfr": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-dns-domain-footprint": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-web-archive-crawl": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-physical-site-survey": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-ad-trust-graph": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-internal-net-scan": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-smb-share-enum": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-cloud-iam-enum": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-host-local-enum": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-share-mailbox-staging": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "R-datastore-bulk-export": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "R-session-surface-capture": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-csrf": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-slip": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-unicode": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-arginj": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-toctou": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-replay": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-idempotency": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-webhook": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "C-openredirect": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "C-sessionfix": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-mfa-push-fatigue": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-prt-device-code-phish": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-cross-tenant-federation": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-mass-assignment-pollution": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-ratelimit-workflow-bypass": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-oauth-app-mailrule-persist": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-collab-guest-link-abuse": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-weak-signature-collision": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-ca-misissuance-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-padding-oracle-nonce-reuse": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "XC-tls-downgrade-rollback": {
+  "result": "confirmed",
+  "rc": 0
  }
 }
