@@ -22,10 +22,10 @@
       "plausible": 55,
       "speculative": 11
     },
-    "test_artifacts": 113,
+    "test_artifacts": 127,
     "coverage": {
       "seams": 288,
-      "artifact_coverage": 0.392,
+      "artifact_coverage": 0.441,
       "poc_confirmed": 0,
       "validation_coverage": 0.333
     }
@@ -13021,6 +13021,16 @@
           "tooling_status": "available",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "Pre-rendered face stream defeats a presentation-only liveness stub",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python. No KYC vendor, no real camera. A stub liveness check consumes frames from an in-process 'virtual camera' that can be fed either live-capture frames or a pre-rendered/synthetic clip. Models the trust boundary: liveness that scores only pixel/motion cues, with no hardware attestation of the capture path, cannot tell an injected stream from a real sensor.",
+        "script": "#!/usr/bin/env python3\n# GH4 deepfake liveness / KYC bypass -- AUTHORIZED LAB / OFFLINE SIM ONLY.\n# No real KYC vendor, no real camera, no real identity. Pure in-process model.\n# Trust boundary: a liveness check that consumes a software frame source and\n# scores only pixel/motion features, without attesting the *capture path*\n# (secure camera, hardware signature, sensor entropy), accepts any stream a\n# virtual camera presents -- including a pre-rendered/synthetic (\"deepfake\") clip.\nimport random\nrandom.seed(7)\n\nclass VirtualCamera:\n    # Stands in for an OS virtual-camera device (e.g. a loopback) that the\n    # liveness SDK opens exactly like a physical webcam.\n    def __init__(self, source, attested):\n        self.source = source\n        self.attested = attested\n    def read(self):\n        for f in self.source:\n            yield f\n\ndef synth_real_capture(n=30):\n    frames = []\n    for i in range(n):\n        frames.append({\"motion\": random.uniform(0.4, 0.9),\n                       \"blink\": 1 if i in (10, 22) else 0,\n                       \"texture_var\": random.uniform(0.5, 0.8)})\n    return frames\n\ndef synth_prerendered_clip(n=30):\n    # A pre-rendered/synthetic face video: it ALSO contains a blink and motion\n    # because the attacker rendered them in. No live sensor produced it.\n    frames = []\n    for i in range(n):\n        frames.append({\"motion\": random.uniform(0.4, 0.9),\n                       \"blink\": 1 if i in (9, 21) else 0,\n                       \"texture_var\": random.uniform(0.5, 0.8)})\n    return frames\n\ndef liveness_check(cam):\n    # PRESENTATION-ONLY check: motion present + at least one blink => \"live\".\n    # This is the seam -- it never verifies the frame source is a real sensor.\n    motion_ok = blink_seen = False\n    for f in cam.read():\n        if f[\"motion\"] > 0.3: motion_ok = True\n        if f[\"blink\"]: blink_seen = True\n    return motion_ok and blink_seen\n\ndef liveness_check_attested(cam):\n    # DEFENSE for contrast: require a hardware-attested capture path token.\n    if not cam.attested:\n        return False\n    return liveness_check(cam)\n\nprint(\"== presentation-only liveness ==\")\nreal = VirtualCamera(synth_real_capture(), attested=True)\nfake = VirtualCamera(synth_prerendered_clip(), attested=False)\nprint(\"real capture  -> pass:\", liveness_check(real))\nprint(\"injected clip -> pass:\", liveness_check(fake), \"  <-- SEAM: synthetic stream accepted\")\n\nprint(\"\\n== capture-path-attested liveness (defense) ==\")\nprint(\"injected clip -> pass:\",\n      liveness_check_attested(VirtualCamera(synth_prerendered_clip(), attested=False)),\n      \"  (rejected: no attested sensor)\")\n",
+        "success_criterion": "The presentation-only liveness_check() returns True for the injected pre-rendered clip fed via the VirtualCamera stub, identical to a real capture; the attested variant returns False. Confirms liveness without capture-path attestation is fooled by stream injection in-sim.",
+        "cleanup": "No persistent state; exit interpreter. If a real OS virtual-camera loopback was installed for a bench demo, uninstall the loopback module.",
+        "safety": "Pure in-process simulation; no real camera, KYC vendor, or identity; no network."
       }
     },
     {
@@ -14016,6 +14026,16 @@
           "tooling_status": "nascent",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "SM-DP+ profile download lacks subscriber-intent binding",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python logic model of GSMA SGP.22-style RSP profile download. Synthetic EID/ICCID/activation-code identifiers only. No real SM-DP+, no eUICC, no carrier. Models the seam: the download/install flow authenticates the eUICC and the activation code but does not bind the operation to an authenticated subscriber *intent*, so a leaked/relayed activation code installs a profile without consent.",
+        "script": "#!/usr/bin/env python3\n# GH5 eSIM RSP profile-provenance gap -- OFFLINE LOGIC SIM ONLY.\n# Synthetic identifiers; no real SM-DP+, eUICC, or carrier network.\n# Trust boundary: an RSP download authorized purely by possession of an\n# activation code + a valid eUICC challenge has no binding to the *subscriber's*\n# authenticated intent. A relayed/leaked code provisions a profile onto an\n# attacker-controlled (but otherwise valid) eUICC.\nimport secrets\n\nclass SMDPplus:\n    def __init__(self):\n        self.pending = {}\n    def prepare(self, iccid, activation_code):\n        self.pending[activation_code] = {\"iccid\": iccid, \"consumed\": False}\n    def download(self, activation_code, euicc_eid, subscriber_intent_token=None):\n        rec = self.pending.get(activation_code)\n        if not rec or rec[\"consumed\"]:\n            return (\"REJECT\", \"unknown/consumed code\")\n        # SEAM: server checks code validity + (implicitly) a valid eUICC cert,\n        # but DOES NOT require subscriber_intent_token. So intent is ignored.\n        rec[\"consumed\"] = True\n        return (\"INSTALLED\", {\"iccid\": rec[\"iccid\"], \"onto_eid\": euicc_eid})\n\nclass SMDPplus_BoundIntent(SMDPplus):\n    def download(self, activation_code, euicc_eid, subscriber_intent_token=None):\n        rec = self.pending.get(activation_code)\n        if not rec or rec[\"consumed\"]:\n            return (\"REJECT\", \"unknown/consumed code\")\n        # DEFENSE: require a token proving the registered subscriber approved\n        # THIS eid for THIS iccid (e.g. signed step-up auth bound to EID).\n        expect = \"intent:\" + rec[\"iccid\"] + \":\" + euicc_eid\n        if subscriber_intent_token != expect:\n            return (\"REJECT\", \"missing/invalid subscriber-intent binding\")\n        rec[\"consumed\"] = True\n        return (\"INSTALLED\", {\"iccid\": rec[\"iccid\"], \"onto_eid\": euicc_eid})\n\nICCID = \"8900000000000000001\"\nCODE  = \"LPA:1$smdp.example$\" + secrets.token_hex(6)\nVICTIM_EID   = \"EID-VICTIM-\" + secrets.token_hex(2)\nATTACKER_EID = \"EID-ATTACKER-\" + secrets.token_hex(2)\n\nprint(\"== provenance-gap server ==\")\ns = SMDPplus(); s.prepare(ICCID, CODE)\nprint(\"attacker download:\", s.download(CODE, ATTACKER_EID))\nprint(\"  ^ SEAM: profile installed onto attacker EID, no subscriber intent checked\")\n\nprint(\"\\n== intent-bound server (defense) ==\")\ns2 = SMDPplus_BoundIntent(); s2.prepare(ICCID, CODE)\nprint(\"attacker (no intent token):\", s2.download(CODE, ATTACKER_EID))\nprint(\"subscriber (valid token)  :\",\n      s2.download(CODE, VICTIM_EID, \"intent:\"+ICCID+\":\"+VICTIM_EID))\n",
+        "success_criterion": "On the provenance-gap server, download() returns INSTALLED for the attacker EID using only the relayed activation code; the intent-bound server REJECTs that same call and only INSTALLs for the EID carrying the matching subscriber-intent token. Confirms the missing intent binding in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline protocol-logic simulation over synthetic identifiers; no carrier, SM-DP+, or eUICC contact."
       }
     },
     {
@@ -14082,6 +14102,16 @@
           "tooling_status": "none",
           "detection_status": "none"
         }
+      },
+      "test_artifact": {
+        "name": "SUCI routing/timing residue bridges concealed identifiers back to a SUPI",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python logic model of 5G SUCI concealment (SUPI -> ECIES-style SUCI). Synthetic SUPIs/keys only; no real UE, gNB, or core. Models the seam: SUCI hides the MSIN, but unconcealed *side fields* (Routing Indicator, Home Network PKI key id) plus an observable correlation handle let an observer cluster and re-link multiple sessions of the same subscriber even though each SUCI ciphertext differs.",
+        "script": "#!/usr/bin/env python3\n# GH5 5G SUCI re-identification bridge -- OFFLINE LOGIC SIM ONLY.\n# Synthetic SUPIs and toy \"concealment\"; no real UE / gNB / 5G core.\n# Trust boundary: SUCI conceals the MSIN, but the message still carries\n# cleartext routing residue (Routing Indicator + HN public-key id) and the\n# scheme leaves a per-subscriber correlatable handle. An observer never\n# decrypts the SUPI yet re-links sessions -> a re-identification bridge.\nimport hashlib, os\n\ndef conceal(supi, routing_indicator, hn_key_id):\n    # Toy SUCI: fresh ephemeral salt each session => ciphertext differs each time\n    # (this is the property SUCI is supposed to give: unlinkability).\n    eph = os.urandom(8)\n    msin = supi.split(\"-\")[1]\n    ct = hashlib.sha256(eph + msin.encode()).hexdigest()\n    # SEAM: these travel in clear, and (modeling a real residue) a stable\n    # low-entropy correlation tag derived without the ephemeral salt leaks.\n    corr_tag = hashlib.sha256((\"STABLE\" + msin).encode()).hexdigest()[:8]\n    return {\"ct\": ct, \"eph\": eph.hex(),\n            \"routing_indicator\": routing_indicator,\n            \"hn_key_id\": hn_key_id,\n            \"corr_tag\": corr_tag}\n\nsessions = []\nsessions += [conceal(\"SUPI-1110001\", \"0017\", 27) for _ in range(3)]\nsessions += [conceal(\"SUPI-2220002\", \"0099\", 27) for _ in range(2)]\n\nprint(\"distinct ciphertexts:\", len({s['ct'] for s in sessions}),\n      \"of\", len(sessions), \"(SUCI looks unlinkable per-message)\")\n\nclusters = {}\nfor s in sessions:\n    key = (s[\"routing_indicator\"], s[\"hn_key_id\"], s[\"corr_tag\"])\n    clusters.setdefault(key, []).append(s[\"ct\"])\nprint(\"\\nre-identification clusters (routing+keyid+residue):\")\nfor k, v in clusters.items():\n    print(\" \", k, \"->\", len(v), \"sessions linked\")\nprint(\"SEAM: sessions re-linked into per-subscriber clusters with zero decryption.\")\n",
+        "success_criterion": "All SUCI ciphertexts are distinct (per-message unlinkability appears intact), yet clustering on the cleartext routing residue + correlation tag groups the sessions back into exactly the two originating subscribers. Confirms the re-identification bridge over synthetic identifiers.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline protocol-logic simulation over synthetic SUPIs; no UE, gNB, or 5G core contact."
       }
     },
     {
@@ -14820,6 +14850,16 @@
           "tooling_status": "nascent",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "Spoofed sensor stream earns DePIN proof-of-physical-work rewards",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python model of a DePIN reward verifier that pays for 'physical work' (e.g. coverage/sensing) attested only by a self-reported sensor stream. Synthetic readings only; no real device, network, or token. Models the seam: when proof-of-physical-work is validated against plausibility of the reported data rather than against an unspoofable hardware root + independent witness, a synthetic stream that matches the expected statistics is paid.",
+        "script": "#!/usr/bin/env python3\n# GH6 DePIN proof-of-physical-work sensor spoof -- OFFLINE SIM ONLY.\n# Synthetic sensor readings; no real device, no DePIN network, no token, no funds.\n# Trust boundary: rewards gated on the *plausibility* of a self-reported sensor\n# stream (range/variance/cadence) -- not on a hardware-rooted attestation plus an\n# independent witness -- pay a fabricated stream that mimics the expected shape.\nimport random, statistics\nrandom.seed(3)\n\ndef genuine_stream(n=60):\n    base, out = 21.0, []\n    for _ in range(n):\n        base += random.uniform(-0.2, 0.2)\n        out.append(round(base + random.uniform(-0.1, 0.1), 3))\n    return out\n\ndef spoofed_stream(n=60):\n    # Attacker who never deployed hardware, but read the spec and matched it.\n    base, out = 21.0, []\n    for _ in range(n):\n        base += random.uniform(-0.2, 0.2)\n        out.append(round(base + random.uniform(-0.1, 0.1), 3))\n    return out\n\ndef reward_verifier_plausibility(stream):\n    # SEAM: accept if readings are in range, vary realistically, right count.\n    if len(stream) < 50: return False\n    if not all(15 <= x <= 30 for x in stream): return False\n    if statistics.pstdev(stream) < 0.05: return False\n    return True\n\ndef reward_verifier_attested(stream, hw_attestation, independent_witness):\n    # DEFENSE: require a hardware-rooted signed attestation AND an independent\n    # witness (e.g. neighboring node / challenge-response geolocation).\n    if not hw_attestation or not independent_witness:\n        return False\n    return reward_verifier_plausibility(stream)\n\ng, sp = genuine_stream(), spoofed_stream()\nprint(\"== plausibility-only verifier ==\")\nprint(\"genuine paid :\", reward_verifier_plausibility(g))\nprint(\"spoofed paid :\", reward_verifier_plausibility(sp), \"  <-- SEAM: fabricated stream rewarded\")\n\nprint(\"\\n== attestation+witness verifier (defense) ==\")\nprint(\"spoofed (no hw, no witness) paid:\",\n      reward_verifier_attested(sp, hw_attestation=None, independent_witness=None))\nprint(\"genuine (hw+witness) paid       :\",\n      reward_verifier_attested(g, hw_attestation=\"sig\", independent_witness=True))\n",
+        "success_criterion": "The plausibility-only verifier returns True for the fabricated spoofed_stream (paid identically to genuine); the attestation+witness verifier returns False for the spoofed stream lacking hardware attestation and an independent witness. Confirms proof-of-physical-work is spoofable in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline simulation over synthetic sensor data; no device, DePIN network, token, or funds."
       }
     },
     {
@@ -14885,6 +14925,16 @@
           "tooling_status": "partial",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "Slow GNSS time-slew drags a disciplined clock servo off true time",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python model of a GNSS-disciplined oscillator (GNSSDO) control loop. No RF, no receiver, no antenna. The loop is fed a synthetic 1PPS/time-of-day error sequence; a spoof injects a sub-threshold slow slew. (Bench variant in comments: GNSS SIMULATOR -> receiver inside a SHIELDED/conducted enclosure, never radiated.) Models the seam: a disciplining servo that trusts GNSS time as ground truth and only rejects large jumps will track a slow spoof slew below its sanity threshold.",
+        "script": "#!/usr/bin/env python3\n# GH7 GNSS time-spoof into a disciplined clock -- OFFLINE SIM ONLY.\n# No RF, no receiver, no antenna, no transmit. Pure control-loop model.\n#\n# BENCH VARIANT (documented, do NOT radiate): a calibrated GNSS SIGNAL\n# SIMULATOR feeds a GNSSDO receiver over CONDUCTED COAX inside a SHIELDED\n# Faraday enclosure with RF terminated into a load -- never over the air,\n# under signed RoE and applicable spectrum rules. The sim below models the\n# same servo math offline.\n#\n# Trust boundary: a disciplining servo trusts GNSS time-of-day as truth and\n# only rejects coarse jumps (a \"sanity\" gate). A spoof that slews time slowly,\n# below the gate, is integrated by the loop and walks the local clock off true.\n\ndef discipline(reported_offsets, jump_gate_ns=200.0, alpha=0.1):\n    clock_err = 0.0\n    last = 0.0\n    trace = []\n    for gnss_reported in reported_offsets:\n        step = gnss_reported - last\n        if abs(step) > jump_gate_ns:        # only coarse jumps rejected\n            gnss_reported = last\n        clock_err += alpha * (gnss_reported - clock_err)\n        last = gnss_reported\n        trace.append(clock_err)\n    return trace\n\nN = 600\nhonest = [0.0]*N\n# Spoof: +0.5 ns per sample slew (well under 200 ns jump gate) for 600 samples.\nspoof = [0.5*i for i in range(N)]\n\nht = discipline(honest)\nst = discipline(spoof)\nprint(\"honest final clock error (ns): %.2f\" % ht[-1])\nprint(\"spoof  final clock error (ns): %.2f\" % st[-1])\nprint(\"never tripped jump gate; servo integrated the slow slew.\")\nassert abs(st[-1]) > 100, \"expected significant accumulated offset\"\nprint(\"SEAM: disciplined clock dragged ~%.0f ns off true time by sub-threshold slew.\" % st[-1])\n",
+        "success_criterion": "The servo trace shows the spoofed run accumulating a large offset (>100 ns, ~hundreds ns) while never tripping the jump gate, versus ~0 for the honest run. Confirms a sub-threshold GNSS time slew drags the disciplined clock in-sim. (Bench: GNSSDO holdover/offset readout walks while the simulator slews, inside the shielded enclosure.)",
+        "cleanup": "No persistent state; exit interpreter. Bench: stop the GNSS simulator, power down receiver, leave RF terminated in the enclosure.",
+        "safety": "Offline control-loop simulation; bench variant is conducted/shielded GNSS simulator only, no radiated or live signal."
       }
     },
     {
@@ -14949,6 +14999,16 @@
           "tooling_status": "available",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "Gradual GNSS position-drag is accepted as autonomy ground truth",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python model of an autonomy PVT consumer that fuses GNSS fixes as ground truth with a simple innovation gate. No RF, no receiver, no vehicle. A spoof injects a slow per-fix position drag. (Bench variant in comments: GNSS SIMULATOR -> receiver in a SHIELDED enclosure.) Models the seam: if GNSS is trusted as ground truth and only large per-step jumps are gated, a slow drag steers the estimated position arbitrarily far.",
+        "script": "#!/usr/bin/env python3\n# GH7 GNSS position-spoof as autonomy ground truth -- OFFLINE SIM ONLY.\n# No RF, no receiver, no vehicle, no transmit. Pure estimator model.\n# BENCH VARIANT (documented, do NOT radiate): GNSS SIGNAL SIMULATOR -> receiver\n# over CONDUCTED COAX in a SHIELDED Faraday enclosure under signed RoE.\n#\n# Trust boundary: an autonomy stack that treats the GNSS fix as ground truth\n# and only rejects large single-step jumps will accept a slow positional drag,\n# integrating it into the state estimate and steering the platform off course.\n\ndef estimator(reported_track, jump_gate_m=5.0, alpha=0.5):\n    est = [0.0, 0.0]\n    last = [0.0, 0.0]\n    trace = []\n    for fix in reported_track:\n        step = ((fix[0]-last[0])**2 + (fix[1]-last[1])**2) ** 0.5\n        if step > jump_gate_m:          # coarse jump -> reject this fix\n            fix = last\n        est[0] += alpha*(fix[0]-est[0])\n        est[1] += alpha*(fix[1]-est[1])\n        last = fix\n        trace.append((round(est[0],2), round(est[1],2)))\n    return trace\n\nN = 400\ntrue_track  = [(0.0, 0.0)]*N\n# Spoof: drag +1.0 m east per fix (< 5 m gate) -> ~400 m total displacement.\nspoof_track = [(1.0*i, 0.0) for i in range(N)]\n\nprint(\"honest final estimate:\", estimator(true_track)[-1])\nsp = estimator(spoof_track)[-1]\nprint(\"spoof  final estimate:\", sp)\nassert sp[0] > 100, \"expected large accumulated drift\"\nprint(\"SEAM: estimated position dragged ~%.0f m east by sub-gate drift; gate never tripped.\" % sp[0])\n",
+        "success_criterion": "The estimator's spoofed run drifts hundreds of metres east (>100 m) while the per-step jump gate is never tripped, versus ~0 for the honest stationary run. Confirms a slow GNSS position-drag is accepted as ground truth in-sim. (Bench: receiver position readout walks while simulator drags, inside the shielded enclosure.)",
+        "cleanup": "No persistent state; exit interpreter. Bench: stop simulator, power down receiver, RF terminated.",
+        "safety": "Offline estimator simulation; bench variant is conducted/shielded GNSS simulator only, no radiated or live signal."
       }
     },
     {
@@ -15014,6 +15074,16 @@
           "tooling_status": "nascent",
           "detection_status": "nascent"
         }
+      },
+      "test_artifact": {
+        "name": "Well-formed CCSDS telecommand accepted by a stub bus without authentication",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python stub of a spacecraft command ingest that validates CCSDS-style TC frame *format* (sync, APID, length, CRC) but performs no cryptographic authentication. Synthetic frames only; no radio, no real spacecraft. Models the seam: format/CRC validity is treated as command authority, so any correctly-formatted frame is executed.",
+        "script": "#!/usr/bin/env python3\n# GH7 satellite uplink command-format-trust -- OFFLINE SIM ONLY.\n# Synthetic CCSDS-style TC frames; no radio, no transmit, no real spacecraft.\n# Trust boundary: command ingest that authorizes on FRAME FORMAT validity\n# (sync word, APID, length, CRC-16) without authenticating the SENDER will\n# execute any well-formed frame -- CRC is integrity, not authority.\nimport struct\n\nSYNC = 0x1ACFFC1D\n\ndef crc16(data):\n    crc = 0xFFFF\n    for b in data:\n        crc ^= b << 8\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF\n    return crc\n\ndef build_tc(apid, payload):\n    body = struct.pack(\">IH\", SYNC, apid) + struct.pack(\">H\", len(payload)) + payload\n    return body + struct.pack(\">H\", crc16(body))\n\nclass StubBus:\n    def __init__(self): self.executed = []\n    def ingest(self, frame):\n        sync, apid = struct.unpack(\">IH\", frame[:6])\n        (plen,)    = struct.unpack(\">H\", frame[6:8])\n        payload    = frame[8:8+plen]\n        rx_crc     = struct.unpack(\">H\", frame[8+plen:10+plen])[0]\n        if sync != SYNC: return (\"REJECT\",\"sync\")\n        if crc16(frame[:8+plen]) != rx_crc: return (\"REJECT\",\"crc\")\n        # SEAM: format + CRC pass => execute. No authentication of origin.\n        self.executed.append((apid, payload))\n        return (\"EXECUTED\", apid, payload)\n\nclass StubBusAuth(StubBus):\n    KEY = b\"groundkey\"\n    def ingest(self, frame, mac=None):\n        import hashlib, hmac\n        base = super().ingest(frame)\n        if base[0] != \"EXECUTED\": return base\n        self.executed.pop()    # roll back; require an unforgeable authenticator\n        good = hmac.new(self.KEY, frame, hashlib.sha256).digest()[:8]\n        if mac != good: return (\"REJECT\",\"unauthenticated\")\n        self.executed.append((base[1], base[2]))\n        return base\n\n# Attacker crafts a perfectly-formatted command (benign canary payload).\nframe = build_tc(0x07, b\"CANARY_SAFEMODE_TOGGLE\")\nprint(\"== format-trust bus ==\")\nprint(StubBus().ingest(frame), \"  <-- SEAM: unauthenticated command executed\")\n\nprint(\"\\n== authenticated bus (defense) ==\")\nb = StubBusAuth()\nprint(\"no MAC :\", b.ingest(frame))\nimport hashlib, hmac\nprint(\"good MAC:\", b.ingest(frame, hmac.new(StubBusAuth.KEY, frame, hashlib.sha256).digest()[:8]))\n",
+        "success_criterion": "The format-trust StubBus returns EXECUTED for the unauthenticated well-formed CCSDS frame (benign canary payload); the authenticated bus REJECTs it without a valid MAC and only executes with the correct authenticator. Confirms format/CRC validity is mistaken for command authority in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline simulation over synthetic frames; no radio, transmit, or spacecraft contact."
       }
     },
     {
@@ -15078,6 +15148,16 @@
           "tooling_status": "none",
           "detection_status": "none"
         }
+      },
+      "test_artifact": {
+        "name": "Unattested COTS bus component asserts identity and is trusted on the bus",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python stub of a smallsat data bus (MIL-STD-1553/SpaceWire-style) where remote terminals self-declare their type/identity at enumeration. Synthetic terminals only; no real hardware. Models the seam: with no component provenance/attestation, a counterfeit or substituted COTS RT that claims a privileged role is enrolled and granted the bus traffic of that role.",
+        "script": "#!/usr/bin/env python3\n# GH7 smallsat COTS bus component provenance -- OFFLINE SIM ONLY.\n# Synthetic bus terminals; no real 1553/SpaceWire hardware, no spacecraft.\n# Trust boundary: a bus controller that enrolls remote terminals by their\n# SELF-DECLARED identity/type, with no provenance attestation, will trust a\n# substituted/counterfeit COTS part that simply claims a privileged role.\n\nclass BusController:\n    def __init__(self): self.roster = {}\n    def enumerate(self, rt_addr, declared_role, attestation=None):\n        # SEAM: accept whatever role the terminal declares.\n        self.roster[rt_addr] = declared_role\n        return (\"ENROLLED\", rt_addr, declared_role)\n    def can_command_adcs(self, rt_addr):\n        return self.roster.get(rt_addr) == \"ADCS-controller\"\n\nclass BusControllerAttested(BusController):\n    # DEFENSE: only roles vouched for by a provisioning manifest of known-good\n    # part attestations (e.g. signed part id measured at integration) are honored.\n    MANIFEST = {0x03: (\"ADCS-controller\", \"ATTEST-OK\")}\n    def enumerate(self, rt_addr, declared_role, attestation=None):\n        expect = self.MANIFEST.get(rt_addr)\n        if not expect or expect[0] != declared_role or attestation != expect[1]:\n            self.roster[rt_addr] = \"untrusted-payload\"\n            return (\"QUARANTINE\", rt_addr, declared_role)\n        self.roster[rt_addr] = declared_role\n        return (\"ENROLLED\", rt_addr, declared_role)\n\nprint(\"== provenance-blind controller ==\")\nbc = BusController()\nprint(bc.enumerate(0x11, \"ADCS-controller\"))   # counterfeit part claims the role\nprint(\"counterfeit can command ADCS:\", bc.can_command_adcs(0x11), \"  <-- SEAM\")\n\nprint(\"\\n== attested controller (defense) ==\")\nbc2 = BusControllerAttested()\nprint(\"counterfeit 0x11:\", bc2.enumerate(0x11, \"ADCS-controller\", attestation=\"forged\"))\nprint(\"genuine     0x03:\", bc2.enumerate(0x03, \"ADCS-controller\", attestation=\"ATTEST-OK\"))\nprint(\"counterfeit can command ADCS:\", bc2.can_command_adcs(0x11))\n",
+        "success_criterion": "The provenance-blind controller ENROLLs the counterfeit terminal as the ADCS-controller and grants it that role; the attested controller QUARANTINEs the counterfeit (forged attestation) and only enrolls the manifest-matched genuine part. Confirms missing component provenance lets a substituted COTS part assume a privileged bus role in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline simulation over synthetic bus terminals; no real hardware or spacecraft."
       }
     },
     {
@@ -15143,6 +15223,16 @@
           "tooling_status": "partial",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "Synthetic AIS message decoded into a phantom track in a VTS fusion stub",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python. Generate a synthetic AIS Type-1 position-report payload IN MEMORY, decode it with a software AIS decoder (RECEIVE-ONLY path), and feed it to a stub VTS/fusion that trusts broadcast position. No radio, never transmitted. Models the seam: AIS is unauthenticated, so a decoder + fusion that treat any received report as truth will plot a phantom vessel.",
+        "script": "#!/usr/bin/env python3\n# GH7 AIS broadcast-position-as-truth -- OFFLINE SIM / RECEIVE-ONLY DECODE.\n# A synthetic AIS payload is built in memory and DECODED (never broadcast,\n# no radio, no transmit). Then fed to a stub VTS fusion.\n# Trust boundary: AIS Type-1 reports are unauthenticated; a system that plots\n# any decoded report as a real vessel will show a phantom track.\n\ndef encode_ais_type1(mmsi, lat, lon):\n    # Build the 168-bit AIS Type-1 payload as a bitstring (subset of fields).\n    def bits(val, n): return format(val & ((1<<n)-1), '0%db' % n)\n    lat_i = int(round(lat * 600000)) & ((1<<27)-1)\n    lon_i = int(round(lon * 600000)) & ((1<<28)-1)\n    b  = bits(1,6) + bits(0,2) + bits(mmsi,30) + bits(0,4) + bits(0,8)\n    b += bits(0,2) + bits(0,3) + bits(0,1) + bits(lon_i,28) + bits(lat_i,27)\n    b += bits(0,12)+ bits(0,9) + bits(0,6) + bits(0,2) + bits(0,3)\n    b += bits(0,1) + bits(0,19)\n    return b[:168]\n\ndef decode_ais_type1(b):\n    def u(s,n,off): return int(s[off:off+n],2), off+n\n    msgtype,o = u(b,6,0); _,o = u(b,2,o); mmsi,o = u(b,30,o)\n    _,o = u(b,4,o); _,o = u(b,8,o); _,o = u(b,2,o); _,o = u(b,3,o); _,o = u(b,1,o)\n    lon_i,o = u(b,28,o); lat_i,o = u(b,27,o)\n    if lon_i & (1<<27): lon_i -= (1<<28)   # sign-extend\n    if lat_i & (1<<26): lat_i -= (1<<27)\n    return {\"type\":msgtype,\"mmsi\":mmsi,\"lon\":lon_i/600000.0,\"lat\":lat_i/600000.0}\n\nclass VTSFusion:\n    def __init__(self): self.tracks = {}\n    def ingest(self, rpt):\n        # SEAM: trust decoded position as a real vessel.\n        self.tracks[rpt[\"mmsi\"]] = (rpt[\"lat\"], rpt[\"lon\"])\n        return self.tracks[rpt[\"mmsi\"]]\n    def ingest_corroborated(self, rpt, radar_hit):\n        # DEFENSE: require an independent sensor (radar/coastal) corroboration.\n        if not radar_hit: return (\"UNCORROBORATED\", rpt[\"mmsi\"])\n        self.tracks[rpt[\"mmsi\"]] = (rpt[\"lat\"], rpt[\"lon\"]); return (\"PLOTTED\",)\n\nPHANTOM_MMSI = 999000123\npayload = encode_ais_type1(PHANTOM_MMSI, 37.8000, -122.4000)\nrpt = decode_ais_type1(payload)\nprint(\"decoded (receive-only):\", rpt)\n\nvts = VTSFusion()\nprint(\"phantom track plotted at:\", vts.ingest(rpt), \"  <-- SEAM: unauthenticated AIS = truth\")\nprint(\"corroboration-required (no radar):\", vts.ingest_corroborated(rpt, radar_hit=False))\n",
+        "success_criterion": "The software decoder recovers the synthetic MMSI and lat/lon, and the trusting VTSFusion plots a phantom track at the spoofed coordinates; the corroboration-required path returns UNCORROBORATED without an independent radar hit. Confirms unauthenticated AIS is accepted as truth in-sim, with no transmission.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Receive-only decode of an in-memory synthetic AIS message; no radio, antenna, or transmission."
       }
     },
     {
@@ -15207,6 +15297,16 @@
           "tooling_status": "available",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "Synthetic ADS-B (DF17) message decoded into a ghost track in a UTM stub",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python. Build a synthetic Mode-S/ADS-B DF17 airborne-position payload IN MEMORY, decode it with a software decoder (RECEIVE-ONLY), and feed to a stub UTM/ATC fusion. No radio, never transmitted. Models the seam: ADS-B is unauthenticated, so a fusion that trusts the downlinked track plots a ghost aircraft.",
+        "script": "#!/usr/bin/env python3\n# GH7 ADS-B datalink track-trust -- OFFLINE SIM / RECEIVE-ONLY DECODE.\n# Synthetic DF17 frame built and DECODED in memory; no radio, no transmit.\n# Trust boundary: ADS-B position is unauthenticated; a UTM/ATC fusion that\n# trusts the downlinked track will plot a non-existent (\"ghost\") aircraft.\n\ndef make_df17(icao, payload_tag):\n    # Minimal synthetic DF17 frame: DF=17, CA=5, ICAO(24), then a 56-bit ME\n    # field. We carry an opaque ident/altitude tag rather than full CPR for the\n    # stub fusion; this is a logic model, not a transmitter.\n    df_ca = (17 << 3) | 5\n    frame = bytes([df_ca]) + icao.to_bytes(3, \"big\") + \\\n            (0x58).to_bytes(1,\"big\") + payload_tag.to_bytes(6, \"big\")\n    return frame\n\ndef decode_df17(frame):\n    df = frame[0] >> 3\n    icao = int.from_bytes(frame[1:4], \"big\")\n    me_type = frame[4] >> 3\n    tag = int.from_bytes(frame[5:11], \"big\")\n    return {\"df\": df, \"icao\": hex(icao), \"me_type\": me_type, \"tag\": tag}\n\nclass UTMFusion:\n    def __init__(self): self.tracks = {}\n    def ingest(self, msg):\n        if msg[\"df\"] != 17: return (\"REJECT\",\"not DF17\")\n        # SEAM: accept downlinked identity/track as real.\n        self.tracks[msg[\"icao\"]] = msg[\"tag\"]\n        return (\"TRACK\", msg[\"icao\"])\n    def ingest_mlat_checked(self, msg, mlat_consistent):\n        # DEFENSE: cross-check against independent MLAT/radar geometry.\n        if not mlat_consistent: return (\"DROP_GHOST\", msg[\"icao\"])\n        self.tracks[msg[\"icao\"]] = msg[\"tag\"]; return (\"TRACK\", msg[\"icao\"])\n\nGHOST_ICAO = 0xABCDEF\nframe = make_df17(GHOST_ICAO, 0x010203040506)\nmsg = decode_df17(frame)\nprint(\"decoded (receive-only):\", msg)\n\nutm = UTMFusion()\nprint(\"ghost plotted:\", utm.ingest(msg), \"  <-- SEAM: unauthenticated ADS-B = truth\")\nprint(\"MLAT-checked (inconsistent):\", utm.ingest_mlat_checked(msg, mlat_consistent=False))\n",
+        "success_criterion": "The software decoder recovers DF=17 and the synthetic ICAO/track tag, and the trusting UTMFusion creates a ghost track; the MLAT-checked path returns DROP_GHOST when independent geometry doesn't corroborate. Confirms unauthenticated ADS-B is accepted as a track in-sim, with no transmission.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Receive-only decode of an in-memory synthetic ADS-B message; no radio, antenna, or transmission."
       }
     },
     {
@@ -15275,6 +15375,16 @@
           "tooling_status": "nascent",
           "detection_status": "nascent"
         }
+      },
+      "test_artifact": {
+        "name": "Asymmetric path delay yields an attacker-chosen PTP offset",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python model of an IEEE-1588 PTP delay-request/response exchange feeding a clock servo. Synthetic timestamps only; no network, no PTP hardware. Models the seam: PTP offset math assumes symmetric forward/reverse path delay; an on-path adversary that adds delay to only one direction injects a deterministic, attacker-chosen offset that the servo applies.",
+        "script": "#!/usr/bin/env python3\n# GH7 PTP asymmetric-delay offset-trust -- OFFLINE SIM ONLY.\n# Synthetic timestamps; no network, no PTP daemon, no hardware clock.\n# Trust boundary: PTP computes offset = ((t2-t1) - (t4-t3))/2 ASSUMING the\n# forward (t1->t2) and reverse (t3->t4) path delays are equal. An on-path\n# adversary delaying ONE direction injects offset = -(extra_delay)/2 exactly.\n\ndef ptp_offset(t1, t2, t3, t4):\n    return ((t2 - t1) - (t4 - t3)) / 2.0\n\n# Symmetric baseline: true offset 0, path delay 100 us each way.\nd = 100e-6\nt1, t2, t3, t4 = 0.0, d, d + 50e-6, d + 50e-6 + d\nprint(\"symmetric offset (s): %.9f\" % ptp_offset(t1, t2, t3, t4))\n\n# Attacker adds extra_delay only on the reverse path (t3->t4).\nextra = 80e-6\nt4a = t4 + extra\noff = ptp_offset(t1, t2, t3, t4a)\nprint(\"asymmetric offset (s): %.9f\" % off)\nprint(\"attacker-intended offset (-extra/2): %.9f\" % (-extra/2.0))\nassert abs(off - (-extra/2.0)) < 1e-12\nprint(\"SEAM: servo applies attacker-chosen offset of %.1f us from one-way delay.\" % (off*1e6))\n\n# DEFENSE note: a peer-delay / asymmetry-monitored / authenticated-path servo\n# would flag the forward/reverse delay mismatch instead of silently applying it.\n",
+        "success_criterion": "The computed PTP offset under one-way (asymmetric) delay equals exactly -(extra_delay)/2 (assertion passes), versus 0 for the symmetric baseline. Confirms an on-path delay asymmetry produces a deterministic attacker-chosen clock offset in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline timestamp simulation; no network, PTP daemon, or hardware clock."
       }
     },
     {
@@ -15341,6 +15451,16 @@
           "tooling_status": "nascent",
           "detection_status": "nascent"
         }
+      },
+      "test_artifact": {
+        "name": "Spoofed local clock silently validates expired certs and stale tokens",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python model of local time-window checks: X.509 notBefore/notAfter validity and a freshness/nonce token TTL, plus a toy consensus 'block timestamp within bounds' check. Synthetic certs/tokens only; no PKI, no network. Models the seam: validity and freshness are decided against the *local clock*; if that clock is spoofed, expired certs and stale tokens pass and out-of-bounds block times are accepted.",
+        "script": "#!/usr/bin/env python3\n# GH7 time-window trust in consensus & certs -- OFFLINE SIM ONLY.\n# Synthetic certs/tokens; no PKI, no network, no chain.\n# Trust boundary: cert validity, token freshness, and consensus timestamp\n# bounds are all decided against the LOCAL clock. Spoof the clock and an\n# expired cert / stale token / out-of-bounds block time all pass.\n\ndef cert_valid(not_before, not_after, now):\n    return not_before <= now <= not_after\n\ndef token_fresh(issued_at, ttl, now):\n    return 0 <= (now - issued_at) <= ttl\n\ndef block_time_ok(block_ts, now, drift=15):\n    return abs(block_ts - now) <= drift\n\n# A cert that EXPIRED at t=1000 and a token issued at t=500 (ttl 60).\nTRUE_NOW = 2000\nprint(\"== true clock (now=%d) ==\" % TRUE_NOW)\nprint(\"expired cert valid:\", cert_valid(0, 1000, TRUE_NOW))\nprint(\"stale token fresh :\", token_fresh(500, 60, TRUE_NOW))\n\n# Attacker controls/feeds the local clock -> rolls it back to inside the windows.\nprint(\"\\n== spoofed clock ==\")\nprint(\"expired cert valid (clock rolled to 900):\", cert_valid(0, 1000, 900),\n      \"  <-- SEAM: revived expired cert\")\nprint(\"stale token fresh (clock set to 520)    :\", token_fresh(500, 60, 520),\n      \"  <-- SEAM: stale token accepted\")\nprint(\"future block accepted (clock pushed to 99990):\", block_time_ok(99999, 99990),\n      \"  <-- SEAM: out-of-bounds block time accepted\")\nprint(\"SEAM: every time-window check is only as trustworthy as the local clock.\")\n",
+        "success_criterion": "Under the true clock the expired cert and stale token both fail; under the spoofed/rolled clock the expired cert validates, the token passes inside its revived TTL, and a future-stamped block is accepted. Confirms time-window trust collapses to local-clock trust in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline logic simulation over synthetic certs/tokens; no PKI, network, or chain."
       }
     },
     {
@@ -15409,6 +15529,16 @@
           "tooling_status": "none",
           "detection_status": "nascent"
         }
+      },
+      "test_artifact": {
+        "name": "Replayed/frozen DER telemetry suppresses an automated grid trip in a DERMS stub",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python stub of a VPP/DERMS automated-response loop that decides whether to issue a curtail/trip command based on aggregated DER telemetry. Synthetic telemetry only; no SCADA, no inverters, no grid. Models the seam: telemetry consumed without freshness/authentication can be replayed or frozen so a real over-voltage condition is masked and the automated trip never fires.",
+        "script": "#!/usr/bin/env python3\n# GH7 DER aggregator grid command-trust -- OFFLINE SIM ONLY.\n# Synthetic telemetry; no SCADA, no inverter, no DERMS, no grid connection.\n# Trust boundary: an automated VPP/DERMS response that decides on telemetry\n# WITHOUT freshness/authentication can be fed REPLAYED or FROZEN samples that\n# mask a real abnormal condition, suppressing the protective trip.\n\nclass DERMS:\n    def __init__(self): self.tripped = False\n    def evaluate(self, sample):\n        # Trip if voltage out of band. SEAM: no freshness/seq/auth check.\n        if not (0.95 <= sample[\"pu_voltage\"] <= 1.05):\n            self.tripped = True\n        return self.tripped\n    def evaluate_fresh(self, sample, expected_seq, max_age, now):\n        # DEFENSE: require monotonic seq + bounded age (and, in real life, a MAC).\n        if sample[\"seq\"] < expected_seq: return (\"STALE_REPLAY\", self.tripped)\n        if now - sample[\"ts\"] > max_age:  return (\"STALE_AGE\", self.tripped)\n        return (\"OK\", self.evaluate(sample))\n\n# Real grid goes into over-voltage at 1.12 pu. Attacker replays a healthy frame.\nhealthy = {\"pu_voltage\": 1.00, \"seq\": 10, \"ts\": 100}\nabnormal= {\"pu_voltage\": 1.12, \"seq\": 11, \"ts\": 110}\n\nprint(\"== freshness-blind DERMS ==\")\nd = DERMS()\nfor _ in range(5):\n    d.evaluate(healthy)            # replayed/frozen healthy frame\nprint(\"tripped after replayed-healthy storm:\", d.tripped, \"  <-- SEAM: trip suppressed\")\nprint(\"(if true abnormal frame seen) would trip:\", DERMS().evaluate(abnormal))\n\nprint(\"\\n== freshness-checked DERMS (defense) ==\")\nd2 = DERMS()\nprint(\"replay old healthy seq=10, expect>=11:\", d2.evaluate_fresh(healthy, 11, 30, now=200))\nprint(\"fresh abnormal seq=11:\", d2.evaluate_fresh(abnormal, 11, 30, now=120))\n",
+        "success_criterion": "The freshness-blind DERMS never trips while the attacker replays the healthy frame, even though the true abnormal frame would have tripped it; the freshness-checked DERMS flags the replay as STALE_REPLAY and trips on the fresh abnormal sample. Confirms replayed/frozen telemetry suppresses the automated trip in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline simulation over synthetic telemetry; no SCADA, inverter, DERMS, or grid contact."
       }
     },
     {
@@ -15481,6 +15611,16 @@
           "tooling_status": "nascent",
           "detection_status": "partial"
         }
+      },
+      "test_artifact": {
+        "name": "Frozen BACnet/Modbus safety telemetry blocks an automated safety response",
+        "language": "python",
+        "authorization": "Authorized bench/lab only, signed RoE. No real spectrum/satellite/aircraft/ship/grid/network; conducted/shielded only.",
+        "setup": "Pure python stub of a building/industrial safety controller (BACnet/Modbus-style register reads) whose automated response (e.g. exhaust/shutdown) is gated on a sensor value. Synthetic register values only; no field bus, no PLC, no plant. Models the seam: register reads carry no freshness/authentication, so a frozen (last-known-good) value masks a hazardous reading and the automated response is never triggered.",
+        "script": "#!/usr/bin/env python3\n# GH7 safety-telemetry replay into automated response -- OFFLINE SIM ONLY.\n# Synthetic Modbus/BACnet-style register values; no field bus, PLC, or plant.\n# Trust boundary: an automated safety response gated on a register read with no\n# freshness/authentication can be fed a FROZEN last-known-good value, masking a\n# hazardous reading so the response (alarm/exhaust/shutdown) never fires.\n\nclass SafetyController:\n    def __init__(self): self.response_fired = False\n    def poll(self, register_value):\n        # Fire response if gas concentration register exceeds threshold.\n        # SEAM: no check that the value is fresh/authentic.\n        if register_value > 50:        # ppm threshold\n            self.response_fired = True\n        return self.response_fired\n    def poll_fresh(self, value, seq, last_seq, ts, now, max_age):\n        if seq <= last_seq: return (\"FROZEN_OR_REPLAY\", self.response_fired)\n        if now - ts > max_age: return (\"STALE\", self.response_fired)\n        return (\"OK\", self.poll(value))\n\nprint(\"== freshness-blind safety controller ==\")\nsc = SafetyController()\nFROZEN = 12      # last-known-good 12 ppm\nTRUE   = 180     # real hazardous 180 ppm\nfor _ in range(6):\n    sc.poll(FROZEN)               # attacker holds/replays the frozen value\nprint(\"response fired during frozen-telemetry hazard:\", sc.response_fired, \"  <-- SEAM\")\nprint(\"(if true value seen) would fire:\", SafetyController().poll(TRUE))\n\nprint(\"\\n== freshness-checked controller (defense) ==\")\nsc2 = SafetyController()\nprint(\"frozen seq replay:\", sc2.poll_fresh(FROZEN, seq=5, last_seq=5, ts=100, now=200, max_age=10))\nprint(\"fresh true value :\", sc2.poll_fresh(TRUE,  seq=6, last_seq=5, ts=195, now=200, max_age=10))\n",
+        "success_criterion": "The freshness-blind controller never fires the safety response while the frozen 12 ppm value is replayed across the hazard window, though the true 180 ppm value would have fired it; the freshness-checked controller flags FROZEN_OR_REPLAY and fires on the fresh hazardous reading. Confirms replayed/frozen safety telemetry suppresses the automated response in-sim.",
+        "cleanup": "No persistent state; exit interpreter.",
+        "safety": "Offline simulation over synthetic register values; no field bus, PLC, or plant contact."
       }
     },
     {
@@ -45479,8 +45619,8 @@
       ]
     },
     {
-      "id": "GH5-cdn-edge-cache-key-confused-deputy",
-      "primitive": "P5",
+      "id": "GH4-deepfake-liveness-kyc-bypass",
+      "primitive": "P3",
       "score": 2.31,
       "yield": 2.72,
       "effort": 1.18,
@@ -45491,13 +45631,14 @@
       ]
     },
     {
-      "id": "GH4-deepfake-liveness-kyc-bypass",
-      "primitive": "P3",
-      "score": 2.1,
-      "yield": 2.48,
+      "id": "GH5-cdn-edge-cache-key-confused-deputy",
+      "primitive": "P5",
+      "score": 2.31,
+      "yield": 2.72,
       "effort": 1.18,
       "drivers": [
         "demonstrated",
+        "poc-exists",
         "scalable+auto+ai"
       ]
     },
@@ -45549,6 +45690,29 @@
       ]
     },
     {
+      "id": "GH7-adsb-datalink-track-trust",
+      "primitive": "P3",
+      "score": 1.74,
+      "yield": 2.04,
+      "effort": 1.18,
+      "drivers": [
+        "demonstrated",
+        "poc-exists",
+        "scalable+auto+ai"
+      ]
+    },
+    {
+      "id": "GH7-gnss-position-spoof-autonomy-ground-truth",
+      "primitive": "P1",
+      "score": 1.64,
+      "yield": 1.93,
+      "effort": 1.18,
+      "drivers": [
+        "demonstrated",
+        "poc-exists"
+      ]
+    },
+    {
       "id": "GH1-rag-citation-spoof",
       "primitive": "P3",
       "score": 1.63,
@@ -45573,17 +45737,6 @@
       ]
     },
     {
-      "id": "GH7-adsb-datalink-track-trust",
-      "primitive": "P3",
-      "score": 1.58,
-      "yield": 1.86,
-      "effort": 1.18,
-      "drivers": [
-        "demonstrated",
-        "scalable+auto+ai"
-      ]
-    },
-    {
       "id": "C-supplychain",
       "primitive": "P3",
       "score": 1.57,
@@ -45591,6 +45744,18 @@
       "effort": 1.18,
       "drivers": [
         "undetected",
+        "poc-exists"
+      ]
+    },
+    {
+      "id": "GH7-ptp-asymmetric-delay-offset-trust",
+      "primitive": "P6",
+      "score": 1.55,
+      "yield": 3.87,
+      "effort": 2.5,
+      "drivers": [
+        "undetected",
+        "demonstrated",
         "poc-exists"
       ]
     },
@@ -45629,13 +45794,15 @@
       ]
     },
     {
-      "id": "GH7-gnss-position-spoof-autonomy-ground-truth",
-      "primitive": "P1",
+      "id": "GH7-ais-broadcast-position-as-truth",
+      "primitive": "P3",
       "score": 1.49,
-      "yield": 1.75,
-      "effort": 1.18,
+      "yield": 2.48,
+      "effort": 1.67,
       "drivers": [
-        "demonstrated"
+        "demonstrated",
+        "poc-exists",
+        "scalable+auto+ai"
       ]
     },
     {
@@ -45668,17 +45835,6 @@
       "effort": 1.18,
       "drivers": [
         "undetected"
-      ]
-    },
-    {
-      "id": "GH7-ptp-asymmetric-delay-offset-trust",
-      "primitive": "P6",
-      "score": 1.41,
-      "yield": 3.52,
-      "effort": 2.5,
-      "drivers": [
-        "undetected",
-        "demonstrated"
       ]
     },
     {
@@ -45782,17 +45938,6 @@
       "yield": 1.35,
       "effort": 1,
       "drivers": [
-        "scalable+auto+ai"
-      ]
-    },
-    {
-      "id": "GH7-ais-broadcast-position-as-truth",
-      "primitive": "P3",
-      "score": 1.35,
-      "yield": 2.25,
-      "effort": 1.67,
-      "drivers": [
-        "demonstrated",
         "scalable+auto+ai"
       ]
     },
@@ -45931,8 +46076,8 @@
         ]
       },
       {
-        "id": "GH5-cdn-edge-cache-key-confused-deputy",
-        "primitive": "P5",
+        "id": "GH4-deepfake-liveness-kyc-bypass",
+        "primitive": "P3",
         "score": 2.31,
         "yield": 2.72,
         "effort": 1.18,
@@ -45943,13 +46088,14 @@
         ]
       },
       {
-        "id": "GH4-deepfake-liveness-kyc-bypass",
-        "primitive": "P3",
-        "score": 2.1,
-        "yield": 2.48,
+        "id": "GH5-cdn-edge-cache-key-confused-deputy",
+        "primitive": "P5",
+        "score": 2.31,
+        "yield": 2.72,
         "effort": 1.18,
         "drivers": [
           "demonstrated",
+          "poc-exists",
           "scalable+auto+ai"
         ]
       },
@@ -46001,6 +46147,29 @@
         ]
       },
       {
+        "id": "GH7-adsb-datalink-track-trust",
+        "primitive": "P3",
+        "score": 1.74,
+        "yield": 2.04,
+        "effort": 1.18,
+        "drivers": [
+          "demonstrated",
+          "poc-exists",
+          "scalable+auto+ai"
+        ]
+      },
+      {
+        "id": "GH7-gnss-position-spoof-autonomy-ground-truth",
+        "primitive": "P1",
+        "score": 1.64,
+        "yield": 1.93,
+        "effort": 1.18,
+        "drivers": [
+          "demonstrated",
+          "poc-exists"
+        ]
+      },
+      {
         "id": "GH1-rag-citation-spoof",
         "primitive": "P3",
         "score": 1.63,
@@ -46023,31 +46192,9 @@
           "poc-exists",
           "scalable+auto+ai"
         ]
-      },
-      {
-        "id": "GH7-adsb-datalink-track-trust",
-        "primitive": "P3",
-        "score": 1.58,
-        "yield": 1.86,
-        "effort": 1.18,
-        "drivers": [
-          "demonstrated",
-          "scalable+auto+ai"
-        ]
-      },
-      {
-        "id": "C-supplychain",
-        "primitive": "P3",
-        "score": 1.57,
-        "yield": 1.85,
-        "effort": 1.18,
-        "drivers": [
-          "undetected",
-          "poc-exists"
-        ]
       }
     ],
-    "totalYield": 54.29,
+    "totalYield": 54.79,
     "totalEffort": 24.13
   }
 }
