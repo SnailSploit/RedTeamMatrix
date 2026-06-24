@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SEAMMAP — seam-based red-team trust hypergraph</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header>
+  <h1><b>SEAM</b>MAP</h1>
+  <span class="tag" id="meta">loading…</span>
+  <nav>
+    <button data-view="graph" class="active">Graph</button>
+    <button data-view="matrix">Matrix</button>
+    <button data-view="tree">Tree</button>
+    <button data-view="gaps">Gaps</button>
+    <button data-view="path">Path</button>
+  </nav>
+</header>
+
+<main>
+  <!-- GRAPH -->
+  <section class="view active" id="view-graph">
+    <div id="cy"></div>
+    <div class="legend" id="legend"></div>
+    <div class="graph-controls" id="graph-controls"></div>
+  </section>
+
+  <!-- MATRIX -->
+  <section class="view" id="view-matrix">
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+      <div class="matrix-key" id="matrix-key"></div>
+      <div class="tablewrap"><table id="matrix"></table></div>
+    </div>
+  </section>
+
+  <!-- TREE -->
+  <section class="view" id="view-tree">
+    <div class="treewrap" id="tree"></div>
+  </section>
+
+  <!-- GAPS -->
+  <section class="view" id="view-gaps">
+    <div class="gapswrap">
+      <div class="gaps-controls" id="gaps-controls"></div>
+      <div id="gaps-list"></div>
+    </div>
+  </section>
+
+  <!-- PATH -->
+  <section class="view" id="view-path">
+    <div class="pathwrap">
+      <div class="path-controls" id="path-controls"></div>
+      <div id="path-list"></div>
+    </div>
+  </section>
+
+  <!-- shared detail -->
+  <aside id="detail" class="empty">Click a seam, cell, leaf, or path step to inspect the trust relationship it violates.</aside>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

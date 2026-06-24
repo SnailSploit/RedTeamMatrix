@@ -1,0 +1,29 @@
+{
+  "$schema": "The eight named 2027 frontier seams from the brief (S3). Each is an old primitive landing on a node-pair that was not a trust bridge ~24 months ago. Each compresses sub-seams; the decomposition lives in seams.json as entries whose `parent` equals the frontier id here. The gap engine and validate.ts require every frontier seam to decompose into >=2 sub-seams.",
+  "frontier_seams": [
+    { "id": "F1-semantic-data-control",        "name": "Semantic Data->Control",        "primitive": "P1", "exploded_from": "P1",
+      "summary": "The LLM is a parser with no grammar; any text is potential control. The seam now exists at every text-ingress: retrieval, tool output, memory, file, fetch. Moved from 'where there is a query language' to 'where there is text'.",
+      "edge": "{Doc, Web, Email, Tool-output, Memory} -> AI Agent" },
+    { "id": "F2-authority-machine-speed",       "name": "Authority-at-Machine-Speed",    "primitive": "P2", "exploded_from": "P2",
+      "summary": "The deputy used to be a human with judgment and human pace; now it is an agent with the human's scope, zero judgment, machine speed. OAuth/IAM/rate-limits were calibrated to human behavior; the agent voids the calibration. Same stolen token, inverted blast radius.",
+      "edge": "Human-scoped-credential -> AI Agent -> {Cloud, AD, SaaS}" },
+    { "id": "F3-tool-broker-confused-deputy",   "name": "Tool-Broker Confused Deputy",   "primitive": "P2+P1", "exploded_from": "P2",
+      "summary": "MCP/tool brokers hold creds to N backends and select tools from model output: confused deputy by construction. Plus cross-server contamination. 4-party hyperedge where no single party sees the whole frame.",
+      "edge": "{User, Model-output, Broker, Backend}" },
+    { "id": "F4-retrieval-provenance-collapse", "name": "Retrieval-Time Provenance Collapse", "primitive": "P3", "exploded_from": "P3",
+      "summary": "RAG ingests from open sources (untrusted write) and injects at query time into privileged context (trusted read). Write-side open, read-side privileged, no boundary check between them.",
+      "edge": "Untrusted-corpus -> Vector-Store -> Agent-context" },
+    { "id": "F5-memory-dead-drop",              "name": "Memory-as-Dead-Drop",           "primitive": "P4+P3", "exploded_from": "P4",
+      "summary": "Agent long-term memory is written under injection influence and re-read as trusted context every session: write-once, trigger-many, cross-session. The agent polls its own state, so memory is a C2 channel with no external leg and no framework.",
+      "edge": "Injection -> Agent-Memory -> (loop) -> Agent" },
+    { "id": "F6-inter-agent-trust",             "name": "Inter-Agent Trust",             "primitive": "P1", "exploded_from": "P1",
+      "summary": "Orchestrator->worker and agent-to-agent treat peer output as authoritative tasking, but peer output is model output (P1-manipulable). Lateral across an agent mesh needs no exploit: just convince one agent to instruct the next. Machines social-engineering machines.",
+      "edge": "Agent -> Agent" },
+    { "id": "F7-detection-model-seam",          "name": "Detection-Model Seam",          "primitive": "P1", "exploded_from": "P1",
+      "summary": "As the SOC deploys ML/LLM detection, the detector is a parser with a Data->Control seam: evade it, poison its training, prompt-inject the AI analyst's incident summary. Offense gap = wherever defense automated faster than it hardened.",
+      "edge": "Attacker-controlled-telemetry -> SOC-Model" },
+    { "id": "F8-capability-composition",        "name": "Capability-Composition",        "primitive": "P4", "exploded_from": "P4",
+      "summary": "Skills, plugins, containers compose at runtime, each inheriting host authority. Composition unions authority but not scrutiny: as exposed as the least-vetted component, as trusting as the most-vetted.",
+      "edge": "Untrusted-capability -> Composition-host -> (inherits) Host-authority" }
+  ]
+}

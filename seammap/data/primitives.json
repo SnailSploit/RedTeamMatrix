@@ -1,0 +1,53 @@
+{
+  "$schema": "The six seam primitives. This set is CLOSED. Every seam, classic or frontier, is exactly one of these. The agent era added no seventh primitive; it exploded edge/node count for P1 and P2 and inverted blast radius.",
+  "primitives": [
+    {
+      "id": "P1",
+      "name": "Data->Control",
+      "color": "#e6194b",
+      "definition": "Input parsed as instruction. The boundary between data and code is treated as enforced when it is not.",
+      "classic_exemplars": ["SQLi", "XSS", "SSTI", "deserialization", "command injection", "prompt injection"],
+      "agent_era_note": "Exploded. The LLM is a parser with no grammar: any text is potential control. There is no parameterized query for English."
+    },
+    {
+      "id": "P2",
+      "name": "Identity->Authority",
+      "color": "#3cb44b",
+      "definition": "Position or credential wielded by a party that should not hold it. The system authorizes the position, not the intent behind it.",
+      "classic_exemplars": ["confused deputy", "SSRF", "CSRF", "token replay", "IMDS", "Kerberos delegation"],
+      "agent_era_note": "Inverted blast radius. The deputy used to be a human with judgment and human pace; now it is an agent with the human's scope, zero judgment, machine speed."
+    },
+    {
+      "id": "P3",
+      "name": "Provenance",
+      "color": "#ffe119",
+      "definition": "Output trusted for where it came from, when origin is forgeable. The receiver checks the label, not the thing.",
+      "classic_exemplars": ["supply chain", "webhook-secret bypass", "open-redirect trust", "dependency confusion"],
+      "agent_era_note": "Retrieval and memory create new forgeable-origin surfaces: write-side open, read-side privileged, no boundary check between."
+    },
+    {
+      "id": "P4",
+      "name": "Context-Inheritance",
+      "color": "#4363d8",
+      "definition": "Downstream inherits parent trust without re-validation. Composition unions authority but not scrutiny.",
+      "classic_exemplars": ["container composition", "session fixation", "thread/context carryover"],
+      "agent_era_note": "Runtime composition of skills/plugins/memory each inherit host authority: as exposed as the least-vetted component, as trusting as the most-vetted."
+    },
+    {
+      "id": "P5",
+      "name": "Format-Boundary",
+      "color": "#f58231",
+      "definition": "Meaning shifts crossing a parser. Two components disagree about where a thing begins and ends.",
+      "classic_exemplars": ["request smuggling", "tar/zip slip", "unicode normalization", "CWE-88 arg injection"],
+      "agent_era_note": "New transports (MCP stdio/SSE/streamable-HTTP, tool-call framing) reintroduce boundary desync between broker and backend."
+    },
+    {
+      "id": "P6",
+      "name": "Time/State",
+      "color": "#911eb4",
+      "definition": "True at check, false at use. The validated fact and the acted-upon fact are separated in time.",
+      "classic_exemplars": ["TOCTOU", "race condition", "replay", "idempotency failure"],
+      "agent_era_note": "Long-lived agent state, memory replay, and detector feedback loops widen the check-to-use gap across whole sessions."
+    }
+  ]
+}

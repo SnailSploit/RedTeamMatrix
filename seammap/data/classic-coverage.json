@@ -1,0 +1,58 @@
+{
+  "$schema": "Drives the non-deletion invariant (NEW DOES NOT CANCEL OLD). Every classic mind-map branch and every ATT&CK Enterprise tactic must resolve to >=1 seam in seams.json, or be explicitly logged honest-na here. validate.ts fails the build if any classic technique is silently dropped. honest_na_cells declare permanent matrix (principal x tactic) blanks so the typing test never renders a plain blank.",
+
+  "classic_branches": [
+    "Reconnaissance",
+    "Resource Development / Weaponization",
+    "Initial Access / Delivery",
+    "Execution / Exploitation",
+    "Persistence",
+    "Privilege Escalation",
+    "Defense Evasion",
+    "Credential Access",
+    "Discovery / Enumeration",
+    "Lateral Movement / Pivoting",
+    "Collection",
+    "Command and Control",
+    "Exfiltration",
+    "Impact",
+    "Reporting",
+    "Social Engineering",
+    "Web Application Attacks",
+    "Wireless / Network Attacks",
+    "Physical Access",
+    "Cloud & Container Attacks"
+  ],
+
+  "attack_tactics": [
+    { "id": "TA0043", "name": "Reconnaissance" },
+    { "id": "TA0042", "name": "Resource Development" },
+    { "id": "TA0001", "name": "Initial Access" },
+    { "id": "TA0002", "name": "Execution" },
+    { "id": "TA0003", "name": "Persistence" },
+    { "id": "TA0004", "name": "Privilege Escalation" },
+    { "id": "TA0005", "name": "Defense Evasion" },
+    { "id": "TA0006", "name": "Credential Access" },
+    { "id": "TA0007", "name": "Discovery" },
+    { "id": "TA0008", "name": "Lateral Movement" },
+    { "id": "TA0009", "name": "Collection" },
+    { "id": "TA0011", "name": "Command and Control" },
+    { "id": "TA0010", "name": "Exfiltration" },
+    { "id": "TA0040", "name": "Impact" }
+  ],
+
+  "branch_honest_na": [
+    { "branch": "Reporting", "reason": "Reporting is the red-team operator's own deliverable phase. It violates no victim trust relationship, so it has no seam. Drawn honest-na deliberately, not left blank." }
+  ],
+
+  "honest_na_cells": [
+    { "principal": "ad",          "tactic": "TA0011", "reason": "Active Directory has no command-and-control channel of its own; C2 rides the host/network. Permanent honest-na." },
+    { "principal": "ad",          "tactic": "TA0010", "reason": "AD is not an egress; exfiltration leaves via host/network, not the directory service. Permanent." },
+    { "principal": "vectorstore", "tactic": "TA0011", "reason": "A passive retrieval index does not beacon. C2 that abuses it is modeled as memory-as-dead-drop on the agent, not the store. Permanent." },
+    { "principal": "vectorstore", "tactic": "TA0040", "reason": "An index has no destructive impact surface of its own; impact lands on the agent/host it feeds. Permanent." },
+    { "principal": "doc",         "tactic": "TA0011", "reason": "A document is an ingress conduit, not a control channel. Permanent." },
+    { "principal": "doc",         "tactic": "TA0006", "reason": "A file conduit holds no credentials to access; credential access targets stores, not the conduit. Permanent." },
+    { "principal": "email",       "tactic": "TA0040", "reason": "The messaging conduit carries impact payloads but is not itself the impacted resource. Permanent." },
+    { "principal": "web",         "tactic": "TA0040", "reason": "The fetch conduit is a delivery/ingress surface, not a destruction target. Permanent." }
+  ]
+}

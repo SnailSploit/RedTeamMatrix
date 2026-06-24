@@ -1,0 +1,359 @@
+// SEAMMAP front-end. All five views read ONE dataset.json (the rendered projections of
+// the canonical hypergraph). Vanilla JS, no build. Graph via cytoscape (CDN).
+
+let DS = null;          // the bundle
+let PRIM = {};          // primitive id -> primitive
+let SEAM = {};          // seam id -> seam
+let SCORE = {};         // seam id -> scored
+let PNAME = {};         // principal id -> name
+let cy = null;
+const opFilter = { scalable: false, automatable: false, ai: false, frontierOnly: false };
+
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const primColor = (p) => (PRIM[p] ? PRIM[p].color : "#888");
+
+init();
+
+async function init() {
+  DS = await (await fetch("dataset.json")).json();
+  DS.primitives.forEach((p) => (PRIM[p.id] = p));
+  DS.seams.forEach((s) => (SEAM[s.id] = s));
+  DS.scored.forEach((s) => (SCORE[s.id] = s));
+  DS.principals.forEach((p) => (PNAME[p.id] = p.name));
+
+  $("#meta").textContent =
+    `${DS.meta.principals} principals · ${DS.meta.seams} seams · ${DS.meta.hyperedges} hyperedges · ` +
+    `${DS.meta.register_size} gap-register entries · ${DS.meta.gap_stats["AGENT-DISCOVERED"]} agent-discovered`;
+
+  document.querySelectorAll("nav button").forEach((b) =>
+    b.addEventListener("click", () => switchView(b.dataset.view)));
+
+  renderLegend();
+  renderGraphControls();
+  buildGraph();
+  buildMatrix();
+  buildTree();
+  buildGaps();
+  buildPath();
+}
+
+function switchView(v) {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
+  document.querySelectorAll(".view").forEach((s) => s.classList.toggle("active", s.id === `view-${v}`));
+  if (v === "graph" && cy) cy.resize(), cy.fit(undefined, 40);
+}
+
+// --------------------------------------------------------------------------- detail panel
+function showSeam(id) {
+  const s = SEAM[id]; if (!s) return;
+  const sc = SCORE[id] || {};
+  const d = $("#detail"); d.classList.remove("empty");
+  const techs = s.techniques.map((t) => {
+    const refs = [...t.attack_ids, ...t.cwe_ids].map((r) => `<code>${r}</code>`).join(" ");
+    return `<div class="v">• ${t.name} ${refs}</div>`;
+  }).join("");
+  const ops = [];
+  if (s.operator.scalable) ops.push("⤴ scalable");
+  if (s.operator.automatable) ops.push("⟳ automatable");
+  if (s.operator.ai_augmentable) ops.push("⚡ ai-augmentable");
+  const frame = (sc.frame || []).map((p) => PNAME[p] || p).join(" + ");
+  d.innerHTML = `
+    <h2>${s.techniques[0] ? s.techniques[0].name : s.id}</h2>
+    <div class="chips">
+      <span class="chip prim" style="background:${primColor(s.primitive)}">${s.primitive} ${PRIM[s.primitive].name}</span>
+      <span class="chip ${s.kind}">${s.kind}</span>
+      ${s.origin === "AGENT-DISCOVERED" ? '<span class="chip disc">agent-discovered</span>' : ""}
+      ${sc.hyper ? '<span class="chip op">hyperedge</span>' : ""}
+    </div>
+    <div class="k">frame (${sc.hyper ? "multi-party" : "dyadic"})</div><div class="v">${frame}</div>
+    <div class="k">trust assumption</div><div class="v">${s.trust_assumption}</div>
+    <div class="k">violation</div><div class="v">${s.violation}</div>
+    <div class="k">techniques · refs</div>${techs}
+    <div class="k">operator axis</div><div class="chips">${ops.map((o) => `<span class="chip op">${o}</span>`).join("") || '<span class="muted">none</span>'}</div>
+    <div class="k">tooling / detection</div><div class="v">tooling: <b>${s.tooling_status}</b> · detection: <b>${s.detection_status}</b></div>
+    <div class="k">scheduler</div><div class="v">CLS ${sc.cls ?? "?"} · EGQ ${sc.egq ?? "?"} ${sc.egq_candidate ? "<b style='color:#7ee787'>(candidate ≥2)</b>" : ""}</div>
+    <div class="k">tactics · branch</div><div class="v muted">${s.tactics.join(", ")} — ${s.classic_branches.join("; ")}</div>
+    ${s.rationale ? `<div class="k">agent rationale</div><div class="v">${s.rationale}</div>` : ""}
+    ${s.suggested_research ? `<div class="k">suggested research</div><div class="res" style="color:#7ee787">${s.suggested_research}</div>` : ""}
+  `;
+}
+
+function showText(html) { const d = $("#detail"); d.classList.remove("empty"); d.innerHTML = html; }
+
+// --------------------------------------------------------------------------- graph
+function renderLegend() {
+  const lg = $("#legend");
+  let h = "<div style='color:#8b949e;margin-bottom:4px'>edge = primitive</div>";
+  DS.primitives.forEach((p) => {
+    h += `<div class="row"><span class="sw" style="background:${p.color}"></span>${p.id} ${p.name}</div>`;
+  });
+  h += "<div style='color:#8b949e;margin:6px 0 4px'>node ring = maturity</div>";
+  h += `<div class="row"><span class="dot" style="border-color:var(--frontier)"></span>frontier</div>`;
+  h += `<div class="row"><span class="dot" style="border-color:var(--emerging)"></span>emerging</div>`;
+  h += `<div class="row"><span class="dot" style="border-color:var(--mature)"></span>mature</div>`;
+  h += "<div style='color:#8b949e;margin-top:6px'>dashed = frontier seam · glow = scalable+auto+ai</div>";
+  lg.innerHTML = h;
+}
+
+function renderGraphControls() {
+  const c = $("#graph-controls");
+  const mk = (key, label) => {
+    const l = el("label", null, `<input type="checkbox"> ${label}`);
+    l.querySelector("input").addEventListener("change", (e) => { opFilter[key] = e.target.checked; buildGraph(); });
+    return l;
+  };
+  c.append(mk("scalable", "⤴ scalable"), mk("automatable", "⟳ automatable"), mk("ai", "⚡ ai"), mk("frontierOnly", "frontier seams only"));
+}
+
+const maturityColor = (m) => m === "frontier" ? "#ff5c5c" : m === "emerging" ? "#f0a93b" : "#6e7681";
+const classShape = (c) => ({ substrate: "round-rectangle", human: "ellipse", defense: "hexagon", broker: "diamond", conduit: "round-tag" }[c] || "ellipse");
+
+function passesFilter(s) {
+  if (opFilter.frontierOnly && s.kind !== "frontier") return false;
+  if (opFilter.scalable && !s.operator.scalable) return false;
+  if (opFilter.automatable && !s.operator.automatable) return false;
+  if (opFilter.ai && !s.operator.ai_augmentable) return false;
+  return true;
+}
+
+function buildGraph() {
+  if (typeof cytoscape === "undefined") {
+    $("#cy").innerHTML = "<p style='padding:20px;color:#8b949e'>cytoscape failed to load (offline?). Other views work; the graph needs the CDN script.</p>";
+    return;
+  }
+  const elements = [];
+  DS.principals.forEach((p) => elements.push({
+    data: { id: p.id, label: p.name, cls: p.class, maturity: p.maturity }, classes: "principal",
+  }));
+
+  DS.seams.filter(passesFilter).forEach((s) => {
+    const sc = SCORE[s.id];
+    const w = 1 + s.operator.scalable + s.operator.automatable + s.operator.ai_augmentable;
+    const glow = (s.operator.scalable && s.operator.automatable && s.operator.ai_augmentable);
+    if (sc.hyper) {
+      // Hyperedge: a relay node carries the frame so multi-party reads as multi-party.
+      const hid = `he:${s.id}`;
+      elements.push({ data: { id: hid, label: "", relay: true, prim: s.primitive, seam: s.id }, classes: "relay" });
+      sc.frame.forEach((m) => elements.push({
+        data: { id: `${hid}:${m}`, source: hid, target: m, prim: s.primitive, seam: s.id, w, glow, frontier: s.kind === "frontier" }, classes: "seam",
+      }));
+    } else {
+      elements.push({ data: {
+        id: `e:${s.id}`, source: s.source[0], target: s.target[0],
+        prim: s.primitive, seam: s.id, w, glow, frontier: s.kind === "frontier",
+      }, classes: "seam" });
+    }
+  });
+
+  cy = cytoscape({
+    container: $("#cy"),
+    elements,
+    style: [
+      { selector: "node.principal", style: {
+        "background-color": "#1f2630", "label": "data(label)", "color": "#e6edf3",
+        "font-size": 9, "text-wrap": "wrap", "text-max-width": 90, "text-valign": "center",
+        "shape": (n) => classShape(n.data("cls")),
+        "border-width": 3, "border-color": (n) => maturityColor(n.data("maturity")),
+        "width": 46, "height": 46, "padding": 6 } },
+      { selector: "node.relay", style: {
+        "width": 8, "height": 8, "background-color": (n) => primColor(n.data("prim")),
+        "border-width": 0, "shape": "ellipse" } },
+      { selector: "edge.seam", style: {
+        "width": "data(w)", "line-color": (e) => primColor(e.data("prim")),
+        "target-arrow-color": (e) => primColor(e.data("prim")), "target-arrow-shape": "triangle",
+        "curve-style": "bezier", "arrow-scale": 0.8, "opacity": 0.85,
+        "line-style": (e) => e.data("frontier") ? "dashed" : "solid",
+        "shadow-blur": (e) => e.data("glow") ? 14 : 0, "shadow-color": (e) => primColor(e.data("prim")),
+        "shadow-opacity": (e) => e.data("glow") ? 0.9 : 0 } },
+      { selector: ".faded", style: { "opacity": 0.08 } },
+      { selector: ".hi", style: { "opacity": 1, "width": 5, "z-index": 99 } },
+    ],
+    layout: { name: "cose", animate: false, nodeRepulsion: 9000, idealEdgeLength: 110, padding: 40 },
+  });
+
+  cy.on("tap", "edge.seam", (e) => { showSeam(e.target.data("seam")); highlightSeam(e.target.data("seam")); });
+  cy.on("tap", "node.relay", (e) => showSeam(e.target.data("seam")));
+  cy.on("tap", "node.principal", (e) => showPrincipal(e.target.id()));
+  cy.on("tap", (e) => { if (e.target === cy) cy.elements().removeClass("faded hi"); });
+}
+
+function highlightSeam(id) {
+  cy.elements().addClass("faded").removeClass("hi");
+  cy.elements(`[seam = "${id}"]`).removeClass("faded").addClass("hi");
+  cy.elements(`[seam = "${id}"]`).connectedNodes && cy.edges(`[seam = "${id}"]`).connectedNodes().removeClass("faded");
+}
+
+function showPrincipal(id) {
+  const p = DS.principals.find((x) => x.id === id);
+  const touching = DS.seams.filter((s) => (SCORE[s.id].frame || []).includes(id));
+  showText(`<h2>${p.name}</h2>
+    <div class="chips"><span class="chip op">${p.class}</span><span class="chip ${p.maturity === "frontier" ? "frontier" : "classic"}">${p.maturity}</span><span class="chip op">since ${p.era_introduced || "—"}</span></div>
+    <div class="k">role</div><div class="v">${p.note || ""}</div>
+    <div class="k">incident seams (${touching.length})</div>
+    ${touching.map((s) => `<div class="leaf" onclick="showSeam('${s.id}')"><span class="pdot" style="background:${primColor(s.primitive)}"></span>${s.techniques[0].name}</div>`).join("")}`);
+}
+
+// --------------------------------------------------------------------------- matrix
+function buildMatrix() {
+  const m = DS.matrix, t = $("#matrix");
+  let head = "<tr><th class='rowhead'>principal \\ tactic</th>";
+  m.tactics.forEach((tac) => head += `<th title="${tac.name}">${tac.id.replace("TA00", "T")}<br><span class='muted' style='font-weight:400'>${tac.name}</span></th>`);
+  head += "</tr>";
+  let body = "";
+  m.principals.forEach((pid) => {
+    body += `<tr><td class="rowhead">${PNAME[pid]}</td>`;
+    m.tactics.forEach((tac) => {
+      const c = m.cells[pid][tac.id];
+      const click = c.gap_type === "populated"
+        ? `onclick="showCell('${pid}','${tac.id}')"` : `onclick="showText('<h2>typed gap</h2><div class=chips><span class=chip style=\\'border-color:#888\\'>${c.gap_type}</span></div><div class=k>${PNAME[pid]} × ${tac.name}</div><div class=v>${(c.reason || "Plausible trust relationship, no populated technique. This is research surface, not a blank.").replace(/'/g, "&#39;")}</div>')"`;
+      const sym = c.gap_type === "populated" ? c.seam_ids.length : (c.gap_type === "honest-na" ? "·" : (c.gap_type === "frontier" ? "◆" : (c.gap_type === "projected" ? "▷" : "○")));
+      body += `<td class="cell ${c.gap_type}" ${click} title="${c.gap_type}">${sym}</td>`;
+    });
+    body += "</tr>";
+  });
+  t.innerHTML = head + body;
+
+  $("#matrix-key").innerHTML = [
+    ["populated", "#14301c", "populated (count = #seams)"],
+    ["frontier", "var(--proj)", "◆ frontier (surface <24mo, ~0 maturity)"],
+    ["under-tooled", "var(--under)", "○ under-tooled (research exists, no public tooling)"],
+    ["projected", "#122d33", "▷ projected (2026→2027 growth)"],
+    ["honest-na", "var(--na)", "· honest-na (no plausible trust relationship)"],
+  ].map(([k, c, l]) => `<span><b style="background:${c}"></b>${l}</span>`).join("");
+}
+function showCell(pid, tid) {
+  const c = DS.matrix.cells[pid][tid];
+  const tac = DS.matrix.tactics.find((x) => x.id === tid);
+  showText(`<h2>${PNAME[pid]} × ${tac.name}</h2><div class="chip" style="border-color:#7ee787;color:#7ee787">populated</div>
+    <div class="k">seams in this cell</div>
+    ${c.seam_ids.map((id) => `<div class="leaf" onclick="showSeam('${id}')"><span class="pdot" style="background:${primColor(SEAM[id].primitive)}"></span>${SEAM[id].techniques[0].name}</div>`).join("")}`);
+}
+
+// --------------------------------------------------------------------------- tree
+function buildTree() {
+  const wrap = $("#tree");
+  wrap.innerHTML = `<p class="muted">The flat coverage index — the old mind-map shape, generated from the graph. Every classic branch is present and re-homed; every leaf links back to the seam (and its primitive) it lives on.</p>`;
+  DS.tree.forEach((b) => {
+    const div = el("div", "branch");
+    const head = el("div", "bh", `${b.branch} <span class="count">${b.leaves.length} seam${b.leaves.length === 1 ? "" : "s"}</span>`);
+    const body = el("div");
+    if (b.honest_na) body.append(el("div", "na", `honest-na — ${b.honest_na}`));
+    b.leaves.forEach((l) => {
+      const leaf = el("div", "leaf",
+        `<span class="pdot" style="background:${primColor(l.primitive)}"></span>${l.label} <span class="muted">[${l.primitive}]</span>${l.kind === "frontier" ? '<span class="fr">frontier</span>' : ""}`);
+      leaf.addEventListener("click", () => showSeam(l.seam_id));
+      body.append(leaf);
+    });
+    head.addEventListener("click", () => body.style.display = body.style.display === "none" ? "" : "none");
+    div.append(head, body);
+    wrap.append(div);
+  });
+}
+
+// --------------------------------------------------------------------------- gaps register
+function buildGaps() {
+  const c = $("#gaps-controls");
+  c.innerHTML = `
+    <span class="muted">Gaps Register — a primary deliverable. Sorted agent-discovered → frontier → under-tooled → projected.</span>
+    <select id="gf-type">
+      <option value="">all types</option>
+      <option value="AGENT-DISCOVERED">agent-discovered</option>
+      <option value="frontier">frontier</option>
+      <option value="under-tooled">under-tooled</option>
+      <option value="projected">projected</option>
+    </select>
+    <select id="gf-prim"><option value="">all primitives</option>${DS.primitives.map((p) => `<option value="${p.id}">${p.id} ${p.name}</option>`).join("")}</select>
+    <input id="gf-q" placeholder="filter principal / text…" />`;
+  ["#gf-type", "#gf-prim", "#gf-q"].forEach((s) => $(s).addEventListener("input", renderGaps));
+  renderGaps();
+}
+function renderGaps() {
+  const type = $("#gf-type").value, prim = $("#gf-prim").value, q = $("#gf-q").value.toLowerCase();
+  const list = $("#gaps-list"); list.innerHTML = "";
+  let shown = 0;
+  const MAX = 300;
+  for (const g of DS.register) {
+    const kind = g.origin === "AGENT-DISCOVERED" ? "AGENT-DISCOVERED" : g.gap_type;
+    if (type && kind !== type) continue;
+    if (prim && g.primitive !== prim) continue;
+    const hay = `${g.source} ${g.target} ${g.rationale || ""} ${g.suggested_research || ""}`.toLowerCase();
+    if (q && !hay.includes(q)) continue;
+    if (shown >= MAX) { list.append(el("div", "muted", `…and ${DS.register.length - MAX}+ more typed gaps (narrow the filter).`)); break; }
+    shown++;
+    const cls = g.origin === "AGENT-DISCOVERED" ? "disc" : g.gap_type;
+    const row = el("div", `gaprow ${cls}`);
+    row.innerHTML = `<div class="top">
+        <span class="chip prim" style="background:${primColor(g.primitive)}">${g.primitive}</span>
+        <span class="chip ${cls === "disc" ? "disc" : "op"}">${kind}</span>
+        <span class="edge">${PNAME[g.source] || g.source} → ${PNAME[g.target] || g.target}</span>
+        ${g.seam_id ? `<span class="muted" style="cursor:pointer" onclick="showSeam('${g.seam_id}')">[seam ${g.seam_id}]</span>` : ""}
+      </div>
+      ${g.rationale ? `<div class="rat">${g.rationale}</div>` : ""}
+      ${g.suggested_research ? `<div class="res">↳ research: ${g.suggested_research}</div>` : ""}`;
+    list.append(row);
+  }
+  if (!shown) list.append(el("div", "muted", "no gaps match the filter."));
+}
+
+// --------------------------------------------------------------------------- path (kill-chain) view
+function buildPath() {
+  const c = $("#path-controls");
+  const opts = DS.principals.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
+  c.innerHTML = `
+    source <select id="p-src">${opts}</select>
+    target <select id="p-dst">${opts}</select>
+    scorer <select id="p-scorer"><option value="cls">CLS</option><option value="egq">EGQ</option></select>
+    <button id="p-go" style="background:#1f6feb;color:#fff;border:0;padding:5px 12px;border-radius:5px;cursor:pointer">trace</button>`;
+  $("#p-src").value = "web"; $("#p-dst").value = "cloud";
+  $("#p-go").addEventListener("click", runPath);
+  runPath();
+}
+function runPath() {
+  const src = $("#p-src").value, dst = $("#p-dst").value, scorer = $("#p-scorer").value;
+  const paths = findPaths(src, dst, scorer);
+  const list = $("#path-list"); list.innerHTML = "";
+  list.append(el("p", "muted", `Kill chain = a path across seams. The scheduler prioritizes freshly-spawned / frontier edges (★). A path is one traversal; multiple simultaneous paths = parallelism.`));
+  if (!paths.length) { list.append(el("div", "muted", `No path ${PNAME[src]} → ${PNAME[dst]} within 5 hops.`)); return; }
+  if (paths.length > 1) list.append(el("div", "parallel-note", `${paths.length} parallel paths found — an operator can run them simultaneously.`));
+  paths.forEach((p, i) => {
+    const card = el("div", "pathcard");
+    let h = `<div><span class="score">score ${p.score.toFixed(2)}${p.frontierEdges ? ` · ★${p.frontierEdges} frontier` : ""}</span><b>path ${i + 1}</b> <span class="muted">${PNAME[src]} → ${PNAME[dst]}</span></div>`;
+    p.steps.forEach((st) => {
+      const s = SEAM[st.seam];
+      h += `<div class="pathstep" onclick="showSeam('${st.seam}')">
+        <span class="muted">${PNAME[st.from]}</span><span class="arrow"> ──</span><span class="pdot" style="background:${primColor(s.primitive)}"></span>${s.primitive}<span class="arrow">──▸ </span><span class="muted">${PNAME[st.to]}</span>
+        &nbsp; ${s.techniques[0].name}${s.kind === "frontier" ? ' <span class="fr" style="color:#ff5c5c">★</span>' : ""}</div>`;
+    });
+    card.innerHTML = h;
+    list.append(card);
+  });
+}
+// Client-side simple-path search mirroring src/scheduler.ts (frontier-priority bonus).
+function findPaths(src, dst, scorer, maxLen = 5) {
+  const adj = {};
+  DS.seams.forEach((s) => s.source.forEach((a) => s.target.forEach((b) => {
+    if (a === b) return; (adj[a] = adj[a] || []).push({ seam: s.id, to: b });
+  })));
+  const scoreOf = (id) => scorer === "egq" ? (SCORE[id].egq || 0) : (SCORE[id].cls || 0);
+  const out = [];
+  (function walk(node, visited, steps) {
+    if (steps.length > maxLen) return;
+    if (node === dst && steps.length) {
+      let raw = 0, fr = 0;
+      steps.forEach((st) => { raw += scoreOf(st.seam); if (SEAM[st.seam].maturity === "frontier") fr++; });
+      out.push({ steps: steps.slice(), score: raw * (1 + 0.25 * fr) / steps.length, frontierEdges: fr });
+      return;
+    }
+    (adj[node] || []).forEach((e) => {
+      if (visited.has(e.to)) return;
+      visited.add(e.to); steps.push({ seam: e.seam, from: node, to: e.to });
+      walk(e.to, visited, steps);
+      steps.pop(); visited.delete(e.to);
+    });
+  })(src, new Set([src]), []);
+  return out.sort((a, b) => b.score - a.score).slice(0, 12);
+}
+
+// expose handlers used in inline onclick
+window.showSeam = showSeam; window.showText = showText; window.showCell = showCell;

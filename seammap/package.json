@@ -1,0 +1,11 @@
+{
+  "name": "seammap",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "node src/build.ts",
+    "validate": "node src/validate.ts",
+    "spawn-demo": "node src/spawn-demo.ts"
+  }
+}
