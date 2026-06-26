@@ -338,7 +338,20 @@ function renderGaps() {
 // --------------------------------------------------------------------------- predict (emergent composites) view
 function buildPredict() {
   const intro = $("#predict-intro");
-  intro.innerHTML = `<b style="color:#e6edf3">Predicted emergent composites.</b> The merge of old and new tech yields vulnerabilities that look unpredictable — but the typed graph predicts them mechanically: a <span style="color:var(--frontier)">frontier (undetected) entry seam</span> feeding a <span style="color:#7ee787">mature (reliable) propagation seam</span> through a shared principal. Each card inherits the entry's lack of detection and the propagation's reliability. ${(DS.composites || []).length} ranked.`;
+  const em = (DS.meta || {}).emerging;
+  let emHtml = "";
+  if (em) {
+    const PRIMSHORT = { P1: "Data→Control", P2: "Identity→Authority", P3: "Provenance", P4: "Context-Inherit", P5: "Format-Boundary", P6: "Time/State" };
+    const junc = em.junctions.map((j) => `${PNAME[j.node] || j.node} <span class="muted">(${j.count})</span>`).join(" · ");
+    const pats = em.merge_patterns.map((p) => `${p.pattern} <span class="muted">(${p.count})</span>`).join(" · ");
+    emHtml = `<div style="margin-top:8px;padding:8px 10px;border-left:2px solid var(--frontier);background:#161b22">
+      <div><b style="color:#e6edf3">The cross of old and new — ${em.total} composites.</b></div>
+      <div style="margin-top:4px"><span style="color:#7ee787">${em.bridge_pct}%</span> bridge an <b>ATLAS-only / unmodeled new entry</b> to a <b>first-class Enterprise propagation</b> — the seam no single matrix names (whoever watches ATLAS misses the propagation; whoever watches Enterprise misses the door).</div>
+      <div style="margin-top:4px"><span class="muted">Junction principals (old meets new):</span> ${junc}</div>
+      <div style="margin-top:4px"><span class="muted">Dominant merge:</span> ${pats} — the new surface is the way <i>in</i>; classic identity/cloud-IAM escalation is how it <i>travels</i>.</div>
+    </div>`;
+  }
+  intro.innerHTML = `<b style="color:#e6edf3">Predicted emergent composites.</b> The merge of old and new tech yields vulnerabilities that look unpredictable — but the typed graph predicts them mechanically: a <span style="color:var(--frontier)">frontier (undetected) entry seam</span> feeding a <span style="color:#7ee787">mature (reliable) propagation seam</span> through a shared principal. Each card inherits the entry's lack of detection and the propagation's reliability. ${(DS.composites || []).length} ranked.${emHtml}`;
   const list = $("#predict-list"); list.innerHTML = "";
   (DS.composites || []).forEach((c, i) => {
     const B = SEAM[c.entry_seam], A = SEAM[c.propagate_seam];

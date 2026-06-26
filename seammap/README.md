@@ -59,6 +59,15 @@ it fits (no seam-per-technique padding). Result: **100% of the 211 base techniqu
 relationships MITRE does not model. [`docs/MITRE-GAPS.md`](docs/MITRE-GAPS.md) is the cited, domain-balanced
 account of where ATT&CK is structurally blind.
 
+**The cross of old and new — emerging gaps.** The dangerous 2025–2027 attacks are not new techniques but a
+**new, unmonitored entry welded onto a proven classic** at a shared principal. `src/compose.ts` enumerates
+every `(frontier/undetected entry) × (mature/reliable propagation)` that meet at a node — **1,443 composites**,
+of which **21% bridge an ATLAS-only/unmodeled new entry to a first-class Enterprise propagation**: the seam no
+single matrix names (watch ATLAS, miss the propagation; watch Enterprise, miss the door). Old and new fuse at a
+few junctions (Host, Identity & Federation, Cloud), and the dominant merge is *everything-new → P2
+Identity→Authority* — the agentic surface is the way in, classic IAM/AD escalation is how it travels.
+[`docs/EMERGING-GAPS.md`](docs/EMERGING-GAPS.md) is the full analysis; the **Predict** view renders it live.
+
 ## The gap engine (`src/gap-engine.ts`) — the point of the artifact
 
 The map is always behind the frontier by construction; the gap engine reads the edge. Three jobs:

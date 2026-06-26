@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { loadDataset } from "./model.ts";
 import { gapsRegister, autoSpawn } from "./gap-engine.ts";
 import { buildTree, buildMatrix, everyCellTyped } from "./projections.ts";
-import { predictComposites } from "./compose.ts";
+import { predictComposites, emergingSummary } from "./compose.ts";
 import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 import { discoverThreats } from "./discover.ts";
 import { loadMitre, mitreCoverage } from "./mitre.ts";
@@ -302,6 +302,26 @@ const ds = loadDataset();
   log(thin.length === 0,
     `Tech-notes: every discovered technique has a mechanism + >=1 real-world anchor (${disc.length - thin.length}/${disc.length})` +
     (thin.length ? ` — THIN: ${thin.map((s) => s.id).join(", ")}` : ""));
+}
+
+// ---------------------------------------------------------------------------
+// 14. EMERGING GAPS (cross of old & new) — the composition predictor must show the
+// cross-taxonomy bridge: a real share of old×new composites fuse a NEW entry that has
+// NO Enterprise ATT&CK id (it lives in ATLAS, which Enterprise does not incorporate, or
+// nowhere) onto an OLD propagation that IS a first-class Enterprise technique. That bridge
+// is the emerging gap no single matrix names. Also: every junction is a real principal.
+// ---------------------------------------------------------------------------
+{
+  const em = emergingSummary(ds);
+  const pids = new Set(ds.principals.map((p) => [p.id, p.name]).flat());
+  const juncReal = em.junctions.every((j) => pids.has(j.node));
+  log(em.total > 0 && em.bridge_count > 0 && juncReal,
+    `Emerging gaps: ${em.total} old×new composites, ${em.bridge_pct}% bridge an ATLAS-only/unmodeled entry to an Enterprise propagation (cross-taxonomy seam); all ${em.junctions.length} junctions are real principals`);
+
+  // The dominant merge must land on a real primitive pair (sanity that the aggregate is typed).
+  const pPat = /^P[1-6]→P[1-6]$/;
+  log(em.merge_patterns.length > 0 && em.merge_patterns.every((p) => pPat.test(p.pattern)),
+    `Emerging gaps: merge patterns are typed primitive→primitive pairs (top: ${em.merge_patterns.slice(0, 3).map((p) => `${p.pattern}×${p.count}`).join(", ")})`);
 }
 
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);

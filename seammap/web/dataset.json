@@ -17,6 +17,63 @@
     },
     "predicted_composites": 40,
     "predicted_chains3": 15,
+    "emerging": {
+      "total": 1443,
+      "bridge_count": 302,
+      "bridge_pct": 21,
+      "junctions": [
+        {
+          "node": "host",
+          "count": 480
+        },
+        {
+          "node": "identity",
+          "count": 357
+        },
+        {
+          "node": "cloud",
+          "count": 224
+        },
+        {
+          "node": "web",
+          "count": 132
+        },
+        {
+          "node": "supplychain",
+          "count": 59
+        },
+        {
+          "node": "human",
+          "count": 42
+        }
+      ],
+      "merge_patterns": [
+        {
+          "pattern": "P3→P2",
+          "count": 170
+        },
+        {
+          "pattern": "P2→P2",
+          "count": 130
+        },
+        {
+          "pattern": "P4→P2",
+          "count": 119
+        },
+        {
+          "pattern": "P6→P2",
+          "count": 118
+        },
+        {
+          "pattern": "P3→P3",
+          "count": 96
+        },
+        {
+          "pattern": "P1→P2",
+          "count": 73
+        }
+      ]
+    },
     "validity": {
       "demonstrated": 33,
       "plausible": 70,
