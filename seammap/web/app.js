@@ -33,7 +33,7 @@ async function init() {
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
     ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
     ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover],
-    ["mindmap", buildMindmap], ["path", buildPath]]) {
+    ["mindmap", buildMindmap], ["walk", buildWalk], ["path", buildPath]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
   }
 }
@@ -460,6 +460,75 @@ function buildMindmap() {
     ph.addEventListener("click", () => pbody.style.display = pbody.style.display === "none" ? "" : "none");
     pdiv.append(ph, pbody); wrap.append(pdiv);
   }
+}
+
+// --------------------------------------------------------------------------- walkthrough view (new techniques + PoC code)
+const ROUND = (id) => {
+  if (/^(F\d|X-)/.test(id)) return "Seed self-audit";
+  const m = id.match(/^GH(\d+)-/); if (m) return "Round " + m[1];
+  return "Other";
+};
+function buildWalk() {
+  const c = $("#walk-controls");
+  const rounds = [...new Set(DS.seams.filter((s) => s.origin === "AGENT-DISCOVERED").map((s) => ROUND(s.id)))];
+  c.innerHTML = `<span class="muted">Detailed walkthrough of each new technique — trust assumption, attack, validity, and the runnable PoC. Click a card to expand.</span>
+    <select id="wf-round"><option value="">all rounds</option>${rounds.map((r) => `<option value="${r}">${r}</option>`).join("")}</select>
+    <select id="wf-val"><option value="">all validity</option><option value="demonstrated">demonstrated</option><option value="plausible">plausible</option><option value="speculative">speculative</option></select>
+    <select id="wf-prim"><option value="">all primitives</option>${DS.primitives.map((p) => `<option value="${p.id}">${p.id} ${p.name}</option>`).join("")}</select>
+    <input id="wf-q" placeholder="filter text…"/>`;
+  ["#wf-round", "#wf-val", "#wf-prim", "#wf-q"].forEach((s) => $(s).addEventListener("input", renderWalk));
+  renderWalk();
+}
+function renderWalk() {
+  const round = $("#wf-round").value, val = $("#wf-val").value, prim = $("#wf-prim").value, q = $("#wf-q").value.toLowerCase();
+  const list = $("#walk-list"); list.innerHTML = "";
+  const news = DS.seams.filter((s) => s.origin === "AGENT-DISCOVERED")
+    .sort((a, b) => ({ demonstrated: 0, plausible: 1, speculative: 2 }[a.validation?.validity] ?? 3) - ({ demonstrated: 0, plausible: 1, speculative: 2 }[b.validation?.validity] ?? 3));
+  let n = 0;
+  for (const s of news) {
+    if (round && ROUND(s.id) !== round) continue;
+    if (val && s.validation?.validity !== val) continue;
+    if (prim && s.primitive !== prim) continue;
+    const t = s.techniques[0] || {};
+    const hay = `${t.name} ${s.trust_assumption} ${s.violation} ${s.rationale || ""}`.toLowerCase();
+    if (q && !hay.includes(q)) continue;
+    n++;
+    const v = s.validation, a = s.test_artifact;
+    const refs = [...(t.attack_ids || []), ...(t.cwe_ids || [])].join(", ");
+    const mitre = (t.attack_ids && t.attack_ids.length) ? refs : "none — unmodeled by ATT&CK";
+    const valBadge = v ? `<span class="chip" style="border-color:${VALCOLOR[v.validity]};color:${VALCOLOR[v.validity]}">${v.validity}${v.confidence ? " · " + v.confidence : ""}</span>` : "";
+    const card = el("div", "gaprow");
+    card.style.borderLeft = "3px solid #bd93f9";
+    const body = `
+      <div class="rat" style="color:#e6edf3"><b>Trust assumption.</b> ${esc(s.trust_assumption)}</div>
+      <div class="rat"><b style="color:#d4a0a0">Attack.</b> ${esc(s.violation)}</div>
+      <div class="walkdetail" style="display:none">
+        ${s.rationale ? `<div class="rat"><b style="color:#bd93f9">Why it's new.</b> ${esc(s.rationale)}</div>` : ""}
+        ${v ? `<div class="res" style="color:#58a6ff"><b>✓ Validate.</b> ${esc(v.validation_method)}</div>
+          <div class="rat" style="color:#d4a0a0"><b>✗ Refuted if.</b> ${esc(v.falsifier)}</div>
+          ${v.prerequisites ? `<div class="rat"><b>Prerequisites.</b> ${esc(v.prerequisites)}</div>` : ""}
+          ${v.existing_controls ? `<div class="rat"><b>Existing controls.</b> ${esc(v.existing_controls)}</div>` : ""}` : ""}
+        ${a ? `<div class="k" style="margin-top:8px">proof-of-concept · ${esc(a.name)} <span class="chip op">${a.language}</span></div>
+          <div class="rat" style="color:#d4a0a0">⚠ ${esc(a.authorization)}</div>
+          ${a.setup ? `<div class="rat muted">setup: ${esc(a.setup)}</div>` : ""}
+          <pre class="artifact"><code>${esc(a.script)}</code></pre>
+          <div class="rat"><b style="color:#7ee787">Success.</b> ${esc(a.success_criterion)} · <b>Cleanup.</b> ${esc(a.cleanup)} · <b>Safety.</b> ${esc(a.safety)}</div>` : ""}
+        ${s.suggested_research ? `<div class="res"><b>↳ Research.</b> ${esc(s.suggested_research)}</div>` : ""}
+      </div>`;
+    card.innerHTML = `<div class="top" style="cursor:pointer">
+        <span class="muted">#${n}</span>
+        <span class="chip prim" style="background:${primColor(s.primitive)}">${s.primitive}</span>
+        ${valBadge}
+        <span class="chip op">${ROUND(s.id)}</span>
+        <span class="edge" style="font-weight:700">${esc(t.name)}</span>
+        <span class="muted" style="margin-left:auto">MITRE: ${mitre}</span>
+        <span class="walktoggle muted">▸</span>
+      </div>${body}`;
+    const top = card.querySelector(".top"), detail = card.querySelector(".walkdetail"), tog = card.querySelector(".walktoggle");
+    top.addEventListener("click", () => { const open = detail.style.display === "none"; detail.style.display = open ? "" : "none"; tog.textContent = open ? "▾" : "▸"; });
+    list.append(card);
+  }
+  if (!n) list.append(el("div", "muted", "no techniques match the filter."));
 }
 
 // --------------------------------------------------------------------------- path (kill-chain) view
