@@ -31,8 +31,9 @@ async function init() {
 
   // Build each view independently: a failure in one must never blank the others.
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
-    ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
-    ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover], ["path", buildPath]]) {
+    ["graph", buildGraph], ["techniques", buildTechniques], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
+    ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover],
+    ["mindmap", buildMindmap], ["walk", buildWalk], ["path", buildPath]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
   }
 }
@@ -337,7 +338,20 @@ function renderGaps() {
 // --------------------------------------------------------------------------- predict (emergent composites) view
 function buildPredict() {
   const intro = $("#predict-intro");
-  intro.innerHTML = `<b style="color:#e6edf3">Predicted emergent composites.</b> The merge of old and new tech yields vulnerabilities that look unpredictable — but the typed graph predicts them mechanically: a <span style="color:var(--frontier)">frontier (undetected) entry seam</span> feeding a <span style="color:#7ee787">mature (reliable) propagation seam</span> through a shared principal. Each card inherits the entry's lack of detection and the propagation's reliability. ${(DS.composites || []).length} ranked.`;
+  const em = (DS.meta || {}).emerging;
+  let emHtml = "";
+  if (em) {
+    const PRIMSHORT = { P1: "Data→Control", P2: "Identity→Authority", P3: "Provenance", P4: "Context-Inherit", P5: "Format-Boundary", P6: "Time/State" };
+    const junc = em.junctions.map((j) => `${PNAME[j.node] || j.node} <span class="muted">(${j.count})</span>`).join(" · ");
+    const pats = em.merge_patterns.map((p) => `${p.pattern} <span class="muted">(${p.count})</span>`).join(" · ");
+    emHtml = `<div style="margin-top:8px;padding:8px 10px;border-left:2px solid var(--frontier);background:#161b22">
+      <div><b style="color:#e6edf3">The cross of old and new — ${em.total} composites.</b></div>
+      <div style="margin-top:4px"><span style="color:#7ee787">${em.bridge_pct}%</span> bridge an <b>ATLAS-only / unmodeled new entry</b> to a <b>first-class Enterprise propagation</b> — the seam no single matrix names (whoever watches ATLAS misses the propagation; whoever watches Enterprise misses the door).</div>
+      <div style="margin-top:4px"><span class="muted">Junction principals (old meets new):</span> ${junc}</div>
+      <div style="margin-top:4px"><span class="muted">Dominant merge:</span> ${pats} — the new surface is the way <i>in</i>; classic identity/cloud-IAM escalation is how it <i>travels</i>.</div>
+    </div>`;
+  }
+  intro.innerHTML = `<b style="color:#e6edf3">Predicted emergent composites.</b> The merge of old and new tech yields vulnerabilities that look unpredictable — but the typed graph predicts them mechanically: a <span style="color:var(--frontier)">frontier (undetected) entry seam</span> feeding a <span style="color:#7ee787">mature (reliable) propagation seam</span> through a shared principal. Each card inherits the entry's lack of detection and the propagation's reliability. ${(DS.composites || []).length} ranked.${emHtml}`;
   const list = $("#predict-list"); list.innerHTML = "";
   (DS.composites || []).forEach((c, i) => {
     const B = SEAM[c.entry_seam], A = SEAM[c.propagate_seam];
@@ -427,6 +441,199 @@ function renderDiscover() {
     list.append(row);
   }
   if (!shown) list.append(el("div", "muted", "no located threats match the filter."));
+}
+
+// --------------------------------------------------------------------------- mindmap view (collapsible, by primitive)
+function buildMindmap() {
+  const wrap = $("#mindmap"); wrap.innerHTML = "";
+  wrap.append(el("p", "muted", `The new mind map — a projection of the hypergraph, branched by the six seam primitives (the trust relationship that breaks) instead of by place/tactic. ⚡ = AGENT-DISCOVERED (new) · ◆ = frontier. Click any leaf for the seam detail.`));
+  for (const p of DS.primitives) {
+    const inP = DS.seams.filter((s) => s.primitive === p.id);
+    const pdiv = el("div", "branch");
+    const ph = el("div", "bh", `<span class="pdot" style="background:${p.color}"></span>${p.id} ${p.name} <span class="count">${inP.length} seams</span>`);
+    const pbody = el("div");
+    // sub-group by first classic branch
+    const byBranch = {};
+    for (const s of inP) { const b = (s.classic_branches[0] || "—"); (byBranch[b] = byBranch[b] || []).push(s); }
+    for (const b of Object.keys(byBranch).sort()) {
+      const bdiv = el("div"); bdiv.style.marginLeft = "16px";
+      const bh = el("div", "bh", `${b} <span class="count">${byBranch[b].length}</span>`);
+      bh.style.fontWeight = "400"; bh.style.color = "var(--dim)";
+      const bbody = el("div");
+      byBranch[b].sort((x, y) => (x.techniques[0].name).localeCompare(y.techniques[0].name)).forEach((s) => {
+        const tag = s.origin === "AGENT-DISCOVERED" ? ' <span class="fr" style="color:#bd93f9">⚡new</span>' : (s.kind === "frontier" ? ' <span class="fr">◆</span>' : "");
+        const leaf = el("div", "leaf", `<span class="pdot" style="background:${p.color}"></span>${s.techniques[0].name}${tag}`);
+        leaf.addEventListener("click", () => showSeam(s.id));
+        bbody.append(leaf);
+      });
+      bh.addEventListener("click", () => bbody.style.display = bbody.style.display === "none" ? "" : "none");
+      bbody.style.display = "none";
+      bdiv.append(bh, bbody); pbody.append(bdiv);
+    }
+    ph.addEventListener("click", () => pbody.style.display = pbody.style.display === "none" ? "" : "none");
+    pdiv.append(ph, pbody); wrap.append(pdiv);
+  }
+}
+
+// --------------------------------------------------------------------------- techniques view (EVERY technique, old or new, + its PoC)
+// The simplest browser: a flat, searchable list of all 308 seams. Each row is one technique
+// tagged OLD (classic, re-homed) or NEW (agent-discovered), with its PoC one click away.
+const techFilter = { q: "", kind: "", prim: "", lang: "", confirmed: false };
+function buildTechniques() {
+  const c = $("#tech-controls");
+  const langs = [...new Set(DS.seams.map((s) => s.test_artifact?.language).filter(Boolean))].sort();
+  c.innerHTML = `<span class="muted">Every technique — <b style="color:#8b949e">old</b> (classic, re-homed) and <b style="color:#bd93f9">new</b> (agent-discovered) — each with its proof-of-concept one click away.</span>
+    <input id="tk-q" placeholder="search technique, e.g. kerberoast, IMDS, prompt…" style="min-width:240px"/>
+    <select id="tk-kind"><option value="">old + new</option><option value="old">old only</option><option value="new">new only</option></select>
+    <select id="tk-prim"><option value="">all primitives</option>${DS.primitives.map((p) => `<option value="${p.id}">${p.id} ${p.name}</option>`).join("")}</select>
+    <select id="tk-lang"><option value="">any PoC language</option>${langs.map((l) => `<option value="${l}">${l}</option>`).join("")}</select>
+    <label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="tk-conf"> PoC-confirmed only</label>`;
+  $("#tk-q").addEventListener("input", (e) => { techFilter.q = e.target.value.toLowerCase(); renderTechniques(); });
+  $("#tk-kind").addEventListener("change", (e) => { techFilter.kind = e.target.value; renderTechniques(); });
+  $("#tk-prim").addEventListener("change", (e) => { techFilter.prim = e.target.value; renderTechniques(); });
+  $("#tk-lang").addEventListener("change", (e) => { techFilter.lang = e.target.value; renderTechniques(); });
+  $("#tk-conf").addEventListener("change", (e) => { techFilter.confirmed = e.target.checked; renderTechniques(); });
+  renderTechniques();
+}
+const POCDOT = { confirmed: "#7ee787", error: "#f0a93b", skipped: "#6e7681" };
+function renderTechniques() {
+  const { q, kind, prim, lang, confirmed } = techFilter;
+  const list = $("#tech-list"); list.innerHTML = "";
+  // old first by classic branch, then new — but keep it one flat, sortable stream.
+  const rows = DS.seams.filter((s) => {
+    const isNew = s.origin === "AGENT-DISCOVERED";
+    if (kind === "old" && isNew) return false;
+    if (kind === "new" && !isNew) return false;
+    if (prim && s.primitive !== prim) return false;
+    if (lang && s.test_artifact?.language !== lang) return false;
+    if (confirmed && s.test_artifact?.result !== "confirmed") return false;
+    if (q) {
+      const t = s.techniques[0] || {};
+      const hay = `${t.name} ${s.id} ${(t.attack_ids || []).join(" ")} ${s.classic_branches.join(" ")} ${s.trust_assumption}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    const an = a.origin === "AGENT-DISCOVERED" ? 1 : 0, bn = b.origin === "AGENT-DISCOVERED" ? 1 : 0;
+    if (an !== bn) return an - bn; // old block first, then new
+    return (a.techniques[0]?.name || a.id).localeCompare(b.techniques[0]?.name || b.id);
+  });
+
+  const nOld = rows.filter((s) => s.origin !== "AGENT-DISCOVERED").length;
+  const nNew = rows.length - nOld;
+  const nPoc = rows.filter((s) => s.test_artifact).length;
+  $("#tech-count").innerHTML = `<b style="color:#e6edf3">${rows.length}</b> techniques — <span style="color:#8b949e">${nOld} old</span> · <span style="color:#bd93f9">${nNew} new</span> · ${nPoc} with a PoC`;
+
+  for (const s of rows) {
+    const t = s.techniques[0] || {};
+    const isNew = s.origin === "AGENT-DISCOVERED";
+    const a = s.test_artifact;
+    const mitre = (t.attack_ids && t.attack_ids.length) ? t.attack_ids.join(", ") : "unmodeled";
+    const row = el("div", "techrow");
+    const head = el("div", "techhead");
+    head.innerHTML = `
+      <span class="chip ${isNew ? "disc" : "oldtag"}">${isNew ? "NEW" : "OLD"}</span>
+      <span class="chip prim" style="background:${primColor(s.primitive)}">${s.primitive}</span>
+      <span class="techname">${esc(t.name || s.id)}</span>
+      <span class="techmeta muted">${esc(mitre)}</span>
+      ${a ? `<span class="chip op">${a.language}</span>` : `<span class="muted">no PoC</span>`}
+      ${a && a.result ? `<span class="pocdot" title="PoC run: ${a.result}" style="background:${POCDOT[a.result] || "#6e7681"}"></span>` : ""}
+      <span class="techchevron muted">▸</span>`;
+    const body = el("div", "techbody");
+    body.style.display = "none";
+    body.innerHTML = `
+      <div class="rat" style="color:#e6edf3"><b>Trust assumption.</b> ${esc(s.trust_assumption)}</div>
+      <div class="rat"><b style="color:#d4a0a0">What breaks.</b> ${esc(s.violation)}</div>
+      ${a ? `<div class="k" style="margin-top:8px">proof-of-concept · ${esc(a.name)} <span class="chip op">${a.language}</span>${a.result ? ` <span class="chip" style="border-color:${POCDOT[a.result]};color:${POCDOT[a.result]}">run: ${a.result}</span>` : ""}</div>
+        <div class="rat" style="color:#d4a0a0">⚠ ${esc(a.authorization)}</div>
+        ${a.setup ? `<div class="rat muted">setup: ${esc(a.setup)}</div>` : ""}
+        <pre class="artifact"><code>${esc(a.script)}</code></pre>
+        <div class="rat"><b style="color:#7ee787">Success.</b> ${esc(a.success_criterion)}${a.cleanup ? ` · <b>Cleanup.</b> ${esc(a.cleanup)}` : ""}${a.safety ? ` · <b>Safety.</b> ${esc(a.safety)}` : ""}</div>`
+        : `<div class="muted">No proof-of-concept for this technique yet.</div>`}
+      <div class="rat muted" style="margin-top:6px">seam <code>${s.id}</code> · <a href="#" onclick="showSeam('${s.id}');return false" style="color:#58a6ff">full detail →</a></div>`;
+    head.addEventListener("click", () => {
+      const open = body.style.display !== "none";
+      body.style.display = open ? "none" : "";
+      head.querySelector(".techchevron").textContent = open ? "▸" : "▾";
+    });
+    row.append(head, body); list.append(row);
+  }
+  if (!rows.length) list.innerHTML = `<div class="muted" style="padding:20px">No technique matches that filter.</div>`;
+}
+
+// --------------------------------------------------------------------------- walkthrough view (new techniques + PoC code)
+const ROUND = (id) => {
+  if (/^(F\d|X-)/.test(id)) return "Seed self-audit";
+  const m = id.match(/^GH(\d+)-/); if (m) return "Round " + m[1];
+  return "Other";
+};
+function buildWalk() {
+  const c = $("#walk-controls");
+  const rounds = [...new Set(DS.seams.filter((s) => s.origin === "AGENT-DISCOVERED").map((s) => ROUND(s.id)))];
+  c.innerHTML = `<span class="muted">Detailed walkthrough of each new technique — trust assumption, attack, validity, and the runnable PoC. Click a card to expand.</span>
+    <select id="wf-round"><option value="">all rounds</option>${rounds.map((r) => `<option value="${r}">${r}</option>`).join("")}</select>
+    <select id="wf-val"><option value="">all validity</option><option value="demonstrated">demonstrated</option><option value="plausible">plausible</option><option value="speculative">speculative</option></select>
+    <select id="wf-prim"><option value="">all primitives</option>${DS.primitives.map((p) => `<option value="${p.id}">${p.id} ${p.name}</option>`).join("")}</select>
+    <input id="wf-q" placeholder="filter text…"/>`;
+  ["#wf-round", "#wf-val", "#wf-prim", "#wf-q"].forEach((s) => $(s).addEventListener("input", renderWalk));
+  renderWalk();
+}
+function renderWalk() {
+  const round = $("#wf-round").value, val = $("#wf-val").value, prim = $("#wf-prim").value, q = $("#wf-q").value.toLowerCase();
+  const list = $("#walk-list"); list.innerHTML = "";
+  const news = DS.seams.filter((s) => s.origin === "AGENT-DISCOVERED")
+    .sort((a, b) => ({ demonstrated: 0, plausible: 1, speculative: 2 }[a.validation?.validity] ?? 3) - ({ demonstrated: 0, plausible: 1, speculative: 2 }[b.validation?.validity] ?? 3));
+  let n = 0;
+  for (const s of news) {
+    if (round && ROUND(s.id) !== round) continue;
+    if (val && s.validation?.validity !== val) continue;
+    if (prim && s.primitive !== prim) continue;
+    const t = s.techniques[0] || {};
+    const hay = `${t.name} ${s.trust_assumption} ${s.violation} ${s.rationale || ""}`.toLowerCase();
+    if (q && !hay.includes(q)) continue;
+    n++;
+    const v = s.validation, a = s.test_artifact;
+    const refs = [...(t.attack_ids || []), ...(t.cwe_ids || [])].join(", ");
+    const mitre = (t.attack_ids && t.attack_ids.length) ? refs : "none — unmodeled by ATT&CK";
+    const valBadge = v ? `<span class="chip" style="border-color:${VALCOLOR[v.validity]};color:${VALCOLOR[v.validity]}">${v.validity}${v.confidence ? " · " + v.confidence : ""}</span>` : "";
+    const card = el("div", "gaprow");
+    card.style.borderLeft = "3px solid #bd93f9";
+    const body = `
+      <div class="rat" style="color:#e6edf3"><b>Trust assumption.</b> ${esc(s.trust_assumption)}</div>
+      <div class="rat"><b style="color:#d4a0a0">Attack.</b> ${esc(s.violation)}</div>
+      <div class="walkdetail" style="display:none">
+        ${s.tech_note ? `${s.tech_note.mechanism ? `<div class="rat" style="color:#c9d1d9"><b style="color:#58a6ff">Mechanism.</b> ${esc(s.tech_note.mechanism)}</div>` : ""}
+          ${s.tech_note.exploitation_primitive ? `<div class="rat"><b>Exploitation primitive.</b> ${esc(s.tech_note.exploitation_primitive)}</div>` : ""}
+          ${s.tech_note.mitre_gap ? `<div class="rat" style="color:#f0a93b"><b>MITRE gap.</b> ${esc(s.tech_note.mitre_gap)}</div>` : ""}
+          ${(s.tech_note.anchors || []).length ? `<div class="rat"><b style="color:#7ee787">Real-world anchors.</b> ${s.tech_note.anchors.map((a) => `${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:#7ee787">${esc(a.ref)}</a>` : esc(a.ref)}${a.note ? ` <span class="muted">(${esc(a.note)})</span>` : ""}`).join(" · ")}</div>` : ""}
+          ${s.tech_note.detection ? `<div class="rat"><b>Detection.</b> ${esc(s.tech_note.detection)}</div>` : ""}
+          ${(s.tech_note.references || []).length ? `<div class="rat muted">refs: ${s.tech_note.references.map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:#58a6ff">${esc(r.title)}</a>`).join(" · ")}</div>` : ""}` : ""}
+        ${s.rationale ? `<div class="rat"><b style="color:#bd93f9">Why it's new.</b> ${esc(s.rationale)}</div>` : ""}
+        ${v ? `<div class="res" style="color:#58a6ff"><b>✓ Validate.</b> ${esc(v.validation_method)}</div>
+          <div class="rat" style="color:#d4a0a0"><b>✗ Refuted if.</b> ${esc(v.falsifier)}</div>
+          ${v.prerequisites ? `<div class="rat"><b>Prerequisites.</b> ${esc(v.prerequisites)}</div>` : ""}
+          ${v.existing_controls ? `<div class="rat"><b>Existing controls.</b> ${esc(v.existing_controls)}</div>` : ""}` : ""}
+        ${a ? `<div class="k" style="margin-top:8px">proof-of-concept · ${esc(a.name)} <span class="chip op">${a.language}</span></div>
+          <div class="rat" style="color:#d4a0a0">⚠ ${esc(a.authorization)}</div>
+          ${a.setup ? `<div class="rat muted">setup: ${esc(a.setup)}</div>` : ""}
+          <pre class="artifact"><code>${esc(a.script)}</code></pre>
+          <div class="rat"><b style="color:#7ee787">Success.</b> ${esc(a.success_criterion)} · <b>Cleanup.</b> ${esc(a.cleanup)} · <b>Safety.</b> ${esc(a.safety)}</div>` : ""}
+        ${s.suggested_research ? `<div class="res"><b>↳ Research.</b> ${esc(s.suggested_research)}</div>` : ""}
+      </div>`;
+    card.innerHTML = `<div class="top" style="cursor:pointer">
+        <span class="muted">#${n}</span>
+        <span class="chip prim" style="background:${primColor(s.primitive)}">${s.primitive}</span>
+        ${valBadge}
+        <span class="chip op">${ROUND(s.id)}</span>
+        <span class="edge" style="font-weight:700">${esc(t.name)}</span>
+        <span class="muted" style="margin-left:auto">MITRE: ${mitre}</span>
+        <span class="walktoggle muted">▸</span>
+      </div>${body}`;
+    const top = card.querySelector(".top"), detail = card.querySelector(".walkdetail"), tog = card.querySelector(".walktoggle");
+    top.addEventListener("click", () => { const open = detail.style.display === "none"; detail.style.display = open ? "" : "none"; tog.textContent = open ? "▾" : "▸"; });
+    list.append(card);
+  }
+  if (!n) list.append(el("div", "muted", "no techniques match the filter."));
 }
 
 // --------------------------------------------------------------------------- path (kill-chain) view

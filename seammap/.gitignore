@@ -1,0 +1,9 @@
+seammap/memory*.json
+seammap/memory.lock
+seammap/mock_iam.json
+seammap/presence_record.json
+seammap/shared_prompt.txt
+seammap/*_canary.txt
+seammap/tool_manifest*
+seammap/transcript_export.json
+seammap/walk-view.png

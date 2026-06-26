@@ -5,9 +5,10 @@ import { readFileSync } from "node:fs";
 import { loadDataset } from "./model.ts";
 import { gapsRegister, autoSpawn } from "./gap-engine.ts";
 import { buildTree, buildMatrix, everyCellTyped } from "./projections.ts";
-import { predictComposites } from "./compose.ts";
+import { predictComposites, emergingSummary } from "./compose.ts";
 import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 import { discoverThreats } from "./discover.ts";
+import { loadMitre, mitreCoverage } from "./mitre.ts";
 import type { Dataset, Principal, Seam } from "./types.ts";
 
 let failures = 0;
@@ -249,8 +250,8 @@ const ds = loadDataset();
   log(opt.totalEffort <= 25 && opt.selected.length > 0,
     `Optimizer: budget-constrained optimum respects budget (effort ${opt.totalEffort} <= 25, ${opt.selected.length} seams)`);
   const cov = coverage(ds);
-  log(cov.artifact_coverage > 0 && cov.validation_coverage > 0,
-    `Optimizer: self-measured coverage — ${(cov.artifact_coverage * 100).toFixed(0)}% have PoCs, ${(cov.validation_coverage * 100).toFixed(0)}% validated`);
+  log(cov.artifact_coverage === 1,
+    `Coverage: 100% of seams carry a red-team validation artifact (${(cov.artifact_coverage * 100).toFixed(0)}%, ${cov.poc_confirmed} PoC-confirmed by execution, ${(cov.validation_coverage * 100).toFixed(0)}% validity-rated)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +265,63 @@ const ds = loadDataset();
     `Discovery: relation graph locates ${found.length} new-threat candidates across all 3 modes (${[...kinds].join(", ")})`);
   log(found.every((f) => f.reason.length > 40),
     `Discovery: every located threat carries an auditable structural reason`);
+}
+
+// ---------------------------------------------------------------------------
+// 12. MITRE ATT&CK coverage — the full Enterprise catalogue is fed in, and every base
+// technique resolves to >=1 seam (mapped or natively), or the gap is surfaced.
+// ---------------------------------------------------------------------------
+{
+  const m = loadMitre();
+  log(m.tactics.length === 14 && m.techniques.length > 600,
+    `MITRE: full Enterprise catalogue loaded (${m.tactics.length} tactics, ${m.techniques.filter((t) => !t.is_subtechnique).length} base + ${m.techniques.filter((t) => t.is_subtechnique).length} sub techniques)`);
+  const cov = mitreCoverage(ds, m);
+  log(cov.base_uncovered === 0,
+    `MITRE: 100% of ${cov.base_total} base techniques resolve to a seam (${cov.base_covered} covered, ${cov.base_uncovered} uncovered)`);
+}
+
+// ---------------------------------------------------------------------------
+// 13. TECHNICAL DEEP-DIVE COMPLETENESS — every AGENT-DISCOVERED technique carries a
+// web-verified technical note: a mechanism, an explicit MITRE *gap* statement (where
+// ATT&CK is blind and why), and >=1 real-world anchor. No discovered technique is left
+// without the technical material. "Ensure no missing."
+// ---------------------------------------------------------------------------
+{
+  const disc = ds.seams.filter((s) => s.origin === "AGENT-DISCOVERED");
+  const noNote = disc.filter((s) => !s.tech_note);
+  log(noNote.length === 0,
+    `Tech-notes: every AGENT-DISCOVERED technique has a deep-dive note (${disc.length - noNote.length}/${disc.length})` +
+    (noNote.length ? ` — MISSING: ${noNote.map((s) => s.id).join(", ")}` : ""));
+
+  const noGap = disc.filter((s) => !s.tech_note?.mitre_gap || s.tech_note.mitre_gap.length < 40);
+  log(noGap.length === 0,
+    `Tech-notes: every discovered technique states an explicit MITRE gap (${disc.length - noGap.length}/${disc.length})` +
+    (noGap.length ? ` — MISSING: ${noGap.map((s) => s.id).join(", ")}` : ""));
+
+  const thin = disc.filter((s) => !s.tech_note?.mechanism || (s.tech_note.anchors || []).length === 0);
+  log(thin.length === 0,
+    `Tech-notes: every discovered technique has a mechanism + >=1 real-world anchor (${disc.length - thin.length}/${disc.length})` +
+    (thin.length ? ` — THIN: ${thin.map((s) => s.id).join(", ")}` : ""));
+}
+
+// ---------------------------------------------------------------------------
+// 14. EMERGING GAPS (cross of old & new) — the composition predictor must show the
+// cross-taxonomy bridge: a real share of old×new composites fuse a NEW entry that has
+// NO Enterprise ATT&CK id (it lives in ATLAS, which Enterprise does not incorporate, or
+// nowhere) onto an OLD propagation that IS a first-class Enterprise technique. That bridge
+// is the emerging gap no single matrix names. Also: every junction is a real principal.
+// ---------------------------------------------------------------------------
+{
+  const em = emergingSummary(ds);
+  const pids = new Set(ds.principals.map((p) => [p.id, p.name]).flat());
+  const juncReal = em.junctions.every((j) => pids.has(j.node));
+  log(em.total > 0 && em.bridge_count > 0 && juncReal,
+    `Emerging gaps: ${em.total} old×new composites, ${em.bridge_pct}% bridge an ATLAS-only/unmodeled entry to an Enterprise propagation (cross-taxonomy seam); all ${em.junctions.length} junctions are real principals`);
+
+  // The dominant merge must land on a real primitive pair (sanity that the aggregate is typed).
+  const pPat = /^P[1-6]→P[1-6]$/;
+  log(em.merge_patterns.length > 0 && em.merge_patterns.every((p) => pPat.test(p.pattern)),
+    `Emerging gaps: merge patterns are typed primitive→primitive pairs (top: ${em.merge_patterns.slice(0, 3).map((p) => `${p.pattern}×${p.count}`).join(", ")})`);
 }
 
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);

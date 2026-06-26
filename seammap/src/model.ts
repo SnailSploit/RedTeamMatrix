@@ -37,11 +37,31 @@ export function loadDataset(): Dataset {
     }
   } catch { /* validations.json not present yet */ }
 
+  // Join the MITRE mapping (mitre-map.json): add each mapped ATT&CK technique id to the
+  // existing seam whose trust assumption it fits, so coverage reflects the full catalogue
+  // without padding a seam-per-technique. Absent file => no-op.
+  try {
+    const map = readJson("mitre-map.json");
+    const byId = new Map(seams.map((s) => [s.id, s]));
+    for (const e of (map.mapped || [])) {
+      const s = byId.get(e.seam_id);
+      if (!s || !s.techniques[0]) continue;
+      const ids = s.techniques[0].attack_ids;
+      if (!ids.includes(e.technique_id)) ids.push(e.technique_id);
+    }
+  } catch { /* mitre-map.json not present yet */ }
+
   // Join red-team validation artifacts (artifacts.json) onto seams. Absent file => no-op.
   try {
     const artifacts: Record<string, any> = readJson("artifacts.json");
     for (const s of seams) if (artifacts[s.id]) s.test_artifact = artifacts[s.id];
   } catch { /* artifacts.json not present yet */ }
+
+  // Join web-verified technical deep-dive notes (tech-notes.json). Absent file => no-op.
+  try {
+    const tn: Record<string, any> = readJson("tech-notes.json");
+    for (const s of seams) if (tn[s.id]) s.tech_note = tn[s.id];
+  } catch { /* tech-notes.json not present yet */ }
 
   // Join PoC run-results (poc-results.json) onto the artifact: real execution outcomes
   // (the closed loop) upgrade the optimizer's signal from "PoC exists" to "PoC confirmed".

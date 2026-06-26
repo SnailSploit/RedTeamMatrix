@@ -94,6 +94,18 @@ export interface Seam {
   suggested_research?: string; // AGENT-DISCOVERED only
   validation?: ValidationInfo; // attached at load from validations.json
   test_artifact?: TestArtifact; // attached at load from artifacts.json
+  tech_note?: TechNote;         // attached at load from tech-notes.json
+}
+
+// Web-verified technical deep-dive for a technique: precise mechanism, the explicit MITRE
+// gap, real-world anchors (CVEs/incidents/standards), detection, and citable references.
+export interface TechNote {
+  mechanism: string;
+  exploitation_primitive?: string;
+  mitre_gap?: string;
+  anchors?: { type: string; ref: string; note?: string; url?: string }[];
+  detection?: string;
+  references?: { title: string; url: string }[];
 }
 
 export interface FrontierSeam {

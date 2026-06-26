@@ -102,6 +102,18 @@ td.honest-na { background: var(--na); color: #4d5560; }
 .gaprow .rat { color: var(--dim); margin-top: 5px; font-size: 11px; }
 .gaprow .res { color: #7ee787; margin-top: 4px; font-size: 11px; }
 .muted { color: var(--dim); }
+
+/* ---- techniques (flat browser, old + new, + PoC) ---- */
+.techrow { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px; background: var(--panel2); }
+.techhead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 7px 10px; cursor: pointer; }
+.techhead:hover { background: #161b22; }
+.techname { color: var(--fg); font-weight: 600; flex: 1; min-width: 180px; }
+.techmeta { font-size: 10.5px; }
+.techchevron { margin-left: auto; }
+.chip.oldtag { border-color: #6e7681; color: #8b949e; }
+.pocdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.techbody { padding: 4px 12px 10px; border-top: 1px solid var(--line); }
+.techbody .rat { color: var(--dim); margin-top: 5px; font-size: 11px; }
 pre.artifact { background: #0a0d12; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 5px; padding: 8px 10px; margin: 6px 0; overflow-x: auto; max-height: 320px; overflow-y: auto; font-size: 10.5px; line-height: 1.45; white-space: pre; color: #c9d1d9; }
 pre.artifact code { color: #c9d1d9; }
 

@@ -120,3 +120,43 @@ export function predictChains3(ds: Dataset, limit = 15): Chain3[] {
   }
   return [...best.values()].sort((a, b) => b.score - a.score).slice(0, limit);
 }
+
+// EMERGING-GAP AGGREGATE — the shape of the old×new cross, computed over the FULL composite
+// set (not the top-N shown in the UI). Surfaces the junction principals where old meets new,
+// the dominant new→old primitive-merge patterns, and the cross-taxonomy bridge metric: the
+// share of composites whose NEW entry has no Enterprise ATT&CK id (it lives in ATLAS, which
+// Enterprise does not incorporate, or in no framework) while the OLD propagation is a
+// first-class Enterprise technique. That bridge is the gap no single matrix names.
+export interface EmergingSummary {
+  total: number;
+  bridge_count: number;       // composites whose new entry is unmodeled by Enterprise ATT&CK
+  bridge_pct: number;
+  junctions: { node: string; count: number }[];
+  merge_patterns: { pattern: string; count: number }[];
+}
+export function emergingSummary(ds: Dataset): EmergingSummary {
+  const comp = predictComposites(ds, 100000); // full set, not the UI top-N
+  const byId = new Map(ds.seams.map((s) => [s.id, s]));
+  const unmodeled = (id: string) => {
+    const s = byId.get(id);
+    return !s || s.techniques.every((t) => !t.attack_ids || t.attack_ids.length === 0);
+  };
+  const junc = new Map<string, number>();
+  const pat = new Map<string, number>();
+  let bridge = 0;
+  for (const c of comp) {
+    junc.set(c.node, (junc.get(c.node) ?? 0) + 1);
+    const k = `${c.primitives[0]}→${c.primitives[1]}`;
+    pat.set(k, (pat.get(k) ?? 0) + 1);
+    if (unmodeled(c.entry_seam)) bridge++;
+  }
+  const top = (m: Map<string, number>, n: number) =>
+    [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+  return {
+    total: comp.length,
+    bridge_count: bridge,
+    bridge_pct: comp.length ? Math.round((100 * bridge) / comp.length) : 0,
+    junctions: top(junc, 6).map(([node, count]) => ({ node, count })),
+    merge_patterns: top(pat, 6).map(([pattern, count]) => ({ pattern, count })),
+  };
+}

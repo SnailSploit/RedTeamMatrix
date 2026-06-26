@@ -1,0 +1,24 @@
+[
+  {
+    "id": "MT-software-extensions", "primitive": "P4", "kind": "classic",
+    "source": ["web", "host"], "target": ["host", "identity"],
+    "maturity": "mature", "tactics": ["TA0003"], "classic_branches": ["Persistence", "Initial Access"],
+    "trust_assumption": "A browser/IDE/SaaS application trusts an installed extension as user-sanctioned code entitled to run with the application's full standing session, DOM, and API authority on every page it loads, for as long as it stays installed.",
+    "violation": "An attacker-published or hijacked extension persists across restarts and silently exercises the host application's standing session and API surface far beyond what the one-time install consent implied.",
+    "techniques": [{ "name": "Software extensions (browser/IDE) as persistence", "attack_ids": ["T1176", "T1176.001", "T1176.002"], "cwe_ids": ["CWE-829"] }],
+    "operator": { "scalable": 1, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "partial", "origin": "seed"
+  },
+  {
+    "id": "MT-network-boundary-device", "primitive": "P4", "kind": "classic",
+    "source": ["network", "host"], "target": ["network"],
+    "maturity": "mature", "tactics": ["TA0005"], "classic_branches": ["Defense Evasion"],
+    "trust_assumption": "Downstream hosts and defenders trust a network boundary device (router/firewall/VPN gateway) to faithfully enforce the segmentation, encryption strength, and system-image integrity its configuration declares, treating the device as a fixed trustworthy control rather than a mutable relay an attacker can re-author.",
+    "violation": "An attacker who controls the boundary device rewrites routing/NAT to bridge isolated segments, weakens or disables its encryption, or swaps its system image, all while the device continues to report a hardened posture.",
+    "techniques": [
+      { "name": "Network boundary bridging", "attack_ids": ["T1599"], "cwe_ids": ["CWE-693"] },
+      { "name": "Weaken encryption on boundary device", "attack_ids": ["T1600"], "cwe_ids": ["CWE-757"] },
+      { "name": "Modify system image", "attack_ids": ["T1601"], "cwe_ids": ["CWE-494"] }
+    ],
+    "operator": { "scalable": 0, "automatable": 1, "ai_augmentable": 0 }, "tooling_status": "available", "detection_status": "nascent", "origin": "seed"
+  }
+]

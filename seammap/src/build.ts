@@ -8,9 +8,10 @@ import { loadDataset, isHyperedge, frameOf } from "./model.ts";
 import { gapsRegister, gapStats } from "./gap-engine.ts";
 import { buildTree, buildMatrix } from "./projections.ts";
 import { CLS, EGQ, egqIsCandidate } from "./scheduler.ts";
-import { predictComposites, predictChains3 } from "./compose.ts";
+import { predictComposites, predictChains3, emergingSummary } from "./compose.ts";
 import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 import { discoverThreats } from "./discover.ts";
+import { loadMitre, mitreCoverage } from "./mitre.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "web", "dataset.json");
@@ -21,10 +22,12 @@ const tree = buildTree(ds);
 const matrix = buildMatrix(ds);
 const composites = predictComposites(ds, 40);
 const chains3 = predictChains3(ds, 15);
+const emerging = emergingSummary(ds);
 const priorities = rankPriorities(ds, 40);
 const optimized = optimizeUnderBudget(ds, 25);
 const cov = coverage(ds);
 const discoveries = discoverThreats(ds, { simThreshold: 0.55, limit: 60 });
+const mitre = mitreCoverage(ds, loadMitre());
 
 // Pre-compute per-seam scores so the web Path view and edge detail need no scorer logic.
 const scored = ds.seams.map((s) => ({
@@ -48,6 +51,7 @@ const bundle = {
     gap_stats: gapStats(register),
     predicted_composites: composites.length,
     predicted_chains3: chains3.length,
+    emerging,
     validity: register.filter((g) => g.origin === "AGENT-DISCOVERED").reduce((m: any, g) => {
       m[g.validity ?? "unrated"] = (m[g.validity ?? "unrated"] ?? 0) + 1; return m;
     }, {}),
@@ -55,6 +59,7 @@ const bundle = {
     coverage: cov,
     discoveries: discoveries.length,
     mitre_absent: ds.seams.filter((s) => s.techniques.every((t) => !t.attack_ids || t.attack_ids.length === 0)).length,
+    mitre: { base_total: mitre.base_total, base_covered: mitre.base_covered, base_uncovered: mitre.base_uncovered, pct: mitre.pct },
   },
   primitives: ds.primitives,
   principals: ds.principals,
@@ -70,6 +75,7 @@ const bundle = {
   priorities,
   optimized,
   discoveries,
+  mitre,
 };
 
 writeFileSync(OUT, JSON.stringify(bundle, null, 2));

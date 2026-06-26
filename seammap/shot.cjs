@@ -30,7 +30,7 @@ const server = http.createServer((req, res) => {
   await page.goto("http://localhost:8123/index.html", { waitUntil: "networkidle0", timeout: 60000 });
   await new Promise((r) => setTimeout(r, 2500)); // let cose layout settle
 
-  const views = ["graph", "matrix", "tree", "gaps", "predict", "path"];
+  const views = ["graph", "techniques", "matrix", "tree", "gaps", "predict", "path"];
   for (const v of views) {
     await page.click(`nav button[data-view="${v}"]`);
     await new Promise((r) => setTimeout(r, v === "graph" ? 2500 : 900));
@@ -41,6 +41,8 @@ const server = http.createServer((req, res) => {
   // sanity: assert each view rendered real content
   const checks = await page.evaluate(() => ({
     meta: document.querySelector("#meta").textContent,
+    techRows: document.querySelectorAll("#tech-list .techrow").length,
+    techCount: document.querySelector("#tech-count").textContent,
     matrixRows: document.querySelectorAll("#matrix tr").length,
     treeBranches: document.querySelectorAll("#tree .branch").length,
     gapRows: document.querySelectorAll("#gaps-list .gaprow").length,
