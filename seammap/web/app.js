@@ -32,7 +32,8 @@ async function init() {
   // Build each view independently: a failure in one must never blank the others.
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
     ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
-    ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover], ["path", buildPath]]) {
+    ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover],
+    ["mindmap", buildMindmap], ["path", buildPath]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
   }
 }
@@ -427,6 +428,38 @@ function renderDiscover() {
     list.append(row);
   }
   if (!shown) list.append(el("div", "muted", "no located threats match the filter."));
+}
+
+// --------------------------------------------------------------------------- mindmap view (collapsible, by primitive)
+function buildMindmap() {
+  const wrap = $("#mindmap"); wrap.innerHTML = "";
+  wrap.append(el("p", "muted", `The new mind map — a projection of the hypergraph, branched by the six seam primitives (the trust relationship that breaks) instead of by place/tactic. ⚡ = AGENT-DISCOVERED (new) · ◆ = frontier. Click any leaf for the seam detail.`));
+  for (const p of DS.primitives) {
+    const inP = DS.seams.filter((s) => s.primitive === p.id);
+    const pdiv = el("div", "branch");
+    const ph = el("div", "bh", `<span class="pdot" style="background:${p.color}"></span>${p.id} ${p.name} <span class="count">${inP.length} seams</span>`);
+    const pbody = el("div");
+    // sub-group by first classic branch
+    const byBranch = {};
+    for (const s of inP) { const b = (s.classic_branches[0] || "—"); (byBranch[b] = byBranch[b] || []).push(s); }
+    for (const b of Object.keys(byBranch).sort()) {
+      const bdiv = el("div"); bdiv.style.marginLeft = "16px";
+      const bh = el("div", "bh", `${b} <span class="count">${byBranch[b].length}</span>`);
+      bh.style.fontWeight = "400"; bh.style.color = "var(--dim)";
+      const bbody = el("div");
+      byBranch[b].sort((x, y) => (x.techniques[0].name).localeCompare(y.techniques[0].name)).forEach((s) => {
+        const tag = s.origin === "AGENT-DISCOVERED" ? ' <span class="fr" style="color:#bd93f9">⚡new</span>' : (s.kind === "frontier" ? ' <span class="fr">◆</span>' : "");
+        const leaf = el("div", "leaf", `<span class="pdot" style="background:${p.color}"></span>${s.techniques[0].name}${tag}`);
+        leaf.addEventListener("click", () => showSeam(s.id));
+        bbody.append(leaf);
+      });
+      bh.addEventListener("click", () => bbody.style.display = bbody.style.display === "none" ? "" : "none");
+      bbody.style.display = "none";
+      bdiv.append(bh, bbody); pbody.append(bdiv);
+    }
+    ph.addEventListener("click", () => pbody.style.display = pbody.style.display === "none" ? "" : "none");
+    pdiv.append(ph, pbody); wrap.append(pdiv);
+  }
 }
 
 // --------------------------------------------------------------------------- path (kill-chain) view
