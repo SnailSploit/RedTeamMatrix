@@ -16,6 +16,8 @@ const GROUPS = [
   { key: "GH6", title: "Round 6 — Decentralized / Web3", match: (s) => s.id.startsWith("GH6-") },
   { key: "GH7", title: "Round 7 — PNT / space / cyber-physical", match: (s) => s.id.startsWith("GH7-") },
   { key: "GH8", title: "Round 8 — AI supply-chain / developer-trust", match: (s) => s.id.startsWith("GH8-") },
+  { key: "GH9", title: "Round 9 — SaaS-to-SaaS / integration economy", match: (s) => s.id.startsWith("GH9-") },
+  { key: "GH10", title: "Round 10 — Data / secrets / MLOps infrastructure", match: (s) => s.id.startsWith("GH10-") },
 ];
 
 const disc = seams.filter((s) => s.origin === "AGENT-DISCOVERED");

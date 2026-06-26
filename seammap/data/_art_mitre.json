@@ -1,0 +1,22 @@
+{
+  "MT-software-extensions": {
+    "name": "Installed-extension authority audit",
+    "language": "python",
+    "authorization": "Authorized assessment of owned/contracted endpoints only, signed RoE. Read-only.",
+    "setup": "Point at a local sample of installed browser/IDE extension manifests (manifest.json files) on an owned endpoint.",
+    "script": "#!/usr/bin/env python3\n# Read-only audit: flag installed extensions whose manifest grants broad standing authority\n# (all-sites host permissions, cookies, webRequest) that survives the one-time install consent.\nimport json, sys\nSAMPLE = {\"name\": \"helper\", \"permissions\": [\"cookies\", \"webRequest\", \"<all_urls>\", \"tabs\"], \"host_permissions\": [\"*://*/*\"]}\nm = SAMPLE  # in a real run: load each extension's manifest.json from the profile dir\nbroad = {\"<all_urls>\", \"*://*/*\", \"cookies\", \"webRequest\", \"webRequestBlocking\", \"tabs\", \"scripting\"}\nhits = [p for p in (m.get(\"permissions\", []) + m.get(\"host_permissions\", [])) if p in broad]\nif hits:\n    print(\"VULNERABLE: extension '%s' holds standing authority %s — inherits the app session on every page\" % (m.get(\"name\"), hits))\nelse:\n    print(\"PASS: no broad standing permissions\")\n",
+    "success_criterion": "An installed extension is found holding all-sites/cookies/webRequest authority that persists across restarts beyond the install-time consent.",
+    "cleanup": "none (read-only)",
+    "safety": "Read-only manifest audit; no extension is installed, modified, or exercised."
+  },
+  "MT-network-boundary-device": {
+    "name": "Boundary-device posture-vs-declared audit",
+    "language": "python",
+    "authorization": "Authorized assessment of owned/contracted network devices only, signed RoE. Read-only config review.",
+    "setup": "Provide a sample device running-config export (no live device change).",
+    "script": "#!/usr/bin/env python3\n# Read-only audit: detect a boundary device whose ACTUAL config contradicts its declared hardened posture\n# (weakened crypto, route/NAT bridging across segments, or an unverified system image).\nSAMPLE_CONFIG = \"\"\"\ncrypto isakmp policy 10\n encryption des\nip route 10.0.0.0 255.0.0.0 192.0.2.9\nboot system flash unverified-image.bin\n\"\"\"\nflags = []\nif \"encryption des\" in SAMPLE_CONFIG or \" md5\" in SAMPLE_CONFIG: flags.append(\"weakened-encryption (T1600)\")\nif \"ip route\" in SAMPLE_CONFIG and \"192.0.2.\" in SAMPLE_CONFIG: flags.append(\"cross-segment route/NAT bridge (T1599)\")\nif \"unverified-image\" in SAMPLE_CONFIG or \"no verify\" in SAMPLE_CONFIG: flags.append(\"unverified system image (T1601)\")\nprint(\"VULNERABLE: boundary device contradicts declared posture -> %s\" % flags if flags else \"PASS: posture consistent\")\n",
+    "success_criterion": "The device's running config reveals weakened crypto, cross-segment bridging, or an unverified image while it advertises a hardened posture.",
+    "cleanup": "none (read-only)",
+    "safety": "Read-only config review against a sample export; no device is reconfigured."
+  }
+}

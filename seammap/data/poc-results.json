@@ -507,6 +507,14 @@
   "result": "confirmed",
   "rc": 0
  },
+ "MT-software-extensions": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "MT-network-boundary-device": {
+  "result": "confirmed",
+  "rc": 0
+ },
  "C-phishing": {
   "result": "skipped",
   "reason": "unsafe-pattern"
@@ -851,6 +859,78 @@
   "result": "confirmed",
   "rc": 0
  },
+ "GH9-saas-oauth-transitive-scope-toxic-chain": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-inbound-webhook-as-control-plane": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-ipaas-shared-connection-privilege-fanout": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-webextension-authenticated-session-inheritance": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-observability-collector-egress-remoteconfig-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-meeting-bot-autojoin-transcript-identity-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-rpa-unattended-bot-human-credential-impersonation": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-esignature-completion-event-value-release-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH9-citizen-dev-flow-privileged-connector-borrow": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-lakehouse-cross-workspace-share-transitive-grant": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-kms-decrypt-grant-confused-deputy-envelope-reuse": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-cicd-secret-sprawl-cache-layer-log-residue": {
+  "result": "skipped",
+  "reason": "unsafe-pattern"
+ },
+ "GH10-message-bus-topic-authz-broad-consumer-read": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-feature-store-offline-to-online-poison-promotion": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-model-registry-promotion-gate-artifact-substitution": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-data-catalog-lineage-spoof-as-provenance": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-backup-snapshot-integrity-prestaged-restore-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
+ "GH10-notebook-kernel-credential-inheritance-trust": {
+  "result": "confirmed",
+  "rc": 0
+ },
  "C-evasion": {
   "result": "skipped",
   "reason": "non-python"
@@ -1078,5 +1158,77 @@
  "XC-tls-downgrade-rollback": {
   "result": "confirmed",
   "rc": 0
+ },
+ "C-c2": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-malleable-beacon": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-dns-tunnel": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-icmp-covert": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-domain-fronting": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-saas-chat-channel": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-redirector-profile": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-saas-upload-exfil": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-dns-exfil": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-steganography-exfil": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-chunked-encrypted-exfil": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-removable-media-exfil": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-exfil": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-tier0-domain-admin": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-crown-jewel-access": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C-impact": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-business-process-disruption": {
+  "result": "skipped",
+  "reason": "non-python"
+ },
+ "C2-fraudulent-transaction": {
+  "result": "skipped",
+  "reason": "non-python"
  }
 }

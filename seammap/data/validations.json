@@ -1246,5 +1246,239 @@
    "tooling_status": "available",
    "detection_status": "available"
   }
+ },
+ "GH9-saas-oauth-transitive-scope-toxic-chain": {
+  "validation_method": "In a test SaaS tenant, install two third-party OAuth apps: App A with a read scope on a sensitive object (e.g. Salesforce/Google read on contacts or files) and App B with an outbound scope (e.g. send-mail, external-share, or webhook-post). Using App A's token read a sensitive record set, then feed it through App B's token to an external sink. Observe that no consent screen, no per-app authorization, and no single audit event represents the composite read-then-exfiltrate capability. Confirm the composition required no new grant beyond the two pre-approved ones.",
+  "falsifier": "The platform blocks or flags the composition - e.g. a cross-app DLP/CASB policy, App B refusing data not originating from a sanctioned source, or an admin-visible 'app-to-app data flow' audit edge fires - meaning the transitive graph IS evaluated and the combined capability is not silently permitted.",
+  "prerequisites": "Ability to install or compromise the token of at least one low-sensitivity third-party integration in a tenant that also has a second integration with outbound reach; or admin over a test tenant to stage both apps.",
+  "existing_controls": "SaaS Security Posture Management (SSPM) tools (Adaptive Shield, AppOmni, Obsidian, Valence) enumerate per-app OAuth grants but rarely compute toxic-combination chains; CASB/DLP can catch the egress hop in some cases. No mainstream control evaluates the transitive scope graph as a unit.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "partial",
+   "detection_status": "nascent"
+  }
+ },
+ "GH9-inbound-webhook-as-control-plane": {
+  "validation_method": "Identify a SaaS/app webhook receiver (payment, e-sign, verification). Test three failure modes: (1) POST a crafted event to an endpoint with no signature verification; (2) for a signed endpoint, send a body that the verifier canonicalizes/re-parses after verifying, exploiting a parse-then-verify gap; (3) replay a previously captured legitimate signed event lacking timestamp/nonce binding. Observe whether the receiver mutates state (marks paid, flips entitlement, promotes account) without pulling current state back from the originating system of record.",
+  "falsifier": "The receiver rejects unsigned/forged/replayed events (HMAC with timestamp+nonce enforced) AND/OR re-fetches authoritative state from the source API before acting on the event, so the payload is treated as a hint not an authority.",
+  "prerequisites": "Knowledge of a target's webhook endpoint URL and event schema; for signed-replay, capture of one legitimate event; no signing-secret needed for unsigned or parse-confusion cases.",
+  "existing_controls": "Major providers (Stripe, GitHub, Svix, DocuSign) document HMAC signing with timestamp tolerance and replay windows; idempotency keys; the long-standing best practice of treating webhooks as notifications and re-fetching state. Adoption is inconsistent, which is the live gap.",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": {
+   "maturity": "mature",
+   "tooling_status": "partial",
+   "detection_status": "nascent"
+  }
+ },
+ "GH9-ipaas-shared-connection-privilege-fanout": {
+  "validation_method": "In a Zapier/Make/Workato test workspace holding several shared pre-authorized connections (one privileged, e.g. an admin Salesforce or AWS connection), authenticate as a low-privilege flow builder. Author a new recipe/scenario that attaches the privileged shared connection and triggers an action outside the builder's own direct entitlements (read restricted records, write to production). Observe whether the platform executes under the connection's full authority without re-checking that this author/automation/trigger was authorized for that connection's scope.",
+  "falsifier": "The platform enforces per-connection authorization or scoping (the builder cannot attach a connection they do not own/were not granted, or the run is denied/scoped down), meaning shared-connection authority is NOT ambiently borrowable.",
+  "prerequisites": "A low-privilege builder/editor seat in a workspace that contains privileged shared connections; or an over-shared workspace / a malicious importable template.",
+  "existing_controls": "Workato/Workato-style folder permissions and connection-level RBAC, Zapier shared-connection restrictions, and workspace role separation exist but default sharing is permissive; SSPM coverage of iPaaS is thin.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH9-webextension-authenticated-session-inheritance": {
+  "validation_method": "Load an unpacked test extension declaring broad host permissions (e.g. <all_urls> or specific SaaS origins) and cookies/webRequest permissions. While logged into a SaaS app behind MFA, have the extension read document.cookie / chrome.cookies, capture bearer tokens from page context or fetch, and issue authenticated in-page actions (read mailbox, post message) without re-triggering login. Observe that the SaaS treats the requests as the authenticated user, entirely post-MFA.",
+  "falsifier": "HttpOnly + SameSite cookies plus token-binding/DPoP prevent the extension from exfiltrating or replaying the session, and the SaaS re-challenges on anomalous context, so the session is not silently inheritable.",
+  "prerequisites": "A user installing an extension with relevant host permissions; for the real-world chain, a maliciously updated or acquired/compromised extension developer account. Trivial in a self-load test.",
+  "existing_controls": "Manifest V3 host-permission prompts, Chrome Web Store review, enterprise extension allowlisting (ExtensionInstallAllowlist), and emerging device-bound session credentials (DBSC). Cookie theft via extensions is a documented, recurring class (ShadyPanda/Cyberhaven-class incidents).",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": {
+   "maturity": "mature",
+   "tooling_status": "partial",
+   "detection_status": "partial"
+  }
+ },
+ "GH9-observability-collector-egress-remoteconfig-trust": {
+  "validation_method": "Stand up an OpenTelemetry Collector managed via an OpAMP server (or a config repo/Helm values). Push a config that (a) adds an attacker-controlled OTLP/HTTP exporter to a destination outside the org and (b) inserts a filter/transform processor dropping security-relevant log records. Observe that the collector, which already has broad read and egress allowance, ships telemetry to the rogue exporter and that the dropped signals never reach the SOC backend.",
+  "falsifier": "The collector validates/signs remote configs, restricts exporter destinations via egress allowlist/network policy, or the SOC detects exporter-destination changes and signal-volume drops - so a rogue exporter cannot be added or goes unnoticed only briefly.",
+  "prerequisites": "Write access to the collector's remote-config channel (OpAMP server, config repo, CI values) or ability to ship a modified collector image; the collector must already have egress permission, which is typical.",
+  "existing_controls": "OpAMP supports config signing/verification but it is optional and rarely enabled; egress network policy and DLP can constrain destinations; config-as-code review. Detection of pipeline tampering is immature.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH9-meeting-bot-autojoin-transcript-identity-trust": {
+  "validation_method": "With a calendar-integrated note-taker (Otter/Fireflies/Read.ai/Fathom) configured to auto-join, send the victim an event (open invite or spoofed organizer) for a meeting they should not attend, or add the bot's invite address. Confirm the bot auto-joins and records. Separately, seed a meeting/transcript with crafted speech and observe whether the AI-generated summary/action items carry injected instructions or fabricated 'agreed' decisions into downstream CRM/agent sinks that ingest the output as authoritative.",
+  "falsifier": "The bot requires explicit per-meeting host approval before joining and the summary pipeline sanitizes/grounds extracted action items against verified speakers, so neither covert capture nor prompt-injection-to-downstream succeeds.",
+  "prerequisites": "Ability to place an event on the victim's calendar or invite their bot (often just an email address); for the injection variant, presence in or content seeding of a meeting the bot transcribes.",
+  "existing_controls": "Auto-join toggles, host-admit gating, and meeting-recording-consent prompts exist; transcript prompt-injection into downstream agents has no standard mitigation. Calendar-summoning of note-takers is a discussed but not formally tracked technique.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH9-rpa-unattended-bot-human-credential-impersonation": {
+  "validation_method": "In a UiPath/Automation Anywhere/Power Automate Desktop test deployment, configure an unattended bot whose vault (Orchestrator credential asset / CyberArk integration) holds a human-equivalent account. Simulate compromise of the orchestrator or runner host, retrieve the stored credential, and drive a privileged business action through the bot's UI automation. Observe that the target application attributes the action to the impersonated human and that it blends into expected RPA traffic.",
+  "falsifier": "Credentials are non-retrievable from the vault (HSM-backed, just-in-time, never exposed to the runner in usable form), bot identities are distinct non-human accounts with their own audit attribution, and orchestrator access is strongly isolated - so harvest and human-attribution both fail.",
+  "prerequisites": "Compromise of the RPA orchestrator, the credential vault integration, or an unattended runner host; or insider access to the RPA platform.",
+  "existing_controls": "CyberArk/RPA vault integrations, dedicated bot service accounts, session isolation, and PAM for runners exist; misconfiguration and reused human credentials remain common. Credential theft from automation hosts is a well-established class.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "partial",
+   "detection_status": "partial"
+  }
+ },
+ "GH9-esignature-completion-event-value-release-trust": {
+  "validation_method": "Build a downstream system wired to a DocuSign/Adobe Sign 'envelope completed' callback that auto-releases value (provision access, pay invoice). Test: (1) forge/replay the completion webhook without valid HMAC; (2) manipulate signer-routing so an unauthorized recipient satisfies the signing step; (3) race a template/document swap between completion and the downstream fetch of the 'completed' artifact. Observe whether value is released on a procedurally invalid completion even though tamper-seal hashes verify.",
+  "falsifier": "The downstream verifies the completion webhook signature with replay protection AND re-fetches and validates signer identity, recipient routing, and document hash from the platform API before releasing value - closing the 'event arrived' vs 'right parties validly signed' gap.",
+  "prerequisites": "Knowledge of the downstream's completion-webhook endpoint/schema; for routing abuse, ability to influence envelope recipient configuration; for the swap, write access to the template/document store and timing control.",
+  "existing_controls": "E-sign providers offer Connect HMAC signing and authoritative API re-fetch; PowerForm/signer-authentication controls. The seam is the downstream's reliance on the event rather than re-verification - overlaps strongly with the webhook-control-plane gap.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH9-citizen-dev-flow-privileged-connector-borrow": {
+  "validation_method": "In a Power Platform / Power Automate test environment, have an admin share a privileged service connection (e.g. SQL/Dataverse with elevated rights) into a maker environment. As a low-privilege maker, author a cloud flow that references the shared connection and performs actions beyond the maker's own rights (read restricted data, create a user). Observe the platform executes under the connection owner's authority and logs the action as the connection/service principal, not the human maker.",
+  "falsifier": "The platform enforces that a maker can only use connections they own or were explicitly granted with matching scope, blocks the privileged action, or attributes/audits it to the actual human author - so silent privilege borrowing does not occur.",
+  "prerequisites": "A maker seat in an environment where a privileged connection or flow has been shared; or takeover of a maker account / a planted shared template.",
+  "existing_controls": "Power Platform DLP policies, environment-level connector governance, and CoE Starter Kit auditing exist; sharing remains permissive by default and connection-reference authority is broadly inherited. Near-duplicate of the iPaaS shared-connection gap.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "partial",
+   "detection_status": "nascent"
+  }
+ },
+ "GH10-lakehouse-cross-workspace-share-transitive-grant": {
+  "validation_method": "Using Databricks Delta Sharing (or Snowflake share / BigQuery Analytics Hub): provider P grants recipient R read on object O. As R, re-expose O - mount into a second metastore, create a new open Delta Sharing recipient with a bearer token, or re-list in an analytics hub - to a third account never authorized by P. Confirm the third account reads O and that P's audit log shows only the original P-to-R edge with no record of the onward propagation.",
+  "falsifier": "The platform forbids onward re-sharing of received shares (no re-share / no recursive grant), or surfaces the onward edge to the original provider's audit, so the provider can see and control transitive exposure.",
+  "prerequisites": "Control or compromise of a downstream recipient account/workspace, or a leaked Delta Sharing bearer token, or write access to an analytics-hub listing.",
+  "existing_controls": "Unity Catalog and Snowflake restrict some re-share scenarios and log share operations under the recipient's account; provider-side visibility into transitive propagation is genuinely limited. Open Delta Sharing bearer tokens are a known leakage vector.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH10-kms-decrypt-grant-confused-deputy-envelope-reuse": {
+  "validation_method": "In AWS KMS (or GCP/Azure equivalent), create a KMS key used for envelope encryption across many objects with NO encryption-context condition on the key policy/grant. Assume the grantee role (simulate compromise) and replay arbitrary wrapped data-key ciphertext blobs harvested from the storage tier to kms:Decrypt. Confirm KMS returns plaintext for blobs the grant was never intended to cover, demonstrating principal-only authorization acting as a corpus-wide oracle.",
+  "falsifier": "The key policy/grants bind decrypt to a non-attacker-controllable EncryptionContext (kms:EncryptionContext condition) tied to the specific object, so replayed blobs from other objects fail authorization - the decrypt is scoped, not a blanket oracle.",
+  "prerequisites": "Obtaining the grantee identity (compromised compute role, assumed cross-account role, or a confused-deputy service that decrypts on the caller's behalf) plus read access to the ciphertext storage tier.",
+  "existing_controls": "KMS encryption-context conditions, grant constraints, per-tenant/per-object keys, and confused-deputy mitigations (aws:SourceArn/SourceAccount) directly address this; CloudTrail Decrypt monitoring exists. The seam is real where encryption context is unused, which is common.",
+  "validity": "plausible",
+  "confidence": "high",
+  "recalibrate": {
+   "maturity": "mature",
+   "tooling_status": "partial",
+   "detection_status": "partial"
+  }
+ },
+ "GH10-cicd-secret-sprawl-cache-layer-log-residue": {
+  "validation_method": "Construct a Dockerfile/CI job that references a secret in a RUN layer (or restores a cross-job cache, or echoes a base64'd/transformed secret a masker misses). Build and publish the image to a registry and persist the cache/logs. As a separate party with read access to the published layers / shared cache key / retained log, run dive or extract layer tarballs (or 'docker history') and recover the live credential after the job ended.",
+  "falsifier": "The secret never lands in a durable byproduct - BuildKit --mount=type=secret keeps it out of layers, cache is scoped per-job and unreadable, and log masking catches transformed values - so no recoverable residue exists post-job.",
+  "prerequisites": "Read access to a published image's intermediate layers (public or pull-permitted registry), a shared/restorable build cache, or retained job logs.",
+  "existing_controls": "BuildKit secret mounts, GitHub/GitLab secret masking, OIDC short-lived credentials replacing long-lived secrets, and scanners (TruffleHog, Trivy, gitleaks, dive) directly target this; it remains a frequently-realized leak class (documented incidents of secrets in public layers).",
+  "validity": "demonstrated",
+  "confidence": "high",
+  "recalibrate": {
+   "maturity": "mature",
+   "tooling_status": "available",
+   "detection_status": "available"
+  }
+ },
+ "GH10-message-bus-topic-authz-broad-consumer-read": {
+  "validation_method": "In a Kafka (or Pub/Sub/Kinesis/EventBridge) cluster configured with a wildcard topic ACL or a shared service principal across microservices, use one consumer's credential to subscribe to topics outside that service's purpose (PII, audit, security-event topics on the same bus). Confirm the broker authorizes the read based on the cluster/wildcard grant rather than the specific topic, and that consuming produces no application-visible anomaly.",
+  "falsifier": "The broker enforces least-privilege per-topic ACLs per principal (no wildcard, no shared principal), so the compromised consumer is denied topics outside its grant - topic segregation is a real security boundary.",
+  "prerequisites": "Compromise of any one consumer workload or its (often shared) service credential on a bus that uses wildcard/coarse ACLs.",
+  "existing_controls": "Kafka ACLs/RBAC (Confluent), Pub/Sub IAM per-topic, Kinesis/EventBridge resource policies all support least privilege; the gap is operational coarse configuration. Consumer-lag/new-consumer-group monitoring can detect unexpected subscriptions.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "partial",
+   "detection_status": "nascent"
+  }
+ },
+ "GH10-feature-store-offline-to-online-poison-promotion": {
+  "validation_method": "In a Feast/Tecton/Databricks feature store, write a manipulated feature value into the offline store (poison an upstream source table or tamper a batch transform). Trigger materialization to the online store. Query the online serving endpoint and confirm the poisoned value is served to the model in real time, and that offline/online parity checks pass because both stores hold the attacker's identical value - no integrity/anomaly gate fires at serving time.",
+  "falsifier": "The serving path applies independent integrity/provenance/anomaly validation on materialized features (range checks, drift detection, signed feature provenance) that flags or rejects the poisoned value despite parity - i.e. parity is not treated as proof of trustworthiness.",
+  "prerequisites": "Write access to the offline feature pipeline: a source table, the batch transform job, or the feature-definition job.",
+  "existing_controls": "Data-quality frameworks (Great Expectations, Deequ), feature drift/anomaly monitoring, and pipeline access controls exist but are typically training-time, not enforced as a serving-time integrity gate. Data/feature poisoning is an established ML-security concern (MITRE ATLAS) though this specific offline-to-online parity-laundering vector lacks a public demo.",
+  "validity": "plausible",
+  "confidence": "low",
+  "recalibrate": {
+   "maturity": "frontier",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH10-model-registry-promotion-gate-artifact-substitution": {
+  "validation_method": "In an MLflow (or SageMaker/Vertex) model registry, evaluate and promote model v1 to the 'production' alias/stage. Then, with registry write access (or write to the backing artifact store), rebind the production alias to a substituted backdoored model, or overwrite the artifact bytes under the unchanged alias. Restart/poll the serving layer that resolves 'production' by label and confirm it loads the unevaluated artifact with no re-evaluation, because consumers resolve by label not by a signed digest.",
+  "falsifier": "The serving layer pins and verifies a signed digest of the evaluated artifact (e.g. cosign/model signing, immutable versioned artifacts, MLflow model signing), so a swapped artifact under the same label is rejected and never served.",
+  "prerequisites": "Write access to the registry (compromised credential, mutable alias permission) or to unsigned backing artifact storage.",
+  "existing_controls": "Model signing (Sigstore model-transparency / cosign), immutable model versions, artifact-store integrity, and promotion approval audit exist but signed-digest enforcement at load time is rarely wired up. Supply-chain artifact substitution is a well-understood class.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH10-data-catalog-lineage-spoof-as-provenance": {
+  "validation_method": "Against an OpenLineage ingest endpoint (or DataHub/Purview/Unity Catalog metadata API), emit forged lineage events claiming a poisoned/unsanctioned dataset is derived from a trusted certified source, and strip PII/sensitivity tags from a restricted table. Then confirm a downstream policy engine, access decision, or auditor consuming the catalog treats the attacker-authored provenance as authoritative - granting access or trust the data plane never substantiates.",
+  "falsifier": "The catalog authenticates and authorizes lineage emitters, validates lineage against the data plane, or downstream policy engines verify provenance independently rather than trusting catalog claims - so forged metadata does not change a trust/access decision.",
+  "prerequisites": "Ability to emit lineage events to an unauthenticated/over-permissive ingest endpoint, write access to catalog tags, or a compromised cataloging agent.",
+  "existing_controls": "Catalog RBAC on tags/classifications, authenticated OpenLineage transports, and policy-engine validation exist but OpenLineage ingest is often unauthenticated by default and metadata writes are loosely governed. No standard control reconciles catalog claims against the data plane.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
+ },
+ "GH10-backup-snapshot-integrity-prestaged-restore-trust": {
+  "validation_method": "During a simulated dwell period, write a dormant payload (backdoor/logic bomb/staged credential) into production state. Let the scheduled backup capture it into an immutable/object-locked snapshot. Later simulate an incident and run the standard restore path. Confirm the restore reintroduces the implant into production without re-scanning snapshot contents, and that immutability preserved the malicious bytes exactly as it preserves legitimate ones.",
+  "falsifier": "The restore pipeline mandates malware/integrity scanning and clean-room validation of snapshot contents before reintroduction (e.g. Rubrik/Cohesity/Veeam threat-hunting on backups, isolated recovery environment), catching the pre-staged payload - so 'restored from clean backup' is actually verified clean.",
+  "prerequisites": "Pre-encryption dwell time with write access to production state during a backup window; later, a restore event (attacker need not control the restore).",
+  "existing_controls": "Backup-anomaly/malware scanning (Rubrik, Cohesity, Veeam Secure Restore), isolated recovery environments, and dwell-time detection address this; many orgs restore without re-scanning. Re-arming via restored implants is a recognized ransomware-resilience concern.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "available",
+   "detection_status": "partial"
+  }
+ },
+ "GH10-notebook-kernel-credential-inheritance-trust": {
+  "validation_method": "In a managed notebook (Databricks/SageMaker/Vertex) attached to an instance role and workspace credentials, run a cell containing attacker-delivered code (shared/imported notebook, malicious pip dependency, or %autoreload-triggered module). Have it enumerate ambient credentials - instance metadata role tokens, dbutils.secrets / mounted scopes, cached cloud tokens, attached lakehouse/warehouse connections - and exfiltrate or use them to reach data systems. Confirm actions execute with the kernel's full inherited authority and are attributed to the data scientist.",
+  "falsifier": "The kernel runs with a scoped, non-ambient identity (no IMDS access, secrets brokered per-call with policy, no standing data-plane mounts) such that arbitrary code cannot enumerate or reuse the user's credentials beyond an explicit, audited boundary.",
+  "prerequisites": "Ability to get code into a kernel the victim runs: a shared notebook, a poisoned PyPI dependency, an auto-reloaded module, or an LLM-suggested cell.",
+  "existing_controls": "IMDSv2 hop-limit, scoped instance roles, Databricks secret scopes/credential passthrough, and dependency scanning reduce blast radius; ambient credential inheritance in notebooks remains the default. Notebook/CI credential harvest via malicious deps is an established class.",
+  "validity": "plausible",
+  "confidence": "medium",
+  "recalibrate": {
+   "maturity": "emerging",
+   "tooling_status": "nascent",
+   "detection_status": "nascent"
+  }
  }
 }

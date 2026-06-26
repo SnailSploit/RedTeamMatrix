@@ -8,6 +8,7 @@ import { buildTree, buildMatrix, everyCellTyped } from "./projections.ts";
 import { predictComposites } from "./compose.ts";
 import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 import { discoverThreats } from "./discover.ts";
+import { loadMitre, mitreCoverage } from "./mitre.ts";
 import type { Dataset, Principal, Seam } from "./types.ts";
 
 let failures = 0;
@@ -264,6 +265,19 @@ const ds = loadDataset();
     `Discovery: relation graph locates ${found.length} new-threat candidates across all 3 modes (${[...kinds].join(", ")})`);
   log(found.every((f) => f.reason.length > 40),
     `Discovery: every located threat carries an auditable structural reason`);
+}
+
+// ---------------------------------------------------------------------------
+// 12. MITRE ATT&CK coverage — the full Enterprise catalogue is fed in, and every base
+// technique resolves to >=1 seam (mapped or natively), or the gap is surfaced.
+// ---------------------------------------------------------------------------
+{
+  const m = loadMitre();
+  log(m.tactics.length === 14 && m.techniques.length > 600,
+    `MITRE: full Enterprise catalogue loaded (${m.tactics.length} tactics, ${m.techniques.filter((t) => !t.is_subtechnique).length} base + ${m.techniques.filter((t) => t.is_subtechnique).length} sub techniques)`);
+  const cov = mitreCoverage(ds, m);
+  log(cov.base_uncovered === 0,
+    `MITRE: 100% of ${cov.base_total} base techniques resolve to a seam (${cov.base_covered} covered, ${cov.base_uncovered} uncovered)`);
 }
 
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);

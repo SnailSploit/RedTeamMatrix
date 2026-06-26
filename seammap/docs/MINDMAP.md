@@ -6,9 +6,9 @@ markmap:
 
 # SEAMMAP
 
-*The new mind map — a projection of the trust hypergraph, organized by the six seam primitives (not by place/tactic). 288 seams; ⚡ = AGENT-DISCOVERED (new), ◆ = frontier.*
+*The new mind map — a projection of the trust hypergraph, organized by the six seam primitives (not by place/tactic). 308 seams; ⚡ = AGENT-DISCOVERED (new), ◆ = frontier.*
 
-## P1 Data->Control *(45)*
+## P1 Data->Control *(46)*
 
 ### AI / Agent Attacks
 - Adversarial physical patch redirecting embodied-agent action ⚡ _(demonstrated)_
@@ -24,6 +24,7 @@ markmap:
 
 ### API & Business-Logic Abuse
 - Cross-site scripting
+- Forged/replayed webhook event mutating receiver state ⚡ _(demonstrated)_
 - Mass assignment / auto-binding of unexpected fields
 - Simulation/execution state divergence yielding decoy preview ⚡ _(demonstrated)_
 
@@ -85,7 +86,7 @@ markmap:
 ### Wireless / RF Attacks
 - Coherent capture-and-drag GNSS trajectory injection ⚡ _(demonstrated)_
 
-## P2 Identity->Authority *(81)*
+## P2 Identity->Authority *(86)*
 
 ### AI / Agent Attacks
 - Agent as confused deputy in cert request/approval (mis-issuance) ⚡ _(plausible)_
@@ -115,9 +116,11 @@ markmap:
 - Illicit consent grant / OAuth phishing
 - IMDSv1 token-less credential retrieval (no PUT-token session required)
 - Long-lived access-key abuse (leaked AWS keys / GCP SA keys / Azure SP secrets used from attacker host)
+- Onward re-share of a received lakehouse dataset beyond provider authorization ⚡ _(plausible)_
 - Workload identity federation subject/audience over-scope (wildcard repo/branch/namespace) credential exchange ⚡ _(demonstrated)_
 
 ### Collection
+- Cross-topic subscription via wildcard or shared-principal consumer ACL ⚡ _(plausible)_
 - Data from local/email/repository collection & staging
 - Database dumps
 - File / share staging
@@ -130,6 +133,7 @@ markmap:
 
 ### Credential Access
 - Audience-unbound agent identity token reuse ⚡ _(plausible)_
+- Ciphertext-replay decrypt oracle under a stolen KMS grantee identity ⚡ _(plausible)_
 - Cloud CLI/browser cached token theft (aws/azure/gcloud/kubeconfig)
 - DCShadow rogue replication source (Mimikatz lsadump::dcshadow)
 - DCSync replication of credentials (Mimikatz lsadump::dcsync, secretsdump)
@@ -160,7 +164,9 @@ markmap:
 - Client-asserted device-compliance signal forgery against conditional access ⚡ _(plausible)_
 - JIT elevation self-approval / auto-approval path and approver social engineering ⚡ _(plausible)_
 - Orphaned service-account / API-key reuse with intact standing entitlements ⚡ _(demonstrated)_
+- RPA orchestrator/vault compromise harvesting bot credentials ⚡ _(plausible)_
 - SAML signature wrapping (XSW) and comment-injection NameID confusion
+- Toxic-combination chaining of independently-granted OAuth scopes ⚡ _(plausible)_
 
 ### Impact
 - Autonomous IAM abuse beyond human-tuned baselines ◆
@@ -208,7 +214,7 @@ markmap:
 - Evil-twin / rogue AP MITM
 - Unauthenticated CCSDS telecommand injection on live uplink ⚡ _(plausible)_
 
-## P3 Provenance *(79)*
+## P3 Provenance *(86)*
 
 ### AI / Agent Attacks
 - Agent-generated over-broad IAM/security-group in IaC ⚡ _(plausible)_
@@ -223,6 +229,7 @@ markmap:
 - Unsigned agent action lacking authorizer-to-action provenance binding ⚡ _(plausible)_
 
 ### API & Business-Logic Abuse
+- Forged/replayed e-signature completion callback releasing value ⚡ _(plausible)_
 - GNSS/location-spoofed proof of physical work minting rewards ⚡ _(demonstrated)_
 - JWT alg=none / RS256-to-HS256 key confusion / kid injection
 - Open redirect trust laundering
@@ -233,13 +240,17 @@ markmap:
 
 ### CI/CD & Build Pipeline
 - Agent-skill typosquat-at-install ⚡ _(plausible)_
+- Credential recovery from intermediate container image layers ⚡ _(demonstrated)_
 - Provenance scope gap (attested build step != exploited step) passing verification ⚡ _(plausible)_
 - RAG corpus poisoning (write-side) ◆
 - Registry tag mutation / image overwrite (mutable tags)
+- Rogue exporter added via collector remote-config (OpAMP) for egress ⚡ _(plausible)_
 - Stage capability via trusted distribution
 
 ### Cloud Attacks
 - Dependency confusion
+- Dormant payload pre-staged into protected backup during dwell time ⚡ _(plausible)_
+- Forged lineage edges laundering dataset provenance ⚡ _(plausible)_
 - Public object-store enumeration and download (S3/GCS/Azure Blob anonymous or all-users ACL)
 - Remembered cloud resource-name confusion ⚡ _(plausible)_
 
@@ -274,6 +285,7 @@ markmap:
 - Reflective DLL/PE in-memory loading
 
 ### Email & Collaboration Abuse
+- Calendar-injection summoning auto-join bot for covert capture ⚡ _(plausible)_
 - SPF/DKIM/DMARC spoofing and header-from alignment abuse
 
 ### Execution
@@ -303,6 +315,9 @@ markmap:
 - Hardware additions / removable media / evil maid
 - Rogue access point / evil twin (Wi-Fi Pineapple)
 - USB drop and HID keystroke injection (Rubber Ducky, Bash Bunny, O.MG cable)
+
+### MLOps & Model Supply Chain
+- Production-stage alias rebinding to a substituted model artifact ⚡ _(plausible)_
 
 ### Mobile Attacks
 - App repackaging & trojanized sideload
@@ -335,11 +350,12 @@ markmap:
 - SUCI cross-session linkability via unconcealed routing/capability residue ⚡ _(plausible)_
 - Unauthenticated AIS phantom-vessel and MMSI-clone injection ⚡ _(demonstrated)_
 
-## P4 Context-Inheritance *(31)*
+## P4 Context-Inheritance *(38)*
 
 ### AI / Agent Attacks
 - Approval-context inheritance across NL-to-fieldbus translation ⚡ _(speculative)_
 - Hidden directive embedded in shared agent-definition ⚡ _(plausible)_
+- Offline feature poisoning promoted to online serving via materialization ⚡ _(plausible)_
 - Unsanitized context inheritance across agent spawn boundary ⚡ _(plausible)_
 
 ### API & Business-Logic Abuse
@@ -350,6 +366,7 @@ markmap:
 - Self-hosted runner persistence and cross-job contamination
 
 ### Cloud Attacks
+- Credential and token harvest from inherited notebook kernel context ⚡ _(plausible)_
 - Edge isolate module-global secret bleed across requests ⚡ _(speculative)_
 
 ### Collection
@@ -373,6 +390,7 @@ markmap:
 - eBPF-as-rootkit: hook-ordering and map tampering to hide processes/connections from eBPF EDR ⚡ _(demonstrated)_
 - EDR unhooking and direct/indirect syscalls
 - Impair defenses / AMSI & EDR bypass / obfuscation
+- Network boundary bridging
 - Process injection and hollowing (CreateRemoteThread, process hollowing, APC, thread hijack)
 
 ### Execution
@@ -384,6 +402,11 @@ markmap:
 ### Hardware / IoT / Firmware
 - Secure-boot / chain-of-trust link bypass
 
+### Identity & Federation Attacks
+- Citizen-dev flow referencing a shared privileged connection ⚡ _(plausible)_
+- Session-cookie/token theft via granted host permissions ⚡ _(demonstrated)_
+- Shared-connection reuse by unauthorized iPaaS flow ⚡ _(plausible)_
+
 ### Lateral Movement
 - Pass-the-hash / remote services / PsExec
 - RDP session hijacking via tscon
@@ -393,6 +416,7 @@ markmap:
 - Account manipulation: SSH authorized_keys and cloud IAM credential addition
 - Boot/logon autostart, scheduled task
 - New service creation and service binary/path hijack
+- Software extensions (browser/IDE) as persistence
 - WMI event subscription persistence
 
 ### Privilege Escalation
