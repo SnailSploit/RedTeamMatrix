@@ -1,0 +1,782 @@
+# SEAMMAP — Techniques by Tactic
+
+The seam techniques organized by the 14 MITRE ATT&CK Enterprise tactics (kill-chain order). Each line: **[primitive]** technique — `ATT&CK ids` · ⚡ = new (no ATT&CK id; a trust relationship MITRE does not model).
+
+> Generated from `data/seams.json` + `data/mitre-map.json` by `gen-techniques-by-tactic.cjs`. 308 seams.
+
+## Reconnaissance `TA0043`  *(14)*
+- **[P2 Identity->Authority]** Active scanning / banner & metadata disclosure (Shodan/Censys/FOFA) — `T1595, T1592, T1046`
+- **[P2 Identity->Authority]** DNS zone transfer (AXFR via dig/host) — `T1590.002`
+- **[P2 Identity->Authority]** Google Dorking (advanced search-operator harvesting) — `T1593.002`
+- **[P2 Identity->Authority]** Physical site survey (badge/ingress/wireless recon) — `T1591.004, T1596`
+- **[P2 Identity->Authority]** Tech stack fingerprinting (Wappalyzer/BuiltWith/favicon hashing) — `T1592.002, T1594`
+- **[P3 Provenance]** GitHub/GitLab leak mining (TruffleHog/Gitleaks/git-dorks) — `T1593.003, T1552.001`
+- **[P3 Provenance]** Null-scheme / reused-randomness SUCI re-identification ⚡
+- **[P3 Provenance]** OSINT correlation / persona building — `T1589, T1591, T1593`
+- **[P3 Provenance]** Pastebin / breach-data credential harvesting — `T1589.001, T1597.002, T1650`
+- **[P3 Provenance]** SUCI cross-session linkability via unconcealed routing/capability residue ⚡
+- **[P3 Provenance]** Subdomain enumeration (Amass/Subfinder/CT logs) — `T1590.002, T1596.002`
+- **[P3 Provenance]** WHOIS / DNS-history footprinting — `T1590.001, T1596.001`
+- **[P3 Provenance]** Wayback Machine / archive mining — `T1596.005`
+- **[P3 Provenance]** Web crawling / spidering (gospider/katana/hidden-endpoint discovery) — `T1594`
+
+## Resource Development `TA0042`  *(12)*
+- **[P1 Data->Control]** Evaluatee-embedded prompt injection steering an LLM judge's verdict ⚡
+- **[P1 Data->Control]** Gradual drift / replay evading AI anomaly model controlling actuators — `T0855`
+- **[P1 Data->Control]** Judge sycophancy/bias exploitation to game an automated quality gate ⚡
+- **[P1 Data->Control]** Sensor-stream poisoning shifting AI inference toward harmful actuation — `T0856, T0832`
+- **[P3 Provenance]** Agent-narrated firmware verification standing in for real signature check — `T1542.001`
+- **[P3 Provenance]** Agent-pushed downgrade / swapped OTA image across IoT fleet
+- **[P3 Provenance]** Benchmark test-set contamination inflating procurement score ⚡
+- **[P3 Provenance]** Field-mapping/log-source desync that renders a rule non-firing while reporting as enabled — `T1562.001`
+- **[P3 Provenance]** Near-duplicate leakage to game held-out evaluation ⚡
+- **[P3 Provenance]** Poisoned Sigma/detection rule with coverage-preserving exclusion clause via PR to shared repo — `T1195.001, T1562.001`
+- **[P3 Provenance]** RAG corpus poisoning (write-side) — `T1608, T1195`
+- **[P3 Provenance]** Stage capability via trusted distribution — `T1587, T1608, T1588`
+
+## Initial Access `TA0001`  *(130)*
+- **[P1 Data->Control]** Accept-keystroke authorship laundering past code review ⚡
+- **[P1 Data->Control]** Adversarial physical patch redirecting embodied-agent action ⚡
+- **[P1 Data->Control]** Calldata branching on context absent in wallet simulation ⚡
+- **[P1 Data->Control]** Cross-site scripting — `T1189, T1059.007`
+- **[P1 Data->Control]** Data-broker record seeding to bias an enrichment-API verdict
+- **[P1 Data->Control]** Deep-link / URL-scheme hijack & parameter injection — `T1416`
+- **[P1 Data->Control]** Drive-by compromise / watering-hole browser exploitation — `T1189, T1608.004, T1203`
+- **[P1 Data->Control]** Edge appliance pre-auth RCE (VPN/Citrix/Ivanti/Edge gateway CVEs) — `T1190`
+- **[P1 Data->Control]** Email-borne indirect prompt injection — `T1566, T1114`
+- **[P1 Data->Control]** Exported-component / intent injection — `T1474`
+- **[P1 Data->Control]** Forged/replayed webhook event mutating receiver state — `T1190, T1565.001`
+- **[P1 Data->Control]** HTTP parameter pollution and parser-disagreement bypass ⚡
+- **[P1 Data->Control]** Indirect prompt injection via document/file (core LLM red-teaming surface) — `T1566, T1204`
+- **[P1 Data->Control]** Indirect prompt injection via web/fetch — `T1189, T1566`
+- **[P1 Data->Control]** Mass assignment / auto-binding of unexpected fields ⚡
+- **[P1 Data->Control]** Office macros / VBA / XLM (Excel 4.0) execution — `T1204.002, T1059.005, T1137, T1221`
+- **[P1 Data->Control]** Payload-canonicalization HMAC bypass on inbound webhook — `T1190`
+- **[P1 Data->Control]** Poisoned Pipeline Execution via controllable CI config/scripts (D-PPE/I-PPE) — `T1059`
+- **[P1 Data->Control]** RF/replay audio injection driving agent tool actuation ⚡
+- **[P1 Data->Control]** Reputation/risk-feed poisoning feeding automated identity decisions — `T1583`
+- **[P1 Data->Control]** SQL injection — `T1190`
+- **[P1 Data->Control]** Scene-text prompt injection into vision-language robot policy ⚡
+- **[P1 Data->Control]** Simulation/execution state divergence yielding decoy preview ⚡
+- **[P1 Data->Control]** Spearphishing / whaling / link / attachment — `T1566, T1566.001, T1566.002, T1534`
+- **[P1 Data->Control]** Suggestion-bias seeding of public corpus to steer completions ⚡
+- **[P1 Data->Control]** Sybil preference-label injection into reward model ⚡
+- **[P1 Data->Control]** Trigger-conditioned helpfulness reward backdoor ⚡
+- **[P1 Data->Control]** Ultrasonic/inaudible voice-command injection (DolphinAttack-class) into LLM voice agent ⚡
+- **[P1 Data->Control]** Vishing / pretexting (AI persona) — `T1598, T1656`
+- **[P1 Data->Control]** Workflow command / build-parameter injection in CI logs — `T1059`
+- **[P2 Identity->Authority]** Aged synthetic-identity graph defeating cross-source existence checks ⚡
+- **[P2 Identity->Authority]** Autonomous-agent install of unverified hallucinated dependency — `T1195`
+- **[P2 Identity->Authority]** Backdoored guardrail model passing trigger-marked attacks
+- **[P2 Identity->Authority]** Badge cloning, lock picking, tailgating — `T1200, T1078`
+- **[P2 Identity->Authority]** Broken Object Level Authorization / IDOR enumeration ⚡
+- **[P2 Identity->Authority]** CREATE2-redeployed verifier domain collision cross-chain ⚡
+- **[P2 Identity->Authority]** Client-asserted device-compliance signal forgery against conditional access — `T1556, T1622`
+- **[P2 Identity->Authority]** Command-window format conformance accepted as operator identity ⚡
+- **[P2 Identity->Authority]** Cross-site request forgery ⚡
+- **[P2 Identity->Authority]** EIP-712 signature replay across shared/forked chainId domain ⚡
+- **[P2 Identity->Authority]** Evil-twin / rogue AP MITM — `T1557, T1669`
+- **[P2 Identity->Authority]** Exposed RDP/SSH brute-force and credential reuse — `T1133, T1021.001, T1021.004, T1110`
+- **[P2 Identity->Authority]** Illicit consent grant / OAuth phishing — `T1528, T1550.001`
+- **[P2 Identity->Authority]** JTAG/SWD halt-and-dump & memory control — `T1542`
+- **[P2 Identity->Authority]** Jailbreak/root trust abuse & integrity-check bypass — `T1404`
+- **[P2 Identity->Authority]** Karma / probe-response & captive-portal credential harvest — `T1056`
+- **[P2 Identity->Authority]** Malicious MDM / configuration-profile enrollment — `T1626`
+- **[P2 Identity->Authority]** Manufactured thin-file/credit-bureau history bootstrapping a fabricated person ⚡
+- **[P2 Identity->Authority]** OIDC audience/azp spoof and token reuse across relying parties — `T1606.002`
+- **[P2 Identity->Authority]** Open sharing-link / anonymous-access file delivery — `T1080`
+- **[P2 Identity->Authority]** Phishable/typosquatted OIDC identity yielding valid keyless signature — `T1195.002`
+- **[P2 Identity->Authority]** Posture-attestation replay / hooking of the compliance agent — `T1562.001`
+- **[P2 Identity->Authority]** Pre-registration of recurrent LLM-hallucinated package names — `T1195.001`
+- **[P2 Identity->Authority]** SAML signature wrapping (XSW) and comment-injection NameID confusion — `T1606.002`
+- **[P2 Identity->Authority]** Supply-chain swap of safety-classifier artifact — `T1195.002`
+- **[P2 Identity->Authority]** Teams/Slack external-guest and tenant-federation phishing — `T1566.003, T1199`
+- **[P2 Identity->Authority]** UART root-console / bootloader interrupt
+- **[P2 Identity->Authority]** Unauthenticated CCSDS telecommand injection on live uplink ⚡
+- **[P2 Identity->Authority]** Valid accounts via breach creds, password spray, credential stuffing — `T1078, T1110.003, T1110.004, T1589.001`
+- **[P2 Identity->Authority]** Workflow-ref impersonation in keyless cert identity claim
+- **[P3 Provenance]** Account-recovery downgrade to fallback factor that bypasses the enrolled passkey — `T1556.006`
+- **[P3 Provenance]** Aged burner / sock-puppet persona cultivation for platform trust — `T1585.001, T1585.002`
+- **[P3 Provenance]** Agent-skill typosquat-at-install — `T1195.002, T1546`
+- **[P3 Provenance]** App repackaging & trojanized sideload — `T1661, T1604`
+- **[P3 Provenance]** BLE/NFC relay attack (link extension) ⚡
+- **[P3 Provenance]** Benchmark test-set contamination inflating procurement score ⚡
+- **[P3 Provenance]** C2PA manifest removal via re-encode/screenshot/format conversion ⚡
+- **[P3 Provenance]** Calendar-injection summoning auto-join bot for covert capture — `T1566, T1114.002`
+- **[P3 Provenance]** Certificate mis-issuance and domain-validation abuse — `T1649, T1588.004`
+- **[P3 Provenance]** Compromise software supply chain — `T1195, T1195.001, T1195.002`
+- **[P3 Provenance]** Content Credential rebinding onto altered media (provenance laundering) ⚡
+- **[P3 Provenance]** Counterfeit COTS subsystem forging intra-bus telemetry ⚡
+- **[P3 Provenance]** Dependency confusion and registry typosquatting — `T1195.001`
+- **[P3 Provenance]** Dependency confusion — `T1195.002`
+- **[P3 Provenance]** Device-code authentication phishing — `T1566, T1528`
+- **[P3 Provenance]** Established-persona social-engineering and connection-graph priming — `T1586.001, T1456`
+- **[P3 Provenance]** Fake/lookalike store distribution — `T1475`
+- **[P3 Provenance]** Forged/replayed e-signature completion callback releasing value — `T1190, T1565.001`
+- **[P3 Provenance]** GNSS/location-spoofed proof of physical work minting rewards ⚡
+- **[P3 Provenance]** Generative face-swap presentation attack defeating remote KYC match
+- **[P3 Provenance]** Hardware additions / removable media / evil maid — `T1200, T1091, T1052`
+- **[P3 Provenance]** Hash-collision and chosen-prefix forgery (MD5/SHA-1, length-extension) ⚡
+- **[P3 Provenance]** Injection-based deepfake liveness bypass via virtual camera / SDK hook — `T1656`
+- **[P3 Provenance]** JWT alg=none / RS256-to-HS256 key confusion / kid injection ⚡
+- **[P3 Provenance]** Light-client validator-set rotation orphaning a proven header ⚡
+- **[P3 Provenance]** Lookalike / IDN homograph domain impersonation — `T1583.001`
+- **[P3 Provenance]** Malicious / typosquatted public-registry image pull — `T1610, T1525`
+- **[P3 Provenance]** Malicious/unsigned OTA update push
+- **[P3 Provenance]** Memory-pinned supply-chain redirection — `T1195.002, T1546`
+- **[P3 Provenance]** Mutable-tag substitution and missing image-signature (cosign/notary) verification — `T1525`
+- **[P3 Provenance]** Near-duplicate leakage to game held-out evaluation ⚡
+- **[P3 Provenance]** Open redirect trust laundering — `T1566.002`
+- **[P3 Provenance]** Passkey sync-fabric account takeover to export/replicate the synced credential — `T1556, T1528`
+- **[P3 Provenance]** Primary Refresh Token theft and session-key replay (ROADtoken, pass-the-PRT) — `T1528, T1550.001`
+- **[P3 Provenance]** Provenance scope gap (attested build step != exploited step) passing verification — `T1195.002`
+- **[P3 Provenance]** RFID/NFC tag cloning (static UID/Mifare) ⚡
+- **[P3 Provenance]** RSP activation-code/QR hijack installing unauthorized profile ⚡
+- **[P3 Provenance]** Registry tag mutation / image overwrite (mutable tags) — `T1195.002`
+- **[P3 Provenance]** Rogue / installed root-CA trust injection — `T1553.004`
+- **[P3 Provenance]** Rogue access point / evil twin (Wi-Fi Pineapple) — `T1557, T1200`
+- **[P3 Provenance]** SM-DP+ address swap redirecting profile download ⚡
+- **[P3 Provenance]** SPF/DKIM/DMARC spoofing and header-from alignment abuse — `T1566.001, T1656, T1672`
+- **[P3 Provenance]** Signature malleability / verification bypass ⚡
+- **[P3 Provenance]** Signer-routing/recipient-logic abuse to satisfy signing step — `T1199`
+- **[P3 Provenance]** Source-chain deep reorg after destination mint at fixed confirmation depth ⚡
+- **[P3 Provenance]** Stage capability via trusted distribution — `T1587, T1608, T1588`
+- **[P3 Provenance]** Subject/predicate digest-binding mismatch letting an unattested artifact ride a valid attestation — `T1574`
+- **[P3 Provenance]** Tampered subsystem firmware as trusted bus peer ⚡
+- **[P3 Provenance]** Telematics/infotainment remote compromise (Jeep-class remote pivot) — `T1190`
+- **[P3 Provenance]** Transcript/summary poisoning into downstream agent workflows — `T1565.001`
+- **[P3 Provenance]** USB drop and HID keystroke injection (Rubber Ducky, Bash Bunny, O.MG cable) — `T1200, T1091, T1674`
+- **[P3 Provenance]** Virtualized multi-identity device sybil for coverage rewards ⚡
+- **[P3 Provenance]** Webhook signature bypass / spoof ⚡
+- **[P4 Context-Inheritance]** Bundler ordering/aggregation invalidating sponsorship precondition ⚡
+- **[P4 Context-Inheritance]** Hidden directive embedded in shared agent-definition ⚡
+- **[P4 Context-Inheritance]** Prompt-template update injecting context exfiltration ⚡
+- **[P4 Context-Inheritance]** Session fixation — `T1539`
+- **[P4 Context-Inheritance]** Validation/execution state divergence draining paymaster deposit ⚡
+- **[P5 Format-Boundary]** Cache-key/authorization-input mismatch cross-tenant serve — `T1213`
+- **[P5 Format-Boundary]** Edge-function-injected header excluded from cache key
+- **[P5 Format-Boundary]** HTTP request smuggling — `T1190`
+- **[P6 Time/State]** 802.11 deauthentication / disassociation flood — `T1498`
+- **[P6 Time/State]** Block-cadence warping of TWAP observation window ⚡
+- **[P6 Time/State]** MFA push bombing / prompt fatigue to harvest approval — `T1621, T1110.003, T1667`
+- **[P6 Time/State]** PKES relay attack (RF link extension) ⚡
+- **[P6 Time/State]** PMKID clientless capture (hashcat 22000) — `T1110.002`
+- **[P6 Time/State]** RF jamming & SDR capture-replay
+- **[P6 Time/State]** Rolling-code capture & replay (RollJam-style) ⚡
+- **[P6 Time/State]** Sequencer-controlled timestamp skew of weighted price ⚡
+- **[P6 Time/State]** WPA2 4-way handshake capture & offline crack — `T1110.002`
+
+## Execution `TA0002`  *(63)*
+- **[P1 Data->Control]** Agent-issued bulk remote-vehicle command via telematics scope — `T1190`
+- **[P1 Data->Control]** Alert-field to playbook-action injection (host isolation, account disable, firewall rule) via attacker-controlled telemetry — `T1059`
+- **[P1 Data->Control]** Bus-off / arbitration-flood DoS of an ECU ⚡
+- **[P1 Data->Control]** CAN frame spoofing by arbitration ID ⚡
+- **[P1 Data->Control]** Command and scripting interpreter abuse (PowerShell, cmd, WMIC, Bash, Python, Perl) — `T1059.001, T1059.003, T1059.004, T1059.006, T1047`
+- **[P1 Data->Control]** Cross-server tool contamination — `T1559`
+- **[P1 Data->Control]** Deep-link / URL-scheme hijack & parameter injection — `T1416`
+- **[P1 Data->Control]** Enrichment-query injection turning SOAR API tokens into attacker-scoped calls
+- **[P1 Data->Control]** Event-source data-as-control injection (S3/SQS/SNS/API-Gateway event field into eval/query/exec) — `T1059, T1190`
+- **[P1 Data->Control]** Exported-component / intent injection — `T1474`
+- **[P1 Data->Control]** Function event-payload poisoning leading to privilege use of the execution role — `T1648`
+- **[P1 Data->Control]** Indirect prompt injection via document/file (core LLM red-teaming surface) — `T1566, T1204`
+- **[P1 Data->Control]** Indirect prompt injection via web/fetch — `T1189, T1566`
+- **[P1 Data->Control]** Injected fleet task expanded to mass remote actuation
+- **[P1 Data->Control]** Insecure deserialization — `T1190`
+- **[P1 Data->Control]** Native API execution — `T1106`
+- **[P1 Data->Control]** OS command injection — `T1190, T1059`
+- **[P1 Data->Control]** Office macros / VBA / XLM (Excel 4.0) execution — `T1204.002, T1059.005, T1137, T1221`
+- **[P1 Data->Control]** Orchestrator-to-worker tasking injection — `T1559`
+- **[P1 Data->Control]** Poisoned Pipeline Execution via controllable CI config/scripts (D-PPE/I-PPE) — `T1059`
+- **[P1 Data->Control]** RF/replay audio injection driving agent tool actuation ⚡
+- **[P1 Data->Control]** Retrieval-time injection (read-side) — `T1059`
+- **[P1 Data->Control]** SQL injection — `T1190`
+- **[P1 Data->Control]** Server-side template injection — `T1190, T1059`
+- **[P1 Data->Control]** Tool-output / function-return injection — `T1059`
+- **[P1 Data->Control]** Ultrasonic/inaudible voice-command injection (DolphinAttack-class) into LLM voice agent ⚡
+- **[P1 Data->Control]** Web shell persistence — `T1505.003`
+- **[P1 Data->Control]** Workflow command / build-parameter injection in CI logs — `T1059`
+- **[P2 Identity->Authority]** Agent-driven HMI setpoint/command write without operator deliberation — `T0831, T0855`
+- **[P2 Identity->Authority]** Autonomous-agent install of unverified hallucinated dependency — `T1195`
+- **[P2 Identity->Authority]** Jailbreak/root trust abuse & integrity-check bypass — `T1404`
+- **[P2 Identity->Authority]** MCP tool-selection confused deputy — `T1559`
+- **[P2 Identity->Authority]** Malicious MDM / configuration-profile enrollment — `T1626`
+- **[P2 Identity->Authority]** Pre-registration of recurrent LLM-hallucinated package names — `T1195.001`
+- **[P2 Identity->Authority]** Prompt-injected plant-copilot recommendation actuated as operator decision — `T0832`
+- **[P2 Identity->Authority]** Protocol fuzzing & function-code abuse (Metasploit modbusclient, smod) — `T0846`
+- **[P2 Identity->Authority]** SCADA/ICS Modbus/DNP3/S7 unauthenticated coil & register write — `T0855, T0836`
+- **[P3 Provenance]** App repackaging & trojanized sideload — `T1661, T1604`
+- **[P3 Provenance]** Controller firmware overwrite — `T0857`
+- **[P3 Provenance]** Fake/lookalike store distribution — `T1475`
+- **[P3 Provenance]** Firmware downgrade / anti-rollback bypass
+- **[P3 Provenance]** Hash-collision and chosen-prefix forgery (MD5/SHA-1, length-extension) ⚡
+- **[P3 Provenance]** Malicious / typosquatted public-registry image pull — `T1610, T1525`
+- **[P3 Provenance]** Mutable-tag substitution and missing image-signature (cosign/notary) verification — `T1525`
+- **[P3 Provenance]** Rogue EWS program/logic download (TIA Portal, Studio 5000 protocol replay) — `T0843, T0873`
+- **[P3 Provenance]** Signature malleability / verification bypass ⚡
+- **[P3 Provenance]** USB drop and HID keystroke injection (Rubber Ducky, Bash Bunny, O.MG cable) — `T1200, T1091, T1674`
+- **[P3 Provenance]** Unsigned/modified firmware flash — `T1542.001, T1495`
+- **[P3 Provenance]** WSUS / update-channel content injection — `T1072, T1195.002`
+- **[P4 Context-Inheritance]** Approval-context inheritance across NL-to-fieldbus translation — `T0855, T0836`
+- **[P4 Context-Inheritance]** Build cache poisoning across jobs/repositories — `T1195.001`
+- **[P4 Context-Inheritance]** Runtime skill/plugin composition privilege union — `T1059, T1129`
+- **[P4 Context-Inheritance]** Secure-boot / chain-of-trust link bypass — `T1542.001`
+- **[P4 Context-Inheritance]** Self-hosted runner persistence and cross-job contamination — `T1543, T1554`
+- **[P4 Context-Inheritance]** Sub-step expansion below the human authorization boundary — `T0843`
+- **[P4 Context-Inheritance]** Unverified boot stage / config inheritance (TOCTOU)
+- **[P5 Format-Boundary]** Argument injection — `T1059`
+- **[P5 Format-Boundary]** MCP transport boundary desync / call smuggling — `T1559, T1190`
+- **[P5 Format-Boundary]** Pickle/__reduce__ payload in serialized model artifact — `T1204.002`
+- **[P5 Format-Boundary]** Remote-code-on-load via trust_remote_code / custom processor — `T1195.002`
+- **[P5 Format-Boundary]** Zip/Tar slip / path traversal — `T1190`
+- **[P6 Time/State]** Power/timing side-channel key extraction (DPA/CPA) ⚡
+- **[P6 Time/State]** Voltage/clock/EM fault injection (auth & secure-boot skip) ⚡
+
+## Persistence `TA0003`  *(72)*
+- **[P1 Data->Control]** Accept-keystroke authorship laundering past code review ⚡
+- **[P1 Data->Control]** Suggestion-bias seeding of public corpus to steer completions ⚡
+- **[P1 Data->Control]** Sybil preference-label injection into reward model ⚡
+- **[P1 Data->Control]** Trigger-conditioned helpfulness reward backdoor ⚡
+- **[P1 Data->Control]** Web shell persistence — `T1505.003`
+- **[P2 Identity->Authority]** Activation-window race / residual-session abuse after JIT grant expiry — `T1548`
+- **[P2 Identity->Authority]** Aged synthetic-identity graph defeating cross-source existence checks ⚡
+- **[P2 Identity->Authority]** Agent as confused deputy in cert request/approval (mis-issuance) — `T1649`
+- **[P2 Identity->Authority]** Agent-driven rogue device commissioning into Matter/Zigbee fabric ⚡
+- **[P2 Identity->Authority]** Agent-driven rogue intermediate / trust-anchor installation
+- **[P2 Identity->Authority]** Agent-issued group/binding reassignment to attacker node ⚡
+- **[P2 Identity->Authority]** Illicit OAuth consent-grant application persistence — `T1528, T1098.003, T1671`
+- **[P2 Identity->Authority]** JIT elevation self-approval / auto-approval path and approver social engineering — `T1078.004, T1098`
+- **[P2 Identity->Authority]** Key-based privilege enumeration and IAM self-escalation (PassRole / policy attach / version set) — `T1098.001, T1484`
+- **[P2 Identity->Authority]** Long-lived access-key abuse (leaked AWS keys / GCP SA keys / Azure SP secrets used from attacker host) — `T1078.004, T1552.001, T1666`
+- **[P2 Identity->Authority]** Malicious mailbox / inbox forwarding rule persistence — `T1137.005, T1114.003`
+- **[P2 Identity->Authority]** Manufactured thin-file/credit-bureau history bootstrapping a fabricated person ⚡
+- **[P2 Identity->Authority]** Orphaned service-account / API-key reuse with intact standing entitlements — `T1078.004, T1098.001`
+- **[P2 Identity->Authority]** Phishable/typosquatted OIDC identity yielding valid keyless signature — `T1195.002`
+- **[P2 Identity->Authority]** Ungoverned agent/workload identity sprawl outliving its workload — `T1136.003`
+- **[P2 Identity->Authority]** Workflow-ref impersonation in keyless cert identity claim
+- **[P3 Provenance]** Agent-generated over-broad IAM/security-group in IaC — `T1098.003`
+- **[P3 Provenance]** Agent-narrated firmware verification standing in for real signature check — `T1542.001`
+- **[P3 Provenance]** Agent-pushed downgrade / swapped OTA image across IoT fleet
+- **[P3 Provenance]** Agent-skill typosquat-at-install — `T1195.002, T1546`
+- **[P3 Provenance]** Bootkit / kernel rootkit pre-OS persistence — `T1542.003, T1014, T1542.001`
+- **[P3 Provenance]** Compromise software supply chain — `T1195, T1195.001, T1195.002`
+- **[P3 Provenance]** Counterfeit COTS subsystem forging intra-bus telemetry ⚡
+- **[P3 Provenance]** DLL search-order hijacking and DLL sideloading — `T1574.001, T1574.002`
+- **[P3 Provenance]** Dependency confusion and registry typosquatting — `T1195.001`
+- **[P3 Provenance]** Dormant payload pre-staged into protected backup during dwell time — `T1542, T1505`
+- **[P3 Provenance]** Golden SAML forged token-signing key abuse — `T1606.002`
+- **[P3 Provenance]** Golden Ticket and Silver Ticket forgery — `T1558.001, T1558.002`
+- **[P3 Provenance]** Injection-influenced long-term memory write — `T1546, T1608`
+- **[P3 Provenance]** MCP capability drift / tool rug-pull across updates — `T1195, T1546`
+- **[P3 Provenance]** Malicious / typosquatted public-registry image pull — `T1610, T1525`
+- **[P3 Provenance]** Memory-pinned supply-chain redirection — `T1195.002, T1546`
+- **[P3 Provenance]** Mutable-tag substitution and missing image-signature (cosign/notary) verification — `T1525`
+- **[P3 Provenance]** Policy-as-code gap exploited by plausible agent IaC drift — `T1525`
+- **[P3 Provenance]** Post-evaluation artifact-byte swap under an unchanged registry label — `T1565.001`
+- **[P3 Provenance]** Post-revocation credential acceptance during status-list propagation lag ⚡
+- **[P3 Provenance]** Production-stage alias rebinding to a substituted model artifact — `T1525, T1195.002`
+- **[P3 Provenance]** Provenance scope gap (attested build step != exploited step) passing verification — `T1195.002`
+- **[P3 Provenance]** RAG corpus poisoning (write-side) — `T1608, T1195`
+- **[P3 Provenance]** RSP activation-code/QR hijack installing unauthorized profile ⚡
+- **[P3 Provenance]** Registry tag mutation / image overwrite (mutable tags) — `T1195.002`
+- **[P3 Provenance]** Restore reintroducing implant under clean-backup trust — `T1490, T1080`
+- **[P3 Provenance]** Rogue federated domain / cross-tenant trust addition — `T1484.002`
+- **[P3 Provenance]** SM-DP+ address swap redirecting profile download ⚡
+- **[P3 Provenance]** Stale did/status-list resolution steered to honor revoked VC ⚡
+- **[P3 Provenance]** Subject/predicate digest-binding mismatch letting an unattested artifact ride a valid attestation — `T1574`
+- **[P3 Provenance]** Tampered subsystem firmware as trusted bus peer ⚡
+- **[P4 Context-Inheritance]** Account manipulation: SSH authorized_keys and cloud IAM credential addition — `T1098.004, T1098.001, T1098`
+- **[P4 Context-Inheritance]** Agent memory as dead-drop C2 — `T1071, T1546`
+- **[P4 Context-Inheritance]** Boot/logon autostart, scheduled task — `T1547, T1053, T1543, T1037, T1653`
+- **[P4 Context-Inheritance]** Build cache poisoning across jobs/repositories — `T1195.001`
+- **[P4 Context-Inheritance]** Citizen-dev flow referencing a shared privileged connection — `T1078.004, T1098`
+- **[P4 Context-Inheritance]** Coverage blind spot between sensor hook points (syscall variants, uprobes, ringbuf gaps) — `T1562.001`
+- **[P4 Context-Inheritance]** Feature-definition/transform job tampering to bias served features — `T1195.002`
+- **[P4 Context-Inheritance]** Hidden directive embedded in shared agent-definition ⚡
+- **[P4 Context-Inheritance]** New service creation and service binary/path hijack — `T1543.003, T1574.011, T1574.010, T1569`
+- **[P4 Context-Inheritance]** Offline feature poisoning promoted to online serving via materialization — `T1565.001`
+- **[P4 Context-Inheritance]** Prompt-template update injecting context exfiltration ⚡
+- **[P4 Context-Inheritance]** Self-hosted runner persistence and cross-job contamination — `T1543, T1554`
+- **[P4 Context-Inheritance]** Shared/imported flow persisting attacker logic on a privileged connector — `T1505, T1136.003`
+- **[P4 Context-Inheritance]** Software extensions (browser/IDE) as persistence — `T1176, T1176.001, T1176.002`
+- **[P4 Context-Inheritance]** WMI event subscription persistence — `T1546.003`
+- **[P4 Context-Inheritance]** eBPF-as-rootkit: hook-ordering and map tampering to hide processes/connections from eBPF EDR — `T1014, T1562.001`
+- **[P5 Format-Boundary]** Proxy implementation layout shift colliding persistent state ⚡
+- **[P5 Format-Boundary]** Upgrade-time storage-slot re-interpretation seizing role/owner ⚡
+- **[P6 Time/State]** Memory check-vs-use divergence after human correction — `T1647, T1546`
+- **[P6 Time/State]** Vector-store eviction/poisoning persistence — `T1565`
+
+## Privilege Escalation `TA0004`  *(57)*
+- **[P1 Data->Control]** Event-source data-as-control injection (S3/SQS/SNS/API-Gateway event field into eval/query/exec) — `T1059, T1190`
+- **[P1 Data->Control]** Forged/replayed webhook event mutating receiver state — `T1190, T1565.001`
+- **[P1 Data->Control]** Function event-payload poisoning leading to privilege use of the execution role — `T1648`
+- **[P1 Data->Control]** HTTP parameter pollution and parser-disagreement bypass ⚡
+- **[P1 Data->Control]** Kernel/OS memory-corruption privilege escalation — `T1068`
+- **[P1 Data->Control]** Mass assignment / auto-binding of unexpected fields ⚡
+- **[P1 Data->Control]** Payload-canonicalization HMAC bypass on inbound webhook — `T1190`
+- **[P2 Identity->Authority]** AD CS ESC1-ESC16 certificate abuse — `T1649`
+- **[P2 Identity->Authority]** Activation-window race / residual-session abuse after JIT grant expiry — `T1548`
+- **[P2 Identity->Authority]** Anonymous-auth / unauthenticated API server access — `T1609`
+- **[P2 Identity->Authority]** AssumeRole external-id confused-deputy (missing/guessable external id, wildcard principal trust policy) — `T1199, T1078.004`
+- **[P2 Identity->Authority]** Attended-bot impersonation attributing actions to the human — `T1078`
+- **[P2 Identity->Authority]** Auto-mounted service-account token theft and replay — `T1528, T1552.001`
+- **[P2 Identity->Authority]** Autonomous in-cluster RBAC abuse by agent — `T1609, T1610`
+- **[P2 Identity->Authority]** Cloud IAM role chaining and policy privilege escalation — `T1548.005, T1098.003`
+- **[P2 Identity->Authority]** Cross-tenant role/identity-federation chaining across vendor SaaS integrations — `T1199`
+- **[P2 Identity->Authority]** Direct etcd read/write of cluster state and secrets — `T1552.007`
+- **[P2 Identity->Authority]** Flash-borrowed governance-token snapshot vote capture ⚡
+- **[P2 Identity->Authority]** IMDSv1 token-less credential retrieval (no PUT-token session required) — `T1552.005`
+- **[P2 Identity->Authority]** JIT elevation self-approval / auto-approval path and approver social engineering — `T1078.004, T1098`
+- **[P2 Identity->Authority]** Kerberoasting / AS-REP roasting — `T1558.003, T1558.004`
+- **[P2 Identity->Authority]** Kerberos delegation abuse (RBCD/S4U) — `T1558, T1134.001`
+- **[P2 Identity->Authority]** Key-based privilege enumeration and IAM self-escalation (PassRole / policy attach / version set) — `T1098.001, T1484`
+- **[P2 Identity->Authority]** Linux capability abuse for privilege escalation — `T1548`
+- **[P2 Identity->Authority]** Long-lived access-key abuse (leaked AWS keys / GCP SA keys / Azure SP secrets used from attacker host) — `T1078.004, T1552.001, T1666`
+- **[P2 Identity->Authority]** Orphaned service-account / API-key reuse with intact standing entitlements — `T1078.004, T1098.001`
+- **[P2 Identity->Authority]** Over-scoped projected/bound token reuse for cloud workload-identity federation — `T1550.001`
+- **[P2 Identity->Authority]** RPA orchestrator/vault compromise harvesting bot credentials — `T1555, T1078.002`
+- **[P2 Identity->Authority]** Rented delegated voting power transient to the snapshot block ⚡
+- **[P2 Identity->Authority]** SUID binary and sudo rule abuse (GTFOBins escape) — `T1548.003, T1548.001`
+- **[P2 Identity->Authority]** Token impersonation/theft via SeImpersonate (Potato family, named-pipe/RPC coercion) — `T1134`
+- **[P2 Identity->Authority]** Unauthenticated kubelet API exec/run on port 10250 — `T1610, T1609`
+- **[P2 Identity->Authority]** Ungoverned agent/workload identity sprawl outliving its workload — `T1136.003`
+- **[P3 Provenance]** Bring Your Own Vulnerable Driver (BYOVD) to tamper kernel/EDR — `T1068, T1562.001`
+- **[P3 Provenance]** DLL search-order hijacking and DLL sideloading — `T1574.001, T1574.002`
+- **[P3 Provenance]** Forged/replayed e-signature completion callback releasing value — `T1190, T1565.001`
+- **[P3 Provenance]** Policy exemption / selector gap and mutate-after-validate ordering abuse — `T1480`
+- **[P3 Provenance]** Signer-routing/recipient-logic abuse to satisfy signing step — `T1199`
+- **[P3 Provenance]** Validating-webhook failure-open / timeout bypass — `T1562.001`
+- **[P3 Provenance]** Weak service binary/permission and writable service config hijack — `T1574.010, T1543.003`
+- **[P4 Context-Inheritance]** Authenticated-peer to L7 authz confusion (privileged path/method abuse inside the mesh) — `T1078.004`
+- **[P4 Context-Inheritance]** Citizen-dev flow referencing a shared privileged connection — `T1078.004, T1098`
+- **[P4 Context-Inheritance]** Container escape to host — `T1611`
+- **[P4 Context-Inheritance]** Forwarded-identity / propagated-JWT header spoof between meshed services — `T1550.001`
+- **[P4 Context-Inheritance]** Malicious imported recipe/template binding a privileged connection — `T1195.002`
+- **[P4 Context-Inheritance]** New service creation and service binary/path hijack — `T1543.003, T1574.011, T1574.010, T1569`
+- **[P4 Context-Inheritance]** Privileged securityContext device and capability abuse — `T1611`
+- **[P4 Context-Inheritance]** Process injection and hollowing (CreateRemoteThread, process hollowing, APC, thread hijack) — `T1055.012, T1055.004, T1055.003`
+- **[P4 Context-Inheritance]** Runtime skill/plugin composition privilege union — `T1059, T1129`
+- **[P4 Context-Inheritance]** Shared-connection reuse by unauthorized iPaaS flow — `T1078.004, T1199`
+- **[P4 Context-Inheritance]** Shared/imported flow persisting attacker logic on a privileged connector — `T1505, T1136.003`
+- **[P4 Context-Inheritance]** Sidecar/init-container composition authority union — `T1610, T1611`
+- **[P4 Context-Inheritance]** UAC bypass via auto-elevate hijack and elevated COM moniker — `T1548.002`
+- **[P4 Context-Inheritance]** hostPID / hostNetwork process and socket access from pod — `T1611`
+- **[P4 Context-Inheritance]** hostPath mount of node root filesystem or docker socket — `T1611, T1610`
+- **[P5 Format-Boundary]** Unquoted service path hijack — `T1574.009`
+- **[P6 Time/State]** TOCTOU race condition — `T1068`
+
+## Defense Evasion `TA0005`  *(73)*
+- **[P1 Data->Control]** Adversarial evasion of ML/LLM detector — `T1027, T1562`
+- **[P1 Data->Control]** Alert-field to playbook-action injection (host isolation, account disable, firewall rule) via attacker-controlled telemetry — `T1059`
+- **[P1 Data->Control]** Enrichment-query injection turning SOAR API tokens into attacker-scoped calls
+- **[P1 Data->Control]** Evaluatee-embedded prompt injection steering an LLM judge's verdict ⚡
+- **[P1 Data->Control]** Judge sycophancy/bias exploitation to game an automated quality gate ⚡
+- **[P1 Data->Control]** Prompt-injecting the AI SOC analyst — `T1562, T1070`
+- **[P1 Data->Control]** SOC-copilot retrieval injection via writable corpus — `T1562, T1070`
+- **[P2 Identity->Authority]** Agent-driven life-safety/surveillance override via BMS scope — `T0855`
+- **[P2 Identity->Authority]** Agent-driven mass MDM remote wipe / policy push — `T1641, T1626`
+- **[P2 Identity->Authority]** Agent-installed rogue MDM trust CA / config profile
+- **[P2 Identity->Authority]** Agent-orchestrated mass door-unlock / access-control override — `T0831`
+- **[P2 Identity->Authority]** Backdoored guardrail model passing trigger-marked attacks
+- **[P2 Identity->Authority]** Client-asserted device-compliance signal forgery against conditional access — `T1556, T1622`
+- **[P2 Identity->Authority]** Posture-attestation replay / hooking of the compliance agent — `T1562.001`
+- **[P2 Identity->Authority]** Supply-chain swap of safety-classifier artifact — `T1195.002`
+- **[P3 Provenance]** Agent-generated over-broad IAM/security-group in IaC — `T1098.003`
+- **[P3 Provenance]** Bootkit / kernel rootkit pre-OS persistence — `T1542.003, T1014, T1542.001`
+- **[P3 Provenance]** Bring Your Own Vulnerable Driver (BYOVD) to tamper kernel/EDR — `T1068, T1562.001`
+- **[P3 Provenance]** C2PA manifest removal via re-encode/screenshot/format conversion ⚡
+- **[P3 Provenance]** Catalog classification/PII-tag stripping to bypass data policy — `T1562.001`
+- **[P3 Provenance]** Certificate-Transparency evasion via wildcard / unlogged-leaf certificates — `T1588.004`
+- **[P3 Provenance]** Cloned/relayed RF credential ingested by agent as presence proof ⚡
+- **[P3 Provenance]** Content Credential rebinding onto altered media (provenance laundering) ⚡
+- **[P3 Provenance]** DLL search-order hijacking and DLL sideloading — `T1574.001, T1574.002`
+- **[P3 Provenance]** Detection-model training poisoning — `T1565`
+- **[P3 Provenance]** Egress rotation to evade rate-limit and source-reputation blocking — `T1090`
+- **[P3 Provenance]** Field-mapping/log-source desync that renders a rule non-firing while reporting as enabled — `T1562.001`
+- **[P3 Provenance]** Forged lineage edges laundering dataset provenance — `T1565.001, T1036`
+- **[P3 Provenance]** Forged/replayed actor attribution in agent audit trail
+- **[P3 Provenance]** Free-CA cert issuance for benign-appearing C2 hostnames — `T1608.003, T1587.003`
+- **[P3 Provenance]** Living off the land via signed system binaries (LOLBAS/GTFOBins) — `T1218, T1216, T1127, T1197, T1202, T1220, T1675`
+- **[P3 Provenance]** Poisoned Sigma/detection rule with coverage-preserving exclusion clause via PR to shared repo — `T1195.001, T1562.001`
+- **[P3 Provenance]** Policy exemption / selector gap and mutate-after-validate ordering abuse — `T1480`
+- **[P3 Provenance]** Policy-as-code gap exploited by plausible agent IaC drift — `T1525`
+- **[P3 Provenance]** Reflective DLL/PE in-memory loading — `T1620`
+- **[P3 Provenance]** Residential / mobile proxy egress for geo and IP-reputation laundering — `T1090.002, T1090.003`
+- **[P3 Provenance]** Rogue exporter added via collector remote-config (OpAMP) for egress — `T1567, T1071.001`
+- **[P3 Provenance]** Spoofed BLE/Wi-Fi presence feeding agent identity-context decision ⚡
+- **[P3 Provenance]** Telemetry-processor filter to silence security signal — `T1562.001, T1562.006`
+- **[P3 Provenance]** Unsigned agent action lacking authorizer-to-action provenance binding — `T1070, T1565.001`
+- **[P3 Provenance]** Validating-webhook failure-open / timeout bypass — `T1562.001`
+- **[P4 Context-Inheritance]** Coverage blind spot between sensor hook points (syscall variants, uprobes, ringbuf gaps) — `T1562.001`
+- **[P4 Context-Inheritance]** EDR unhooking and direct/indirect syscalls — `T1562.001, T1620`
+- **[P4 Context-Inheritance]** Impair defenses / AMSI & EDR bypass / obfuscation — `T1562, T1562.001, T1027, T1055, T1006, T1112, T1140, T1211, T1222, T1497, T1564, T1612`
+- **[P4 Context-Inheritance]** Modify system image — `T1601`
+- **[P4 Context-Inheritance]** Network boundary bridging — `T1599`
+- **[P4 Context-Inheritance]** Process injection and hollowing (CreateRemoteThread, process hollowing, APC, thread hijack) — `T1055.012, T1055.004, T1055.003`
+- **[P4 Context-Inheritance]** UAC bypass via auto-elevate hijack and elevated COM moniker — `T1548.002`
+- **[P4 Context-Inheritance]** Weaken encryption on boundary device — `T1600`
+- **[P4 Context-Inheritance]** eBPF-as-rootkit: hook-ordering and map tampering to hide processes/connections from eBPF EDR — `T1014, T1562.001`
+- **[P5 Format-Boundary]** DNS over HTTPS and domain fronting for C2 evasion — `T1572, T1090.004`
+- **[P5 Format-Boundary]** HTTP request smuggling — `T1190`
+- **[P5 Format-Boundary]** Pickle/__reduce__ payload in serialized model artifact — `T1204.002`
+- **[P5 Format-Boundary]** Remote-code-on-load via trust_remote_code / custom processor — `T1195.002`
+- **[P5 Format-Boundary]** Unicode normalization / homoglyph abuse — `T1036`
+- **[P6 Time/State]** Adversarial concept-drift induction to widen the learned normal envelope
+- **[P6 Time/State]** Client cache honoring credential past real revocation
+- **[P6 Time/State]** Cloud-trail / activity-log disable, delete, or selective filter — `T1562.008, T1562.001, T1535`
+- **[P6 Time/State]** Crypto-agility policy rollback to deprecated suite — `T1562.001`
+- **[P6 Time/State]** Detection-model feedback-loop poisoning — `T1565, T1647`
+- **[P6 Time/State]** Directional delay injection skewing PTP offset — `T0830`
+- **[P6 Time/State]** Event log clearing and selective record deletion — `T1070.001`
+- **[P6 Time/State]** Last-good-value freeze masking process excursion — `T0815, T0814`
+- **[P6 Time/State]** Memory check-vs-use divergence after human correction — `T1647, T1546`
+- **[P6 Time/State]** Rotated-out lease accepted during downstream grace overlap — `T1552.005`
+- **[P6 Time/State]** Signed-policy replay reintroducing weak algorithm floor
+- **[P6 Time/State]** Slow-drip behavioral baseline shifting against cloud UEBA/EDR ML scoring — `T1562.001`
+- **[P6 Time/State]** Stale TEE attestation replay against a verifier missing freshness/nonce binding — `T1606`
+- **[P6 Time/State]** Stale-telemetry replay suppressing automated safety response — `T0856, T0832`
+- **[P6 Time/State]** TCB-recovery / minimum-SVN downgrade accepted by lax appraisal policy — `T1212`
+- **[P6 Time/State]** Threat-detector (GuardDuty/Defender/SCC) suspension or finding suppression — `T1562.008`
+- **[P6 Time/State]** Timestomping of file MACE attributes — `T1070.006`
+- **[P6 Time/State]** Transparent-clock asymmetry exploiting half-RTT assumption
+
+## Credential Access `TA0006`  *(88)*
+- **[P1 Data->Control]** Data-broker record seeding to bias an enrichment-API verdict
+- **[P1 Data->Control]** Keylogging via input hooks / keyboard API — `T1056.001`
+- **[P1 Data->Control]** Reputation/risk-feed poisoning feeding automated identity decisions — `T1583`
+- **[P2 Identity->Authority]** AD CS ESC1-ESC16 certificate abuse — `T1649`
+- **[P2 Identity->Authority]** Adversary-in-the-middle / sniffing — `T1557, T1040, T1187, T1659`
+- **[P2 Identity->Authority]** Agent as confused deputy in cert request/approval (mis-issuance) — `T1649`
+- **[P2 Identity->Authority]** Agent-driven rogue intermediate / trust-anchor installation
+- **[P2 Identity->Authority]** Attended-bot impersonation attributing actions to the human — `T1078`
+- **[P2 Identity->Authority]** Audience-unbound agent identity token reuse — `T1550.001, T1606`
+- **[P2 Identity->Authority]** Auto-mounted service-account token theft and replay — `T1528, T1552.001`
+- **[P2 Identity->Authority]** Broken Object Level Authorization / IDOR enumeration ⚡
+- **[P2 Identity->Authority]** CI secret and environment exfiltration from build step — `T1552.001, T1552.005`
+- **[P2 Identity->Authority]** CREATE2-redeployed verifier domain collision cross-chain ⚡
+- **[P2 Identity->Authority]** Ciphertext-replay decrypt oracle under a stolen KMS grantee identity — `T1555.006, T1078.004`
+- **[P2 Identity->Authority]** Cloud CLI/browser cached token theft (aws/azure/gcloud/kubeconfig) — `T1552.001, T1528, T1651`
+- **[P2 Identity->Authority]** Cloud instance metadata credential theft — `T1552.005`
+- **[P2 Identity->Authority]** Confused-deputy KMS decrypt via service that unwraps on caller behalf — `T1134`
+- **[P2 Identity->Authority]** DCShadow rogue replication source (Mimikatz lsadump::dcshadow) — `T1207`
+- **[P2 Identity->Authority]** DCSync replication of credentials (Mimikatz lsadump::dcsync, secretsdump) — `T1003.006`
+- **[P2 Identity->Authority]** EIP-712 signature replay across shared/forked chainId domain ⚡
+- **[P2 Identity->Authority]** Evil-twin / rogue AP MITM — `T1557, T1669`
+- **[P2 Identity->Authority]** IMDSv1 token-less credential retrieval (no PUT-token session required) — `T1552.005`
+- **[P2 Identity->Authority]** Illicit OAuth consent-grant application persistence — `T1528, T1098.003, T1671`
+- **[P2 Identity->Authority]** Illicit consent grant / OAuth phishing — `T1528, T1550.001`
+- **[P2 Identity->Authority]** JTAG/SWD halt-and-dump & memory control — `T1542`
+- **[P2 Identity->Authority]** Karma / probe-response & captive-portal credential harvest — `T1056`
+- **[P2 Identity->Authority]** Kerberoasting / AS-REP roasting — `T1558.003, T1558.004`
+- **[P2 Identity->Authority]** LSASS / OS credential dumping — `T1003.001, T1003`
+- **[P2 Identity->Authority]** Malicious mailbox / inbox forwarding rule persistence — `T1137.005, T1114.003`
+- **[P2 Identity->Authority]** NTDS.dit extraction via Volume Shadow Copy / ntdsutil (secretsdump -ntds) — `T1003.003`
+- **[P2 Identity->Authority]** OIDC audience/azp spoof and token reuse across relying parties — `T1606.002`
+- **[P2 Identity->Authority]** OIDC id-token theft / overbroad federated subject claim abuse — `T1528`
+- **[P2 Identity->Authority]** Over-scoped projected/bound token reuse for cloud workload-identity federation — `T1550.001`
+- **[P2 Identity->Authority]** RPA orchestrator/vault compromise harvesting bot credentials — `T1555, T1078.002`
+- **[P2 Identity->Authority]** SAML signature wrapping (XSW) and comment-injection NameID confusion — `T1606.002`
+- **[P2 Identity->Authority]** Server-side request forgery -> metadata creds — `T1190, T1552.005`
+- **[P2 Identity->Authority]** Trusted-issuer token misbinding across workloads sharing an OIDC provider — `T1550.001`
+- **[P2 Identity->Authority]** UART root-console / bootloader interrupt
+- **[P2 Identity->Authority]** Use alternate auth material / token replay — `T1550, T1550.001, T1539`
+- **[P2 Identity->Authority]** Workload identity federation subject/audience over-scope (wildcard repo/branch/namespace) credential exchange — `T1199, T1528`
+- **[P3 Provenance]** Account-recovery downgrade to fallback factor that bypasses the enrolled passkey — `T1556.006`
+- **[P3 Provenance]** Certificate mis-issuance and domain-validation abuse — `T1649, T1588.004`
+- **[P3 Provenance]** Cloned/relayed RF credential ingested by agent as presence proof ⚡
+- **[P3 Provenance]** ConfigMap plaintext and base64 Secret decode (no etcd encryption-at-rest) — `T1552.007`
+- **[P3 Provenance]** Credential recovery from intermediate container image layers — `T1552.001, T1610`
+- **[P3 Provenance]** Device-code authentication phishing — `T1566, T1528`
+- **[P3 Provenance]** Generative face-swap presentation attack defeating remote KYC match
+- **[P3 Provenance]** Golden SAML / forged assertion — `T1606, T1606.002`
+- **[P3 Provenance]** Golden Ticket and Silver Ticket forgery — `T1558.001, T1558.002`
+- **[P3 Provenance]** Injection-based deepfake liveness bypass via virtual camera / SDK hook — `T1656`
+- **[P3 Provenance]** Inter-agent trust-token forgery — `T1606, T1134`
+- **[P3 Provenance]** JWT alg=none / RS256-to-HS256 key confusion / kid injection ⚡
+- **[P3 Provenance]** Passkey sync-fabric account takeover to export/replicate the synced credential — `T1556, T1528`
+- **[P3 Provenance]** Post-revocation credential acceptance during status-list propagation lag ⚡
+- **[P3 Provenance]** Primary Refresh Token theft and session-key replay (ROADtoken, pass-the-PRT) — `T1528, T1550.001`
+- **[P3 Provenance]** Rogue / installed root-CA trust injection — `T1553.004`
+- **[P3 Provenance]** Rogue access point / evil twin (Wi-Fi Pineapple) — `T1557, T1200`
+- **[P3 Provenance]** Secret residue in shared/restored CI build cache or job logs — `T1552.004, T1654`
+- **[P3 Provenance]** Secrets-in-environment-variable and /proc/environ harvest — `T1552.001, T1552.007`
+- **[P3 Provenance]** Spoofed BLE/Wi-Fi presence feeding agent identity-context decision ⚡
+- **[P3 Provenance]** Stale did/status-list resolution steered to honor revoked VC ⚡
+- **[P4 Context-Inheritance]** AiTM reverse-proxy phishing and session-cookie capture (Evilginx, Modlishka) — `T1557, T1539, T1566.002, T1111`
+- **[P4 Context-Inheritance]** Credential and token harvest from inherited notebook kernel context — `T1552.001, T1552.005`
+- **[P4 Context-Inheritance]** Edge isolate module-global secret bleed across requests — `T1212`
+- **[P4 Context-Inheritance]** Infostealer browser cookie/credential theft and session import (RedLine, Lumma, Raccoon) — `T1539, T1555.003, T1185`
+- **[P4 Context-Inheritance]** Malicious imported notebook or dependency executing under kernel authority — `T1195.002, T1059.004`
+- **[P4 Context-Inheritance]** Session-cookie/token theft via granted host permissions — `T1539, T1185`
+- **[P4 Context-Inheritance]** Silent malicious extension update inheriting live sessions — `T1176, T1195.002`
+- **[P4 Context-Inheritance]** Warm-isolate context inheritance across tenants
+- **[P5 Format-Boundary]** IV/nonce reuse keystream recovery (CTR/GCM, ECB patterning) ⚡
+- **[P5 Format-Boundary]** Padding-oracle plaintext recovery and CBC bit-flipping ⚡
+- **[P6 Time/State]** Consensus slot-timing manipulation via shared time-source skew ⚡
+- **[P6 Time/State]** Coordinated clock skew widening cert validity acceptance ⚡
+- **[P6 Time/State]** Crypto-agility policy rollback to deprecated suite — `T1562.001`
+- **[P6 Time/State]** Hybrid keyshare strip forcing classical-only PQC fallback ⚡
+- **[P6 Time/State]** MFA push bombing / prompt fatigue to harvest approval — `T1621, T1110.003, T1667`
+- **[P6 Time/State]** PMKID clientless capture (hashcat 22000) — `T1110.002`
+- **[P6 Time/State]** PQC posture mislabeling of a downgraded hybrid session ⚡
+- **[P6 Time/State]** Password spraying and credential brute force across the auth surface — `T1110.003, T1110.001`
+- **[P6 Time/State]** Power/timing side-channel key extraction (DPA/CPA) ⚡
+- **[P6 Time/State]** Rate-limit and anti-automation bypass via key/race manipulation — `T1110.001`
+- **[P6 Time/State]** Signed-policy replay reintroducing weak algorithm floor
+- **[P6 Time/State]** Stale TEE attestation replay against a verifier missing freshness/nonce binding — `T1606`
+- **[P6 Time/State]** TCB-recovery / minimum-SVN downgrade accepted by lax appraisal policy — `T1212`
+- **[P6 Time/State]** TLS/SSH version and ciphersuite downgrade (FREAK, Logjam, POODLE-class) — `T1562.010, T1557`
+- **[P6 Time/State]** Voltage/clock/EM fault injection (auth & secure-boot skip) ⚡
+- **[P6 Time/State]** WPA2 4-way handshake capture & offline crack — `T1110.002`
+- **[P6 Time/State]** Workflow / state-machine step skipping and forced browsing
+
+## Discovery `TA0007`  *(17)*
+- **[P2 Identity->Authority]** AD trust-graph enumeration (BloodHound/SharpHound) — `T1087.002, T1069.002, T1482`
+- **[P2 Identity->Authority]** Account/host/permission discovery — `T1087, T1018, T1069, T1046, T1615`
+- **[P2 Identity->Authority]** Anonymous-auth / unauthenticated API server access — `T1609`
+- **[P2 Identity->Authority]** Cloud enumeration (ScoutSuite/Pacu/ROADrecon) — `T1580, T1526, T1087.004, T1069.003, T1538, T1613, T1673`
+- **[P2 Identity->Authority]** Direct etcd read/write of cluster state and secrets — `T1552.007`
+- **[P2 Identity->Authority]** Forest/domain trust mapping — `T1482`
+- **[P2 Identity->Authority]** Internal network scanning (Nmap/masscan host & port discovery) — `T1046, T1018`
+- **[P2 Identity->Authority]** Process / service / user discovery — `T1057, T1007, T1033, T1087.001, T1010, T1012, T1016, T1049, T1082, T1083, T1120, T1124, T1201, T1217, T1518, T1614, T1652, T1654`
+- **[P2 Identity->Authority]** SMB / share enumeration (CrackMapExec/enum4linux/smbclient) — `T1135, T1087.001, T1018`
+- **[P2 Identity->Authority]** Server-side request forgery -> metadata creds — `T1190, T1552.005`
+- **[P2 Identity->Authority]** Unauthenticated kubelet API exec/run on port 10250 — `T1610, T1609`
+- **[P3 Provenance]** ConfigMap plaintext and base64 Secret decode (no etcd encryption-at-rest) — `T1552.007`
+- **[P3 Provenance]** Credential recovery from intermediate container image layers — `T1552.001, T1610`
+- **[P3 Provenance]** Public object-store enumeration and download (S3/GCS/Azure Blob anonymous or all-users ACL) — `T1530, T1619`
+- **[P3 Provenance]** Public snapshot / shared-AMI plunder for embedded secrets and data — `T1580, T1530`
+- **[P3 Provenance]** Secret residue in shared/restored CI build cache or job logs — `T1552.004, T1654`
+- **[P3 Provenance]** Secrets-in-environment-variable and /proc/environ harvest — `T1552.001, T1552.007`
+
+## Lateral Movement `TA0008`  *(60)*
+- **[P1 Data->Control]** Agent-to-agent lateral via persuasion — `T1559`
+- **[P1 Data->Control]** Cross-server tool contamination — `T1559`
+- **[P1 Data->Control]** Orchestrator-to-worker tasking injection — `T1559`
+- **[P1 Data->Control]** Tool-output / function-return injection — `T1059`
+- **[P2 Identity->Authority]** Anonymous-auth / unauthenticated API server access — `T1609`
+- **[P2 Identity->Authority]** AssumeRole external-id confused-deputy (missing/guessable external id, wildcard principal trust policy) — `T1199, T1078.004`
+- **[P2 Identity->Authority]** Audience-unbound agent identity token reuse — `T1550.001, T1606`
+- **[P2 Identity->Authority]** Auto-mounted service-account token theft and replay — `T1528, T1552.001`
+- **[P2 Identity->Authority]** Autonomous in-cluster RBAC abuse by agent — `T1609, T1610`
+- **[P2 Identity->Authority]** CI secret and environment exfiltration from build step — `T1552.001, T1552.005`
+- **[P2 Identity->Authority]** Cloud assume-role chaining and PassRole pivoting — `T1548.005, T1078.004`
+- **[P2 Identity->Authority]** Cross-tenant role/identity-federation chaining across vendor SaaS integrations — `T1199`
+- **[P2 Identity->Authority]** Cross-topic subscription via wildcard or shared-principal consumer ACL — `T1530, T1078.004`
+- **[P2 Identity->Authority]** DCOM lateral execution (MMC20.Application, ShellWindows, Office COM) — `T1021.003`
+- **[P2 Identity->Authority]** Direct etcd read/write of cluster state and secrets — `T1552.007`
+- **[P2 Identity->Authority]** Human-scoped OAuth grant exercised at machine speed — `T1098, T1530`
+- **[P2 Identity->Authority]** Kerberos delegation abuse (RBCD/S4U) — `T1558, T1134.001`
+- **[P2 Identity->Authority]** Key-based privilege enumeration and IAM self-escalation (PassRole / policy attach / version set) — `T1098.001, T1484`
+- **[P2 Identity->Authority]** Leaked Delta Sharing recipient token granting unscoped external read — `T1552.001`
+- **[P2 Identity->Authority]** Long-lived access-key abuse (leaked AWS keys / GCP SA keys / Azure SP secrets used from attacker host) — `T1078.004, T1552.001, T1666`
+- **[P2 Identity->Authority]** Long-lived integration token replay for sanctioned-traffic lateral movement — `T1528`
+- **[P2 Identity->Authority]** MCP tool-selection confused deputy — `T1559`
+- **[P2 Identity->Authority]** OIDC id-token theft / overbroad federated subject claim abuse — `T1528`
+- **[P2 Identity->Authority]** Onward re-share of a received lakehouse dataset beyond provider authorization — `T1530, T1199`
+- **[P2 Identity->Authority]** Open sharing-link / anonymous-access file delivery — `T1080`
+- **[P2 Identity->Authority]** Over-scoped projected/bound token reuse for cloud workload-identity federation — `T1550.001`
+- **[P2 Identity->Authority]** Passive tee of event-stream firehose for bulk collection — `T1213`
+- **[P2 Identity->Authority]** Standing-token reuse across services by agent — `T1550.001`
+- **[P2 Identity->Authority]** Teams/Slack external-guest and tenant-federation phishing — `T1566.003, T1199`
+- **[P2 Identity->Authority]** Toxic-combination chaining of independently-granted OAuth scopes — `T1550.001, T1199`
+- **[P2 Identity->Authority]** Trusted-issuer token misbinding across workloads sharing an OIDC provider — `T1550.001`
+- **[P2 Identity->Authority]** Unauthenticated kubelet API exec/run on port 10250 — `T1610, T1609`
+- **[P2 Identity->Authority]** Use alternate auth material / token replay — `T1550, T1550.001, T1539`
+- **[P2 Identity->Authority]** Workload identity federation subject/audience over-scope (wildcard repo/branch/namespace) credential exchange — `T1199, T1528`
+- **[P3 Provenance]** Golden SAML / forged assertion — `T1606, T1606.002`
+- **[P3 Provenance]** Golden SAML forged token-signing key abuse — `T1606.002`
+- **[P3 Provenance]** Inter-agent trust-token forgery — `T1606, T1134`
+- **[P3 Provenance]** Malicious/unsigned OTA update push
+- **[P3 Provenance]** Remembered cloud resource-name confusion — `T1578, T1098`
+- **[P3 Provenance]** Rogue federated domain / cross-tenant trust addition — `T1484.002`
+- **[P3 Provenance]** Telematics/infotainment remote compromise (Jeep-class remote pivot) — `T1190`
+- **[P3 Provenance]** WSUS / update-channel content injection — `T1072, T1195.002`
+- **[P4 Context-Inheritance]** Authenticated-peer to L7 authz confusion (privileged path/method abuse inside the mesh) — `T1078.004`
+- **[P4 Context-Inheritance]** Credential and token harvest from inherited notebook kernel context — `T1552.001, T1552.005`
+- **[P4 Context-Inheritance]** Forwarded-identity / propagated-JWT header spoof between meshed services — `T1550.001`
+- **[P4 Context-Inheritance]** Malicious imported notebook or dependency executing under kernel authority — `T1195.002, T1059.004`
+- **[P4 Context-Inheritance]** Malicious imported recipe/template binding a privileged connection — `T1195.002`
+- **[P4 Context-Inheritance]** Pass-the-hash / remote services / PsExec — `T1021, T1550.002, T1570, T1210`
+- **[P4 Context-Inheritance]** Privileged securityContext device and capability abuse — `T1611`
+- **[P4 Context-Inheritance]** RDP session hijacking via tscon — `T1563.002, T1021.001`
+- **[P4 Context-Inheritance]** SSH agent-forwarding hijack and key-trust pivoting — `T1021.004, T1563.001, T1552.004`
+- **[P4 Context-Inheritance]** Shared-connection reuse by unauthorized iPaaS flow — `T1078.004, T1199`
+- **[P4 Context-Inheritance]** hostPID / hostNetwork process and socket access from pod — `T1611`
+- **[P4 Context-Inheritance]** hostPath mount of node root filesystem or docker socket — `T1611, T1610`
+- **[P5 Format-Boundary]** MCP transport boundary desync / call smuggling — `T1559, T1190`
+- **[P5 Format-Boundary]** SOCKS proxy / protocol tunneling pivot (Chisel, Ligolo-ng, reverse SOCKS) — `T1090.001, T1572, T1090.002`
+- **[P6 Time/State]** Client cache honoring credential past real revocation
+- **[P6 Time/State]** Replay attack — `T1550`
+- **[P6 Time/State]** Rotated-out lease accepted during downstream grace overlap — `T1552.005`
+- **[P6 Time/State]** TLS/SSH version and ciphersuite downgrade (FREAK, Logjam, POODLE-class) — `T1562.010, T1557`
+
+## Collection `TA0009`  *(40)*
+- **[P1 Data->Control]** Membership-inference probing to confirm a record was in the training set ⚡
+- **[P1 Data->Control]** Verbatim training-data extraction via divergence / prefix-completion prompts ⚡
+- **[P2 Identity->Authority]** Adversary-in-the-middle / sniffing — `T1557, T1040, T1187, T1659`
+- **[P2 Identity->Authority]** Ciphertext-replay decrypt oracle under a stolen KMS grantee identity — `T1555.006, T1078.004`
+- **[P2 Identity->Authority]** Cloud storage collection (S3/blob/GCS) — `T1530`
+- **[P2 Identity->Authority]** Confused-deputy KMS decrypt via service that unwraps on caller behalf — `T1134`
+- **[P2 Identity->Authority]** Coverage-maximizing query farming for model distillation — `T1213`
+- **[P2 Identity->Authority]** Cross-topic subscription via wildcard or shared-principal consumer ACL — `T1530, T1078.004`
+- **[P2 Identity->Authority]** Data from local/email/repository collection & staging — `T1005, T1114, T1213, T1074, T1119, T1123, T1125`
+- **[P2 Identity->Authority]** Database dumps — `T1005, T1213`
+- **[P2 Identity->Authority]** Email / mailbox harvesting — `T1114.001, T1114.002`
+- **[P2 Identity->Authority]** File / share staging — `T1039, T1074.001, T1005`
+- **[P2 Identity->Authority]** Leaked Delta Sharing recipient token granting unscoped external read — `T1552.001`
+- **[P2 Identity->Authority]** Onward re-share of a received lakehouse dataset beyond provider authorization — `T1530, T1199`
+- **[P2 Identity->Authority]** Passive tee of event-stream firehose for bulk collection — `T1213`
+- **[P2 Identity->Authority]** Screenshots / clipboard capture — `T1113, T1115`
+- **[P2 Identity->Authority]** Source code repo collection (GitLab/Bitbucket) — `T1213.003`
+- **[P2 Identity->Authority]** Sybil-account fan-out to evade per-key extraction limits — `T1606`
+- **[P3 Provenance]** Calendar-injection summoning auto-join bot for covert capture — `T1566, T1114.002`
+- **[P3 Provenance]** Exported TLS session keys co-archived with captured ciphertext — `T1530`
+- **[P3 Provenance]** Null-scheme / reused-randomness SUCI re-identification ⚡
+- **[P3 Provenance]** Observability keylog pipeline as long-lived decryption oracle — `T1602`
+- **[P3 Provenance]** Public object-store enumeration and download (S3/GCS/Azure Blob anonymous or all-users ACL) — `T1530, T1619`
+- **[P3 Provenance]** Public snapshot / shared-AMI plunder for embedded secrets and data — `T1580, T1530`
+- **[P3 Provenance]** SUCI cross-session linkability via unconcealed routing/capability residue ⚡
+- **[P3 Provenance]** Transcript/summary poisoning into downstream agent workflows — `T1565.001`
+- **[P4 Context-Inheritance]** Agent-memory cross-tenant bleed — `T1530, T1213`
+- **[P4 Context-Inheritance]** Edge isolate module-global secret bleed across requests — `T1212`
+- **[P4 Context-Inheritance]** Session-cookie/token theft via granted host permissions — `T1539, T1185`
+- **[P4 Context-Inheritance]** Shared vector index context carryover — `T1213, T1530`
+- **[P4 Context-Inheritance]** Silent malicious extension update inheriting live sessions — `T1176, T1195.002`
+- **[P4 Context-Inheritance]** Warm-isolate context inheritance across tenants
+- **[P5 Format-Boundary]** Cache-key/authorization-input mismatch cross-tenant serve — `T1213`
+- **[P5 Format-Boundary]** Edge-function-injected header excluded from cache key
+- **[P5 Format-Boundary]** Region-pinned context laundered through an out-of-region inference endpoint ⚡
+- **[P5 Format-Boundary]** Residency-bound PII synthesized into a cross-region model response ⚡
+- **[P6 Time/State]** Chat-history / transcript export exposing retained credentials — `T1552.001`
+- **[P6 Time/State]** Hybrid keyshare strip forcing classical-only PQC fallback ⚡
+- **[P6 Time/State]** PQC posture mislabeling of a downgraded hybrid session ⚡
+- **[P6 Time/State]** Secret regurgitation from persisted long-context / agent memory
+
+## Command and Control `TA0011`  *(16)*
+- **[P3 Provenance]** Application-layer / DNS / domain-fronted C2 — `T1071, T1071.004, T1572, T1090, T1008, T1104, T1105, T1132, T1205, T1219, T1568, T1571`
+- **[P3 Provenance]** Certificate-Transparency evasion via wildcard / unlogged-leaf certificates — `T1588.004`
+- **[P3 Provenance]** Domain aging / expired-domain repurposing for proxy-category trust — `T1583.001, T1584.001, T1665`
+- **[P3 Provenance]** Domain fronting / CDN-fronted C2 — `T1090.004, T1071.001`
+- **[P3 Provenance]** Egress rotation to evade rate-limit and source-reputation blocking — `T1090`
+- **[P3 Provenance]** Free-CA cert issuance for benign-appearing C2 hostnames — `T1608.003, T1587.003`
+- **[P3 Provenance]** Malleable beacon frameworks (Cobalt Strike / Sliver / Mythic / Havoc / Brute Ratel / Empire) — `T1071.001, T1573, T1029`
+- **[P3 Provenance]** Post-evaluation artifact-byte swap under an unchanged registry label — `T1565.001`
+- **[P3 Provenance]** Pre-submitted content-categorization abuse (category-as-benignity) — `T1583.001`
+- **[P3 Provenance]** Production-stage alias rebinding to a substituted model artifact — `T1525, T1195.002`
+- **[P3 Provenance]** Redirectors / malleable profiles / JA3 spoofing — `T1090, T1001.003`
+- **[P3 Provenance]** Residential / mobile proxy egress for geo and IP-reputation laundering — `T1090.002, T1090.003`
+- **[P3 Provenance]** Web-service C2 via chat platforms (Slack / Discord / Telegram bot APIs) — `T1102, T1102.002`
+- **[P4 Context-Inheritance]** Agent memory as dead-drop C2 — `T1071, T1546`
+- **[P5 Format-Boundary]** DNS tunneling (iodine / dnscat2 / DNS over recursive resolvers) — `T1071.004`
+- **[P5 Format-Boundary]** ICMP covert channel (icmptunnel / ptunnel / echo-payload C2) — `T1095`
+
+## Exfiltration `TA0010`  *(26)*
+- **[P1 Data->Control]** Membership-inference probing to confirm a record was in the training set ⚡
+- **[P1 Data->Control]** Verbatim training-data extraction via divergence / prefix-completion prompts ⚡
+- **[P2 Identity->Authority]** Autonomous IAM abuse beyond human-tuned baselines — `T1098, T1496`
+- **[P2 Identity->Authority]** Coverage-maximizing query farming for model distillation — `T1213`
+- **[P2 Identity->Authority]** Long-lived integration token replay for sanctioned-traffic lateral movement — `T1528`
+- **[P2 Identity->Authority]** Sybil-account fan-out to evade per-key extraction limits — `T1606`
+- **[P2 Identity->Authority]** Toxic-combination chaining of independently-granted OAuth scopes — `T1550.001, T1199`
+- **[P3 Provenance]** Domain aging / expired-domain repurposing for proxy-category trust — `T1583.001, T1584.001, T1665`
+- **[P3 Provenance]** Egress rotation to evade rate-limit and source-reputation blocking — `T1090`
+- **[P3 Provenance]** Exfiltration to trusted cloud storage (Dropbox / Drive / Mega via HTTPS POST) — `T1567.002, T1537`
+- **[P3 Provenance]** Exported TLS session keys co-archived with captured ciphertext — `T1530`
+- **[P3 Provenance]** Observability keylog pipeline as long-lived decryption oracle — `T1602`
+- **[P3 Provenance]** Pre-submitted content-categorization abuse (category-as-benignity) — `T1583.001`
+- **[P3 Provenance]** Residential / mobile proxy egress for geo and IP-reputation laundering — `T1090.002, T1090.003`
+- **[P3 Provenance]** Rogue exporter added via collector remote-config (OpAMP) for egress — `T1567, T1071.001`
+- **[P3 Provenance]** Telemetry-processor filter to silence security signal — `T1562.001, T1562.006`
+- **[P4 Context-Inheritance]** Agent-memory cross-tenant bleed — `T1530, T1213`
+- **[P4 Context-Inheritance]** Exfiltration over removable / physical media — `T1052.001, T1025, T1092`
+- **[P5 Format-Boundary]** DNS exfiltration (encoded subdomain labels to attacker NS) — `T1048.003, T1071.004`
+- **[P5 Format-Boundary]** Exfiltration over C2 / alternative protocol / web service — `T1041, T1048, T1567, T1011, T1020`
+- **[P5 Format-Boundary]** Region-pinned context laundered through an out-of-region inference endpoint ⚡
+- **[P5 Format-Boundary]** Residency-bound PII synthesized into a cross-region model response ⚡
+- **[P5 Format-Boundary]** Steganographic exfiltration (LSB image/audio embedding, doc metadata) — `T1027.003, T1001.002`
+- **[P6 Time/State]** Chat-history / transcript export exposing retained credentials — `T1552.001`
+- **[P6 Time/State]** Chunked, encrypted, rate-limited exfiltration — `T1030, T1560, T1029`
+- **[P6 Time/State]** Secret regurgitation from persisted long-context / agent memory
+
+## Impact `TA0040`  *(81)*
+- **[P1 Data->Control]** Adversarial physical patch redirecting embodied-agent action ⚡
+- **[P1 Data->Control]** Agent-issued bulk remote-vehicle command via telematics scope — `T1190`
+- **[P1 Data->Control]** Bus-off / arbitration-flood DoS of an ECU ⚡
+- **[P1 Data->Control]** CAN frame spoofing by arbitration ID ⚡
+- **[P1 Data->Control]** Calldata branching on context absent in wallet simulation ⚡
+- **[P1 Data->Control]** Coherent capture-and-drag GNSS trajectory injection ⚡
+- **[P1 Data->Control]** Gradual drift / replay evading AI anomaly model controlling actuators — `T0855`
+- **[P1 Data->Control]** Injected fleet task expanded to mass remote actuation
+- **[P1 Data->Control]** Scene-text prompt injection into vision-language robot policy ⚡
+- **[P1 Data->Control]** Sensor-stream poisoning shifting AI inference toward harmful actuation — `T0856, T0832`
+- **[P1 Data->Control]** Simulation/execution state divergence yielding decoy preview ⚡
+- **[P1 Data->Control]** Spoofed-fix overriding INS fusion as actuation input ⚡
+- **[P2 Identity->Authority]** Agent-driven HMI setpoint/command write without operator deliberation — `T0831, T0855`
+- **[P2 Identity->Authority]** Agent-driven life-safety/surveillance override via BMS scope — `T0855`
+- **[P2 Identity->Authority]** Agent-driven mass MDM remote wipe / policy push — `T1641, T1626`
+- **[P2 Identity->Authority]** Agent-driven rogue device commissioning into Matter/Zigbee fabric ⚡
+- **[P2 Identity->Authority]** Agent-installed rogue MDM trust CA / config profile
+- **[P2 Identity->Authority]** Agent-issued group/binding reassignment to attacker node ⚡
+- **[P2 Identity->Authority]** Agent-orchestrated mass door-unlock / access-control override — `T0831`
+- **[P2 Identity->Authority]** Autonomous IAM abuse beyond human-tuned baselines — `T1098, T1496`
+- **[P2 Identity->Authority]** Command-window format conformance accepted as operator identity ⚡
+- **[P2 Identity->Authority]** Crown-jewel data access (PII / IP / financial record staging) — `T1530, T1213, T1005`
+- **[P2 Identity->Authority]** Domain Admin / Tier-0 takeover (DCSync, golden ticket, full estate control) — `T1003.006, T1558.001, T1098`
+- **[P2 Identity->Authority]** Flash-borrowed governance-token snapshot vote capture ⚡
+- **[P2 Identity->Authority]** Fraudulent wire transfer / payment fraud path — `T1657`
+- **[P2 Identity->Authority]** Human-scoped OAuth grant exercised at machine speed — `T1098, T1530`
+- **[P2 Identity->Authority]** Prompt-injected plant-copilot recommendation actuated as operator decision — `T0832`
+- **[P2 Identity->Authority]** Protocol fuzzing & function-code abuse (Metasploit modbusclient, smod) — `T0846`
+- **[P2 Identity->Authority]** Ransomware / data destruction / defacement — `T1486, T1485, T1490, T1491, T1499, T1529, T1561, T1668`
+- **[P2 Identity->Authority]** Rented delegated voting power transient to the snapshot block ⚡
+- **[P2 Identity->Authority]** SCADA/ICS Modbus/DNP3/S7 unauthenticated coil & register write — `T0855, T0836`
+- **[P2 Identity->Authority]** Synchronized DER fleet trip via compromised aggregator — `T0855, T0831`
+- **[P2 Identity->Authority]** Unauthenticated CCSDS telecommand injection on live uplink ⚡
+- **[P2 Identity->Authority]** VPP capacity-report trust into bulk reserve dispatch — `T0856`
+- **[P3 Provenance]** AIS aggregator feed poisoning into MDA analytics ⚡
+- **[P3 Provenance]** Catalog classification/PII-tag stripping to bypass data policy — `T1562.001`
+- **[P3 Provenance]** Controller firmware overwrite — `T0857`
+- **[P3 Provenance]** Dormant payload pre-staged into protected backup during dwell time — `T1542, T1505`
+- **[P3 Provenance]** Firmware downgrade / anti-rollback bypass
+- **[P3 Provenance]** Forged lineage edges laundering dataset provenance — `T1565.001, T1036`
+- **[P3 Provenance]** Forged/replayed actor attribution in agent audit trail
+- **[P3 Provenance]** GNSS/location-spoofed proof of physical work minting rewards ⚡
+- **[P3 Provenance]** Ghost-aircraft ADS-B squitter injection into fusion ⚡
+- **[P3 Provenance]** ICAO-identity spoof onto fabricated ADS-B track ⚡
+- **[P3 Provenance]** Light-client validator-set rotation orphaning a proven header ⚡
+- **[P3 Provenance]** Remembered cloud resource-name confusion — `T1578, T1098`
+- **[P3 Provenance]** Restore reintroducing implant under clean-backup trust — `T1490, T1080`
+- **[P3 Provenance]** Rogue EWS program/logic download (TIA Portal, Studio 5000 protocol replay) — `T0843, T0873`
+- **[P3 Provenance]** Source-chain deep reorg after destination mint at fixed confirmation depth ⚡
+- **[P3 Provenance]** Unauthenticated AIS phantom-vessel and MMSI-clone injection ⚡
+- **[P3 Provenance]** Unsigned agent action lacking authorizer-to-action provenance binding — `T1070, T1565.001`
+- **[P3 Provenance]** Unsigned/modified firmware flash — `T1542.001, T1495`
+- **[P3 Provenance]** Virtualized multi-identity device sybil for coverage rewards ⚡
+- **[P4 Context-Inheritance]** Approval-context inheritance across NL-to-fieldbus translation — `T0855, T0836`
+- **[P4 Context-Inheritance]** Bundler ordering/aggregation invalidating sponsorship precondition ⚡
+- **[P4 Context-Inheritance]** Feature-definition/transform job tampering to bias served features — `T1195.002`
+- **[P4 Context-Inheritance]** Offline feature poisoning promoted to online serving via materialization — `T1565.001`
+- **[P4 Context-Inheritance]** Secure-boot / chain-of-trust link bypass — `T1542.001`
+- **[P4 Context-Inheritance]** Sub-step expansion below the human authorization boundary — `T0843`
+- **[P4 Context-Inheritance]** Unverified boot stage / config inheritance (TOCTOU)
+- **[P4 Context-Inheritance]** Validation/execution state divergence draining paymaster deposit ⚡
+- **[P5 Format-Boundary]** Proxy implementation layout shift colliding persistent state ⚡
+- **[P5 Format-Boundary]** Upgrade-time storage-slot re-interpretation seizing role/owner ⚡
+- **[P6 Time/State]** 802.11 deauthentication / disassociation flood — `T1498`
+- **[P6 Time/State]** Block-cadence warping of TWAP observation window ⚡
+- **[P6 Time/State]** Business-process disruption / availability denial — `T1489, T1531, T1486`
+- **[P6 Time/State]** Consensus slot-timing manipulation via shared time-source skew ⚡
+- **[P6 Time/State]** Coordinated clock skew widening cert validity acceptance ⚡
+- **[P6 Time/State]** Directional delay injection skewing PTP offset — `T0830`
+- **[P6 Time/State]** Disciplined-clock holdover-bypass via spoofed 1PPS edge ⚡
+- **[P6 Time/State]** Idempotency / race business-logic abuse ⚡
+- **[P6 Time/State]** Last-good-value freeze masking process excursion — `T0815, T0814`
+- **[P6 Time/State]** Process-variable / sensor spoofing & stale-value replay — `T0856`
+- **[P6 Time/State]** RF jamming & SDR capture-replay
+- **[P6 Time/State]** Rate-limit and anti-automation bypass via key/race manipulation — `T1110.001`
+- **[P6 Time/State]** Safety controller manipulation / SIS bypass (Triton/TRISIS-class) — `T0880, T0858`
+- **[P6 Time/State]** Sequencer-controlled timestamp skew of weighted price ⚡
+- **[P6 Time/State]** Slow time-slew GNSS spoof under loss-of-lock threshold ⚡
+- **[P6 Time/State]** Stale-telemetry replay suppressing automated safety response — `T0856, T0832`
+- **[P6 Time/State]** Transparent-clock asymmetry exploiting half-RTT assumption
+- **[P6 Time/State]** Workflow / state-machine step skipping and forced browsing
