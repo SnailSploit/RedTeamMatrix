@@ -31,7 +31,7 @@ async function init() {
 
   // Build each view independently: a failure in one must never blank the others.
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
-    ["graph", buildGraph], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
+    ["graph", buildGraph], ["techniques", buildTechniques], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
     ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover],
     ["mindmap", buildMindmap], ["walk", buildWalk], ["path", buildPath]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
@@ -473,6 +473,92 @@ function buildMindmap() {
     ph.addEventListener("click", () => pbody.style.display = pbody.style.display === "none" ? "" : "none");
     pdiv.append(ph, pbody); wrap.append(pdiv);
   }
+}
+
+// --------------------------------------------------------------------------- techniques view (EVERY technique, old or new, + its PoC)
+// The simplest browser: a flat, searchable list of all 308 seams. Each row is one technique
+// tagged OLD (classic, re-homed) or NEW (agent-discovered), with its PoC one click away.
+const techFilter = { q: "", kind: "", prim: "", lang: "", confirmed: false };
+function buildTechniques() {
+  const c = $("#tech-controls");
+  const langs = [...new Set(DS.seams.map((s) => s.test_artifact?.language).filter(Boolean))].sort();
+  c.innerHTML = `<span class="muted">Every technique — <b style="color:#8b949e">old</b> (classic, re-homed) and <b style="color:#bd93f9">new</b> (agent-discovered) — each with its proof-of-concept one click away.</span>
+    <input id="tk-q" placeholder="search technique, e.g. kerberoast, IMDS, prompt…" style="min-width:240px"/>
+    <select id="tk-kind"><option value="">old + new</option><option value="old">old only</option><option value="new">new only</option></select>
+    <select id="tk-prim"><option value="">all primitives</option>${DS.primitives.map((p) => `<option value="${p.id}">${p.id} ${p.name}</option>`).join("")}</select>
+    <select id="tk-lang"><option value="">any PoC language</option>${langs.map((l) => `<option value="${l}">${l}</option>`).join("")}</select>
+    <label style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" id="tk-conf"> PoC-confirmed only</label>`;
+  $("#tk-q").addEventListener("input", (e) => { techFilter.q = e.target.value.toLowerCase(); renderTechniques(); });
+  $("#tk-kind").addEventListener("change", (e) => { techFilter.kind = e.target.value; renderTechniques(); });
+  $("#tk-prim").addEventListener("change", (e) => { techFilter.prim = e.target.value; renderTechniques(); });
+  $("#tk-lang").addEventListener("change", (e) => { techFilter.lang = e.target.value; renderTechniques(); });
+  $("#tk-conf").addEventListener("change", (e) => { techFilter.confirmed = e.target.checked; renderTechniques(); });
+  renderTechniques();
+}
+const POCDOT = { confirmed: "#7ee787", error: "#f0a93b", skipped: "#6e7681" };
+function renderTechniques() {
+  const { q, kind, prim, lang, confirmed } = techFilter;
+  const list = $("#tech-list"); list.innerHTML = "";
+  // old first by classic branch, then new — but keep it one flat, sortable stream.
+  const rows = DS.seams.filter((s) => {
+    const isNew = s.origin === "AGENT-DISCOVERED";
+    if (kind === "old" && isNew) return false;
+    if (kind === "new" && !isNew) return false;
+    if (prim && s.primitive !== prim) return false;
+    if (lang && s.test_artifact?.language !== lang) return false;
+    if (confirmed && s.test_artifact?.result !== "confirmed") return false;
+    if (q) {
+      const t = s.techniques[0] || {};
+      const hay = `${t.name} ${s.id} ${(t.attack_ids || []).join(" ")} ${s.classic_branches.join(" ")} ${s.trust_assumption}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    const an = a.origin === "AGENT-DISCOVERED" ? 1 : 0, bn = b.origin === "AGENT-DISCOVERED" ? 1 : 0;
+    if (an !== bn) return an - bn; // old block first, then new
+    return (a.techniques[0]?.name || a.id).localeCompare(b.techniques[0]?.name || b.id);
+  });
+
+  const nOld = rows.filter((s) => s.origin !== "AGENT-DISCOVERED").length;
+  const nNew = rows.length - nOld;
+  const nPoc = rows.filter((s) => s.test_artifact).length;
+  $("#tech-count").innerHTML = `<b style="color:#e6edf3">${rows.length}</b> techniques — <span style="color:#8b949e">${nOld} old</span> · <span style="color:#bd93f9">${nNew} new</span> · ${nPoc} with a PoC`;
+
+  for (const s of rows) {
+    const t = s.techniques[0] || {};
+    const isNew = s.origin === "AGENT-DISCOVERED";
+    const a = s.test_artifact;
+    const mitre = (t.attack_ids && t.attack_ids.length) ? t.attack_ids.join(", ") : "unmodeled";
+    const row = el("div", "techrow");
+    const head = el("div", "techhead");
+    head.innerHTML = `
+      <span class="chip ${isNew ? "disc" : "oldtag"}">${isNew ? "NEW" : "OLD"}</span>
+      <span class="chip prim" style="background:${primColor(s.primitive)}">${s.primitive}</span>
+      <span class="techname">${esc(t.name || s.id)}</span>
+      <span class="techmeta muted">${esc(mitre)}</span>
+      ${a ? `<span class="chip op">${a.language}</span>` : `<span class="muted">no PoC</span>`}
+      ${a && a.result ? `<span class="pocdot" title="PoC run: ${a.result}" style="background:${POCDOT[a.result] || "#6e7681"}"></span>` : ""}
+      <span class="techchevron muted">▸</span>`;
+    const body = el("div", "techbody");
+    body.style.display = "none";
+    body.innerHTML = `
+      <div class="rat" style="color:#e6edf3"><b>Trust assumption.</b> ${esc(s.trust_assumption)}</div>
+      <div class="rat"><b style="color:#d4a0a0">What breaks.</b> ${esc(s.violation)}</div>
+      ${a ? `<div class="k" style="margin-top:8px">proof-of-concept · ${esc(a.name)} <span class="chip op">${a.language}</span>${a.result ? ` <span class="chip" style="border-color:${POCDOT[a.result]};color:${POCDOT[a.result]}">run: ${a.result}</span>` : ""}</div>
+        <div class="rat" style="color:#d4a0a0">⚠ ${esc(a.authorization)}</div>
+        ${a.setup ? `<div class="rat muted">setup: ${esc(a.setup)}</div>` : ""}
+        <pre class="artifact"><code>${esc(a.script)}</code></pre>
+        <div class="rat"><b style="color:#7ee787">Success.</b> ${esc(a.success_criterion)}${a.cleanup ? ` · <b>Cleanup.</b> ${esc(a.cleanup)}` : ""}${a.safety ? ` · <b>Safety.</b> ${esc(a.safety)}` : ""}</div>`
+        : `<div class="muted">No proof-of-concept for this technique yet.</div>`}
+      <div class="rat muted" style="margin-top:6px">seam <code>${s.id}</code> · <a href="#" onclick="showSeam('${s.id}');return false" style="color:#58a6ff">full detail →</a></div>`;
+    head.addEventListener("click", () => {
+      const open = body.style.display !== "none";
+      body.style.display = open ? "none" : "";
+      head.querySelector(".techchevron").textContent = open ? "▸" : "▾";
+    });
+    row.append(head, body); list.append(row);
+  }
+  if (!rows.length) list.innerHTML = `<div class="muted" style="padding:20px">No technique matches that filter.</div>`;
 }
 
 // --------------------------------------------------------------------------- walkthrough view (new techniques + PoC code)

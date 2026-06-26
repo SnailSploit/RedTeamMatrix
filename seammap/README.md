@@ -145,11 +145,15 @@ numbers. Path priority gives frontier edges a bonus: research yield is highest o
 
 ## Views (`web/`) — projections of the one dataset
 
-Open `web/index.html` (static, no backend; cytoscape is vendored at `web/vendor/`, so it works offline). Eight views
+Open `web/index.html` (static, no backend; cytoscape is vendored at `web/vendor/`, so it works offline). Eleven views
 over `web/dataset.json`, toggle without losing state:
 
 - **Graph** — force-directed typed hypergraph. Edge color = primitive; dashed = frontier; glow = scalable+auto+ai;
   node ring = maturity; hyperedges rendered through a relay node so multi-party reads as multi-party. Click → detail.
+- **Techniques** — the simplest view: a flat, searchable list of **every technique, old and new**, each tagged
+  `OLD` (classic, re-homed) or `NEW` (agent-discovered), with its **proof-of-concept one click away** (script,
+  authorization gate, success criterion, and the run-result dot). Filter by primitive, PoC language, or
+  confirmed-only; search by name / ATT&CK id. Start here if you just want "show me the techniques and their PoCs."
 - **Matrix** — principal × ATT&CK tactic, cells computed from edges; every empty cell typed and rendered as a
   deliberate state (gaps cluster: Identity dense mid-chain, AI dense left / sparse right, AD blank on C2/exfil).
 - **Tree** — the flat coverage index (old mind-map shape), generated; every classic branch present and re-homed,
@@ -158,6 +162,8 @@ over `web/dataset.json`, toggle without losing state:
 - **Predict** — ranked emergent composites from `src/compose.ts` (old×new merges the graph predicts).
 - **Optimize** — the data-driven priority queue (yield÷effort) + coverage + budget-constrained optimum.
 - **Discover** — relation-graph located new threats (analogical transfer / transitive chain / structural hole), each with its structural reason.
+- **Mindmap** — the new seam-organized mind map (primitives → branches → techniques), generated from the model.
+- **Walkthrough** — the deep per-technique dossier for the 114 new techniques: mechanism, MITRE gap, anchors, validity, and the runnable PoC.
 - **Path** — pick source + target principal; scored traversals (kill chains); multiple parallel paths surfaced.
 
 ## Run it
@@ -168,10 +174,10 @@ node merge-validations.cjs # assemble data/validations.json from data/_val_*.jso
 node merge-artifacts.cjs   # assemble data/artifacts.json from data/_art_*.json (red-team validation PoCs)
 node run-pocs.cjs          # execute safe self-contained PoCs -> data/poc-results.json (closed-loop run data)
 node src/build.ts          # render projections + gaps + composites + priorities -> web/dataset.json
-node src/validate.ts       # 21 definition-of-done invariants (exits non-zero on violation)
+node src/validate.ts       # 30 definition-of-done invariants (exits non-zero on violation)
 node src/optimize-demo.ts  # data-driven priority queue + budget-constrained optimum
 node src/spawn-demo.ts # demonstrate the auto-spawn rule on a hypothetical 2027 node
-node shot.cjs          # (optional, dev) headless-render all six views to shot-*.png
+node shot.cjs          # (optional, dev) headless-render the key views to shot-*.png
 # then open web/index.html in a browser
 ```
 
