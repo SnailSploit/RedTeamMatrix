@@ -249,8 +249,8 @@ const ds = loadDataset();
   log(opt.totalEffort <= 25 && opt.selected.length > 0,
     `Optimizer: budget-constrained optimum respects budget (effort ${opt.totalEffort} <= 25, ${opt.selected.length} seams)`);
   const cov = coverage(ds);
-  log(cov.artifact_coverage > 0 && cov.validation_coverage > 0,
-    `Optimizer: self-measured coverage — ${(cov.artifact_coverage * 100).toFixed(0)}% have PoCs, ${(cov.validation_coverage * 100).toFixed(0)}% validated`);
+  log(cov.artifact_coverage === 1,
+    `Coverage: 100% of seams carry a red-team validation artifact (${(cov.artifact_coverage * 100).toFixed(0)}%, ${cov.poc_confirmed} PoC-confirmed by execution, ${(cov.validation_coverage * 100).toFixed(0)}% validity-rated)`);
 }
 
 // ---------------------------------------------------------------------------

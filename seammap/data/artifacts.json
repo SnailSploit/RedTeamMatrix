@@ -2698,5 +2698,185 @@
   "success_criterion": "A MITM-stripped ClientHello negotiates a weak cipher; a hardened server with a strength floor/sentinel aborts.",
   "cleanup": "None; in-memory negotiation only.",
   "safety": "Logic-only: handshake negotiation simulation, no real TLS or network."
+ },
+ "C-c2": {
+  "name": "C2 egress-trust validation (authorized)",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator-controlled C2 infrastructure, in-scope hosts, agreed egress-test window, blue-team deconfliction.",
+  "setup": "Stand up a team server on in-scope operator infrastructure; agree the egress-test window and a deconfliction channel.",
+  "script": "Goal: show egress filtering trusts protocol conformance over destination intent. Using a standard red-team C2 framework on operator infra, establish a single beacon over a client-permitted protocol (HTTPS / DNS / CDN-fronted). Observe whether the callback survives the client's proxy and egress controls; record which channels succeed and the time-to-callback. Stop at the callback — do not stage further capability; this validates the egress-trust seam only.",
+  "success_criterion": "A beacon from an in-scope host reaches the operator team server through the client's egress controls (callback observed).",
+  "cleanup": "Tear down listeners and remove the beacon; hand the channel's IOCs to the blue team for detection tuning.",
+  "safety": "Authorized scope only; channel terminates at operator infrastructure; no destructive actions."
+ },
+ "C2-malleable-beacon": {
+  "name": "Beacon-profile conformance validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator infra; agreed window; deconfliction.",
+  "setup": "Configure a single beacon with a profile shaped to look like permitted traffic, on operator infra.",
+  "script": "Validate that a sensor trusting traffic shape (not destination) admits a conformant beacon. Run one callback and record whether shape-based controls flag it. Report which profile characteristics passed so the blue team can tune. No payload staging beyond callback.",
+  "success_criterion": "A shape-conformant beacon callback is admitted by traffic-shape controls.",
+  "cleanup": "Remove beacon; share profile IOCs (JA3, headers, cadence) with defenders.",
+  "safety": "Authorized scope; single callback; no further capability."
+ },
+ "C2-dns-tunnel": {
+  "name": "DNS-channel trust validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator-controlled authoritative name server for an in-scope test domain.",
+  "setup": "Operate an authoritative NS for an in-scope domain on operator infra; agree the test window.",
+  "script": "Validate that recursive DNS is trusted as benign egress. From an in-scope host, run a standard DNS-channel tool pointed at the operator NS and confirm a low-rate control channel resolves. Record whether the resolver path is monitored. Stop at channel-up; do not move data of value.",
+  "success_criterion": "A low-rate control channel resolves through the client's recursive resolver to the operator NS.",
+  "cleanup": "Tear down the NS responder; provide query-pattern IOCs (entropy, label length, volume).",
+  "safety": "Authorized scope; control-channel proof only; no sensitive data transited."
+ },
+ "C2-icmp-covert": {
+  "name": "ICMP covert-path validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator endpoint; agreed window.",
+  "setup": "Operator-controlled responder on an in-scope segment.",
+  "script": "Validate whether ICMP echo is trusted as harmless and permitted to egress. Confirm a minimal echo-payload control path reaches the operator responder. Record whether ICMP payload inspection exists. Proof-of-path only.",
+  "success_criterion": "An echo-payload control message reaches the operator responder across the boundary.",
+  "cleanup": "Stop responder; report payload-size/volume IOCs.",
+  "safety": "Authorized scope; path proof only; no data exfiltration."
+ },
+ "C2-domain-fronting": {
+  "name": "Domain-fronting / CDN trust validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator-controlled origin behind a CDN you are entitled to use; agreed window.",
+  "setup": "Operator origin behind a CDN; an in-scope test host.",
+  "script": "Validate that egress trusts the fronting/SNI hostname over the true origin. Establish a single callback where the visible SNI differs from the Host. Record whether the SNI/Host mismatch is detected. Callback only.",
+  "success_criterion": "A callback succeeds with SNI ≠ Host through the client's egress.",
+  "cleanup": "Remove the channel; share the SNI/Host-mismatch IOC.",
+  "safety": "Authorized scope; single callback; no staging."
+ },
+ "C2-saas-chat-channel": {
+  "name": "Trusted-SaaS channel validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator-owned SaaS bot/workspace; agreed window.",
+  "setup": "An operator-owned chat-platform bot/app and an in-scope host.",
+  "script": "Validate that egress to a popular SaaS API is trusted as benign. From an in-scope host, confirm a low-rate control channel via the operator-owned bot API. Record whether SaaS-bound egress is baselined. Channel-up proof only.",
+  "success_criterion": "A control channel via the trusted-SaaS API is admitted by egress controls.",
+  "cleanup": "Disable the bot; report destination/volume IOCs.",
+  "safety": "Authorized scope; operator-owned SaaS tenant; no sensitive data."
+ },
+ "C2-redirector-profile": {
+  "name": "Redirector / JA3 trust validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator redirector infra; agreed window.",
+  "setup": "A redirector in front of the operator team server.",
+  "script": "Validate that a sensor trusting client fingerprint/redirector reputation admits the traffic. Route one beacon through the redirector and record whether JA3/redirector reputation flags it. Proof only.",
+  "success_criterion": "A beacon routed through the redirector is admitted without fingerprint-based blocking.",
+  "cleanup": "Tear down redirector; share JA3/redirector IOCs.",
+  "safety": "Authorized scope; single callback; no staging."
+ },
+ "C2-saas-upload-exfil": {
+  "name": "Trusted-cloud-storage egress validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator-owned cloud-storage account; agreed window; synthetic canary data only.",
+  "setup": "Operator-owned storage account; a small CANARY file (no real client data).",
+  "script": "Validate that egress to trusted cloud storage is permitted. Upload a small synthetic canary from an in-scope host to the operator-owned account and confirm it is admitted. Use only the canary; never move real client data.",
+  "success_criterion": "A synthetic canary egresses to the trusted-storage destination without being blocked.",
+  "cleanup": "Delete the canary; report destination/volume IOCs.",
+  "safety": "Authorized scope; synthetic canary only; no real data exfiltrated."
+ },
+ "C2-dns-exfil": {
+  "name": "DNS-exfil channel validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator NS for an in-scope domain; synthetic canary; agreed window.",
+  "setup": "Operator authoritative NS; a small canary token (no client data).",
+  "script": "Validate that encoded-subdomain egress is trusted. Encode only a synthetic canary token into labels resolved at the operator NS; confirm reassembly. Never encode real data.",
+  "success_criterion": "A synthetic canary reassembles at the operator NS from encoded queries.",
+  "cleanup": "Tear down NS; report label-entropy/length IOCs.",
+  "safety": "Authorized scope; canary only; no sensitive data."
+ },
+ "C2-steganography-exfil": {
+  "name": "Steganographic-channel validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; synthetic canary; operator-controlled receiver; agreed window.",
+  "setup": "A benign sample image and a synthetic canary string.",
+  "script": "Validate that content-inspection trusts media as inert. Embed only a synthetic canary in a sample image and confirm it survives the egress path to an operator receiver. Never embed real data.",
+  "success_criterion": "A synthetic canary survives embedding + egress and is recovered by the operator receiver.",
+  "cleanup": "Delete sample; report stego-anomaly indicators for detection tuning.",
+  "safety": "Authorized scope; canary only; no real data."
+ },
+ "C2-chunked-encrypted-exfil": {
+  "name": "Shaped-egress (DLP-evasion) validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; synthetic canary; operator sink; agreed window.",
+  "setup": "Operator HTTPS sink; a synthetic canary file.",
+  "script": "Validate that DLP trusts declared content-type/shape. Transit only a chunked, encrypted synthetic canary at a low rate to the operator sink and confirm DLP does not flag it. Real data is never used.",
+  "success_criterion": "A shaped synthetic canary transits without DLP alerting.",
+  "cleanup": "Delete canary; report volume/timing IOCs.",
+  "safety": "Authorized scope; canary only; non-destructive."
+ },
+ "C2-removable-media-exfil": {
+  "name": "Removable-media egress validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; operator-provided throwaway media; synthetic canary; on-site authorization.",
+  "setup": "A throwaway USB volume and a synthetic canary file on an in-scope host.",
+  "script": "Validate whether device-control trusts removable media. Copy only a synthetic canary to operator-provided media and record whether device-control/DLP blocks or logs it. No client data.",
+  "success_criterion": "A synthetic canary is written to removable media without being blocked (or the gap in logging is shown).",
+  "cleanup": "Wipe the media; report the USN/Event-4663 evidence to defenders.",
+  "safety": "Authorized scope; canary only; non-destructive."
+ },
+ "C-exfil": {
+  "name": "Exfiltration-path trust validation",
+  "language": "text",
+  "authorization": "Authorized engagement only; synthetic canary; operator sink; agreed window.",
+  "setup": "An operator-controlled sink and a synthetic canary.",
+  "script": "Validate the generic egress-trust seam: move only a tagged synthetic canary over the channels the client permits and record which paths succeed. The deliverable is the list of permitted exfil paths + IOCs, not the movement of any real data.",
+  "success_criterion": "A tagged synthetic canary reaches the operator sink over at least one permitted path.",
+  "cleanup": "Delete canary; deliver path inventory + IOCs.",
+  "safety": "Authorized scope; canary only; no real data."
+ },
+ "C2-tier0-domain-admin": {
+  "name": "Tier-0 reach validation (non-destructive)",
+  "language": "text",
+  "authorization": "Authorized engagement only; agreed Tier-0 objective; non-destructive proof-of-control.",
+  "setup": "Established foothold per the engagement; deconfliction for Tier-0 actions.",
+  "script": "Validate that the path to Tier-0/Domain-Admin control EXISTS without exercising destructive control. Use read-only checks (e.g., confirm replication rights / group membership / ticket-forging capability via a benign verification) to demonstrate reach. Stop at proof-of-control; do not perform estate-wide changes.",
+  "success_criterion": "Read-only evidence that Tier-0 control is reachable (e.g., DCSync-capable rights confirmed) without exercising it.",
+  "cleanup": "Document the path; share the precise privilege chain with defenders.",
+  "safety": "Authorized scope; proof-of-reach only; no destructive or estate-wide action."
+ },
+ "C2-crown-jewel-access": {
+  "name": "Crown-jewel reachability validation (non-destructive)",
+  "language": "text",
+  "authorization": "Authorized engagement only; agreed crown-jewel target; minimal-access proof.",
+  "setup": "Foothold with a path toward the sensitive store, per scope.",
+  "script": "Validate that an authenticated position can reach the crown-jewel store. Demonstrate read reachability of a single agreed canary record (or metadata) — never bulk-stage or exfiltrate real sensitive data. The proof is reachability, not collection.",
+  "success_criterion": "Reachability of an agreed canary record/metadata is demonstrated without bulk access.",
+  "cleanup": "Document the access path; recommend segmentation/authz fixes.",
+  "safety": "Authorized scope; single canary; no bulk access or exfiltration."
+ },
+ "C-impact": {
+  "name": "Impact-capability validation (non-destructive)",
+  "language": "text",
+  "authorization": "Authorized engagement only; explicit written sign-off; non-destructive demonstration.",
+  "setup": "Foothold with the privilege the destructive action would require.",
+  "script": "Validate that the position is trusted to perform a destructive/disruptive action WITHOUT performing it. Confirm the capability via a read-only permission check or a dry-run flag against a throwaway lab object. Never encrypt, wipe, deface, or disrupt production. The seam is authorization-of-position vs authorization-of-act.",
+  "success_criterion": "A permission/dry-run check confirms the destructive capability exists, with no destructive effect.",
+  "cleanup": "Remove the throwaway object; report the over-broad authorization.",
+  "safety": "Authorized scope; capability proof only; no destruction."
+ },
+ "C2-business-process-disruption": {
+  "name": "Availability-impact capability validation (non-destructive)",
+  "language": "text",
+  "authorization": "Authorized engagement only; written sign-off; no production disruption.",
+  "setup": "Access to the business process's control surface in a lab/staging mirror if available.",
+  "script": "Validate that an authenticated principal could disrupt a business process, without disrupting it. Demonstrate the capability via a permission check or a staging/lab dry-run only. Production availability is never affected.",
+  "success_criterion": "Capability to disrupt is shown via permission/dry-run in lab/staging, with production untouched.",
+  "cleanup": "Reset staging; report the authorization gap.",
+  "safety": "Authorized scope; lab/staging or permission-check only; no production impact."
+ },
+ "C2-fraudulent-transaction": {
+  "name": "Transaction-authorization seam validation (non-destructive)",
+  "language": "text",
+  "authorization": "Authorized engagement only; written sign-off; no real transaction.",
+  "setup": "Access to the payment workflow in a sandbox/UAT environment.",
+  "script": "Validate that the workflow trusts an authenticated position to move funds, without moving real funds. Demonstrate reachability of the transaction-initiation step in a sandbox/UAT environment or via a permission check. Never initiate a real transfer.",
+  "success_criterion": "Reachability of the funds-movement step is shown in sandbox/UAT (or via permission check), with no real transaction.",
+  "cleanup": "Reset sandbox; report the authorization-of-position gap.",
+  "safety": "Authorized scope; sandbox/UAT or permission-check only; no real funds moved."
  }
 }
