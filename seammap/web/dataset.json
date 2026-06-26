@@ -3153,6 +3153,7 @@
       "tech_note": {
         "mechanism": "MCP servers advertise tools via a JSON-RPC `tools/list` response and can push updates after initial approval using the `notifications/tools/list_changed` server-to-client notification. A malicious server serves a benign tool description at first connection to win the user's one-time approval, then later returns a mutated description (or silently changes server-side behavior bound to the same tool name) for the cached, already-trusted tool. Clients that cache approval against the tool name rather than a hash of the full manifest (name + description + input schema + behavior) inherit the prior consent, so the rewritten instruction reaches the model with no re-prompt.",
         "exploitation_primitive": "Operator stands up an MCP server that returns a clean manifest on the approval connection, then flips the tool description (or emits `tools/list_changed`) on a later session so the agent re-fetches a poisoned definition under inherited consent.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for an MCP tool silently mutating its description/behavior after one-time approval (a post-consent rug-pull); the listed T1195 Supply Chain Compromise and T1546 Event Triggered Execution describe code/dependency tampering and OS-level persistence, not the inheritance of cached natural-language consent across a server-pushed manifest change. The closest accurate mapping is MITRE ATLAS AML.T0053 (LLM Plugin Compromise) combined with AML.T0051.001 (Indirect Prompt Injection) for the rewritten tool instruction reaching the model, neither of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -3358,6 +3359,7 @@
       "tech_note": {
         "mechanism": "A RAG retriever ranks chunks by cosine similarity over embeddings and often blends recency/eviction heuristics into the index lifecycle. An attacker who can write to the corpus crafts documents whose embeddings sit maximally close to high-traffic query embeddings (adversarial decoding / hot-spot optimization) and re-writes them frequently, so the poisoned chunk both out-ranks benign competitors at retrieval and stays 'fresh' under recency-based eviction while genuine chunks age out. The result is poisoning-as-persistence: a small number of optimized records dominate the top-k for a class of queries indefinitely.",
         "exploitation_primitive": "Operator submits embedding-optimized chunks (optionally re-touched on a timer to game recency) so retrieval consistently surfaces the poisoned record and evicts/down-ranks legitimate competitors for targeted queries.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for gaming embedding similarity and recency to keep a poisoned RAG chunk resident while evicting benign ones; T1565 Data Manipulation covers altering stored data generically but captures neither the retrieval-ranking mechanism nor poisoning-as-persistence in a vector index. It maps to MITRE ATLAS AML.T0020 (Poison Training Data, used for RAG/data sources), with the persistence-via-retrieval-dominance angle closest to AML.T0031 (Erode ML Model Integrity), and ATLAS is not part of Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -3574,6 +3576,7 @@
       "tech_note": {
         "mechanism": "Agent long-term memory is typically backed by a shared vector index where retrieval eligibility is governed by embedding similarity, with tenant separation implemented as a soft metadata `namespace`/filter applied alongside (or after) the similarity search rather than as a hard partition. When filtering is applied post-retrieval, missing, or weakly keyed, a 'close enough' similarity collision returns chunks written by another tenant; hybrid search that blends a global index with a tenant index can likewise surface foreign memories. The crossing point is that read context is selected by vector distance, and the isolation predicate is not enforced as a precondition of the search.",
         "exploitation_primitive": "Operator (as tenant A) writes near-duplicate content tuned to match tenant B's expected queries, then triggers retrieval in a context where weak/post-hoc filtering lets B's secrets surface in A's read.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for cross-tenant bleed through a shared vector/memory backend where a soft metadata namespace fails to gate similarity search; T1530 Data from Cloud Storage and T1213 Data from Information Repositories assume the attacker queries a store they can already reach, not that vector distance returns another tenant's chunk without an enforced isolation predicate. The closest AI-specific mapping is MITRE ATLAS AML.T0057 (LLM Data Leakage) / AML.T0024 (Exfiltration via ML Inference API), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -3782,6 +3785,7 @@
       "tech_note": {
         "mechanism": "Inter-agent protocols (e.g. Google A2A) carry tasking in JSON messages that may include a bearer/JWT credential identifying the calling agent. If the token is unsigned, has no verified `iss`/`aud`/`jti`, or is not sender-constrained, a rogue agent can mint or replay a credential and present forged peer identity to issue authoritative tasking. The trust boundary is crossed at JWT validation: a missing signature check or absent audience claim lets a token issued for (or stolen from) agent A be accepted by agent B as proof of authority.",
         "exploitation_primitive": "Operator captures or fabricates an A2A task credential lacking `aud`/`jti` binding and replays it against a peer agent to deliver attacker-chosen tasking under a trusted agent's identity.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for forging an inter-agent capability/task token (e.g. an unsigned or audience-unbound A2A JWT) to impersonate a peer agent; T1606 Forge Web Credentials (SAML/web cookies) and T1134 Access Token Manipulation (Windows access tokens) are the nearest, but both target human/OS auth artifacts, not agent-to-agent tasking credentials. The agent-identity-forgery seam has no Enterprise home and is only partially reflected in MITRE ATLAS (no exact technique), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "standard",
@@ -4040,6 +4044,7 @@
       "tech_note": {
         "mechanism": "Continuously-tuned detection pipelines treat analyst dispositions (false-positive closures, suppression/allowlist additions, auto-tuning signals) as clean labels for retraining or threshold adjustment. An attacker generates activity that looks benign enough to earn repeated FP closures, training the model/rules to associate those exact features with 'normal'; the attacker then reuses the now-whitelisted pattern maliciously. This is a label-flipping / availability poisoning attack executed through the human-in-the-loop labeling channel rather than direct training-data access, shifting the model's decision boundary so the malicious pattern lands below threshold.",
         "exploitation_primitive": "Operator farms benign-looking telemetry tuned to a planned attack's feature signature until analysts close it as FP (or auto-suppression fires), then executes the real action reusing that conditioned pattern.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for poisoning a detection model through the analyst-disposition feedback loop (farming false-positive closures to whitelist a pattern, then weaponizing it); T1565 Data Manipulation and T1647 Plist/registry-style modification do not describe label-flipping the human-in-the-loop labeling channel of a continuously-retrained detector. It maps to MITRE ATLAS AML.T0020 (Poison Training Data) and AML.T0031 (Erode ML Model Integrity), neither of which is incorporated by Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -4252,6 +4257,7 @@
       "tech_note": {
         "mechanism": "Agent skill/plugin registries resolve a requested skill by name/description with minimal publisher vetting and no cryptographic author binding, mirroring early npm/PyPI. An attacker registers a typosquatted skill name; the agent (or its operator) resolves the lookalike and installs it, at which point the skill's bundled scripts and natural-language instructions execute with the agent's full privileges — environment variables (API keys, tokens), filesystem, and network — often without explicit per-action approval. The boundary is crossed at name resolution: install-time trust is granted to the resolved artifact, not to a verified author identity.",
         "exploitation_primitive": "Operator publishes a typosquatted/slopsquatted skill to a low-vetting registry so an agent installing the intended-sounding name pulls and runs the attacker's bundle at agent+host authority.",
+        "mitre_gap": "ATT&CK Enterprise's T1195.002 Compromise Software Supply Chain is close in spirit but is scoped to compromising a software/dependency artifact, not an agent resolving a typosquatted skill name at install time and granting it the agent's full runtime authority (env secrets, filesystem, network) via bundled scripts plus natural-language instructions; T1546 is OS event-triggered persistence and is the wrong layer. The AI-skill-execution angle maps to MITRE ATLAS AML.T0011.001 (User Execution: Malicious Package), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "incident",
@@ -4352,6 +4358,7 @@
       "tech_note": {
         "mechanism": "In federated OIDC/OAuth, a downstream resource server trusts any token from a trusted issuer; if the token carries no `aud` (audience) or actor/`act` binding scoping it to a specific resource, it is accepted wherever issuer trust reaches. An agent that obtains a token minted for one context (or the human's own identity token) can present it to a backend it was never scoped for — a confused-deputy at the federation layer. RFC 8707 resource indicators fix issuance (the AS stamps `aud`), but the failure manifests when the resource server does not validate that `aud` matches its own URI, so a single token becomes valid across multiple resource servers.",
         "exploitation_primitive": "Operator drives the agent to present an audience-unbound federated token (its own or the user's) to a higher-privilege backend that accepts it on issuer trust alone, crossing into resources outside the token's intended scope.",
+        "mitre_gap": "ATT&CK Enterprise's T1550.001 Application Access Token covers reusing a stolen token, but has no technique for the confused-deputy at the federation layer where an audience/actor-unbound OIDC token minted for an agent (or a human's identity token) is accepted by a resource server it was never scoped for; T1606 Forge Web Credentials is forgery, not legitimate-token over-acceptance. This audience-binding seam is an identity-federation gap not represented in either Enterprise ATT&CK or MITRE ATLAS.",
         "anchors": [
           {
             "type": "standard",
@@ -4449,6 +4456,7 @@
       "tech_note": {
         "mechanism": "A SOC copilot retrieves from an internal corpus (tickets, alert comments, runbooks, case notes) assumed to be analyst-authored, embedding retrieved text directly into the LLM context with the same trust as system instructions. Low-trust users — or attackers who can file or comment on tickets — write indirect prompt-injection payloads into that corpus; when the copilot retrieves the poisoned record during triage it executes the embedded instructions (mis-classify, suppress, exfiltrate, or invoke defender tooling). The boundary is crossed because retrieved data is concatenated into the prompt without a data/instruction separation, and the corpus is writable by parties outside the trusted authoring set.",
         "exploitation_primitive": "Operator files a support ticket / alert comment containing imperative instructions; when the SOC copilot retrieves it during triage, the agent obeys (e.g. reads a privileged table and posts it back, or closes the alert).",
+        "mitre_gap": "ATT&CK Enterprise has no technique for indirect prompt injection of a SOC copilot via a writable internal corpus (tickets/comments) that the RAG pipeline concatenates into the prompt as trusted instructions; T1562 Impair Defenses and T1070 Indicator Removal describe the resulting defender-tooling abuse but not the injection mechanism. It maps directly to MITRE ATLAS AML.T0051.001 (Indirect Prompt Injection) and AML.T0020 (Poison Training Data for RAG sources), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "incident",
@@ -4549,6 +4557,7 @@
       "tech_note": {
         "mechanism": "An agent stores 'known-good' resolutions in long-term memory — a package name, a tool endpoint, an artifact URL it validated once — and on later sessions retrieves that memory and acts on it without re-validation. An attacker who can poison the memory (via query-only memory-injection or by influencing what the agent learns) plants a typosquatted package or attacker-controlled endpoint as the remembered-trusted resolution. The trust boundary is crossed across time: the original validation is not re-performed, so the supply-chain decision is laundered through the agent's own trusted history rather than a fresh integrity check.",
         "exploitation_primitive": "Operator poisons the agent's memory so a future session resolves an attacker package/endpoint as the previously-validated 'known-good' entry and installs/calls it with no re-check.",
+        "mitre_gap": "ATT&CK Enterprise's T1195.002 Compromise Software Supply Chain captures the end harm (resolving a typosquatted package) but not the mechanism here: a supply-chain decision laundered across time through an agent's own long-term memory of a once-validated 'known-good' resolution, re-acted-upon without re-validation; T1546 is the wrong layer. The memory-poisoning-as-persistence vector maps best to MITRE ATLAS AML.T0020 (Poison Training Data / memory) and AML.T0011.001 (Malicious Package), neither incorporated by Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -4649,6 +4658,7 @@
       "tech_note": {
         "mechanism": "MCP carries JSON-RPC 2.0 messages over stdio, HTTP+SSE, or Streamable HTTP, with messages delimited (newline-delimited, no embedded newlines; SSE events correlated by JSON-RPC `id`). If a broker/proxy and the backend disagree on framing — how message boundaries, `Content-Length`/chunked encoding, or SSE event delimiters are parsed — an attacker can smuggle a second tool call inside one apparent message, or split one call across the boundary, so the backend executes calls the broker never authorized. This is HTTP request-smuggling/desync reborn on the agent transport: the security control (the broker) and the executor (the backend) normalize the byte stream differently.",
         "exploitation_primitive": "Operator crafts an MCP HTTP/SSE payload whose framing the front proxy and backend parse differently, smuggling an extra `tools/call` past the broker's inspection.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for request-smuggling/desync on the MCP agent transport where a broker and backend disagree on JSON-RPC/SSE framing and a second tool call is smuggled or split; T1559 Inter-Process Communication and T1190 Exploit Public-Facing Application are adjacent but describe local IPC and generic web-app exploitation, not transport-boundary normalization desync between an authorizing broker and an executing MCP backend. This is an emerging agent-protocol seam with no Enterprise ATT&CK or ATLAS technique.",
         "anchors": [
           {
             "type": "standard",
@@ -4748,6 +4758,7 @@
       "tech_note": {
         "mechanism": "Kubernetes RBAC binds a ServiceAccount token (auto-mounted into the pod) to Roles/ClusterRoles, and that authority was typically scoped assuming a human runs `kubectl` deliberately and intermittently. An agent holding the SA executes cluster mutations autonomously at machine speed and scale; permissions that were 'fine for occasional human ops' (wildcards, broad ClusterRoleBindings, pod/exec, secret read) become a standing, continuously-exercisable capability. The boundary violation is not a new privilege but the mismatch between human-sized RBAC and an unattended actor that can chain those rights (e.g. read SA tokens, create privileged pods, edit bindings) to reach cluster-admin.",
         "exploitation_primitive": "Operator drives the agent (via injection or rogue tasking) to use its mounted SA token to enumerate and chain over-broad RBAC — read secrets, create a privileged pod, or patch a ClusterRoleBinding — escalating autonomously.",
+        "mitre_gap": "ATT&CK Enterprise's T1609 Container Administration Command and T1610 Deploy Container describe using container/orchestrator admin interfaces, but have no technique for the mismatch where human-sized Kubernetes RBAC becomes over-broad when wielded autonomously by an agent ServiceAccount at machine speed and scale; the violation is a blast-radius/standing-capability gap, not a new privilege. No Enterprise ATT&CK or ATLAS technique captures human-vs-agent authority-sizing, so the seam maps at best loosely to T1609/T1610 as the execution surface.",
         "anchors": [
           {
             "type": "research",
@@ -4848,6 +4859,7 @@
       "tech_note": {
         "mechanism": "When a user issues a correction ('ignore that, it was wrong'), the agent honors it for the current turn (check time), but the original poisoned instruction may remain a durable record in long-term memory that is retrieved and replayed at a later use (use time). Because memory retrieval re-injects stored context as trusted history without reconciling it against the subsequent correction, user intent and stored state diverge across time — a check-vs-use (TOCTOU) gap in the memory layer. The correction edits the conversation, not the persisted memory entry, so the agent's effective belief reverts on the next session.",
         "exploitation_primitive": "Operator plants a poisoned instruction into memory, lets the user 'correct' it (satisfying the in-session check), and relies on the unretracted memory entry being replayed as trusted context in a later session.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for a check-vs-use (TOCTOU) divergence in agent memory, where a human correction holds at the current turn but the original poisoned instruction is replayed from persisted long-term memory in a later session; T1647 and T1546 describe OS-level persistence/triggering, not stored-belief vs stated-intent divergence across time. It maps to MITRE ATLAS AML.T0020 (Poison Training Data / memory), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -4946,6 +4958,7 @@
       "tech_note": {
         "mechanism": "When multiple agents or apps share a single embedding index, retrieval eligibility is governed by vector similarity across the whole index unless hard per-consumer partitions exist. Without enforced partitioning, content written by agent A (its task context, fetched documents, intermediate notes) is indexed into the same space agent B searches, so B inherits A's write-context as read-context whenever similarity matches. The crossing point is shared retrieval scope: the index does not bind a chunk's read-audience to its writer, so multi-index trust carryover happens silently through normal top-k retrieval.",
         "exploitation_primitive": "Operator (as agent A) writes content to the shared index tuned to match agent B's queries, causing B to retrieve and act on A-authored context as if it were its own grounded knowledge.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for shared-vector-index context carryover, where one agent's write-context becomes another's read-context because top-k similarity is unscoped by writer/read-audience; T1213 Data from Information Repositories and T1530 Data from Cloud Storage assume direct access to a store, not retrieval-scope bleed across consumers of a shared embedding space. It maps to MITRE ATLAS AML.T0057 (LLM Data Leakage) / AML.T0024 (Exfiltration via ML Inference API), not part of Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -5045,6 +5058,7 @@
       "tech_note": {
         "mechanism": "An agent remembers a cloud resource identifier (S3 bucket name, ARN, role name, CNAME target) and trusts it to denote the same resource on a later session. But many cloud namespaces are globally shared and re-registrable: a deleted bucket name or a dangling DNS/CNAME can be reclaimed by any account, and role/resource names can be re-created by a new owner. The provenance of a name is forgeable across time, so when the agent acts on the remembered name an attacker now controls, it reads from or writes to (or pulls binaries/templates from) the adversary's resource under the trust originally earned by the legitimate one.",
         "exploitation_primitive": "Operator reclaims an abandoned bucket name / dangling CNAME / re-creatable role that an agent has memorized as trusted, then serves attacker content to the agent's next remembered-name access.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for an agent acting on a remembered cloud resource name (bucket/ARN/CNAME) that an attacker has since re-registered in a globally shared, re-registrable namespace; T1578 Modify Cloud Compute Infrastructure and T1098 Account Manipulation describe attacker actions on infrastructure/accounts, not the cross-time name-provenance forgery (dangling-resource takeover) that an agent's trusted memory laundering enables. The agent-memory-trust angle maps to MITRE ATLAS AML.T0020, which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -11639,6 +11653,7 @@
       "tech_note": {
         "mechanism": "A computer-use/browser agent builds its observation from a screenshot and/or the DOM accessibility (a11y) tree and treats that representation as ground truth about page state before acting. An attacker controls regions the agent's perception attends to but a human never visually parses the same way: off-viewport DOM nodes, CSS-hidden-but-a11y-exposed text (display:none, opacity:0, 1px font, white-on-white), near-invisible overlays, or adversarial pixel patches on a 'Confirm' control. The DOM/a11y label the agent reads diverges from the human-visible rendering, so the agent acts on a screen state that does not match the real consequence of clicking.",
         "exploitation_primitive": "Operator embeds attacker text/controls in a11y-exposed-but-visually-hidden DOM (or an adversarial patch over a button) so the agent perceives and acts on a page state the human would never approve.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for a computer-use/browser agent trusting the DOM/accessibility tree or screenshot as ground truth when CSS-hidden, off-viewport, or adversarially-patched UI diverges from the human-visible rendering; the closest is T1185 Browser Session Hijacking (wrong direction, that hijacks a human's session, not poisons an agent's perception). It maps to MITRE ATLAS AML.T0051.001 (Indirect Prompt Injection) and AML.T0015 (Evade ML Model) for the perception/vision attack, neither of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -11737,6 +11752,7 @@
       "tech_note": {
         "mechanism": "Multimodal pipelines run a text-based safety/injection filter over the visible text and, once it passes, hand the image/audio/PDF object to the model as inert payload. But the model decodes channels the text filter never reads: EXIF/XMP fields, PDF annotation and form-field streams, ID3 tags, alt-text, glyph-substituted or steganographically/DCT-encoded text in images, and sub-audible audio. An injection carried in those out-of-band fields bypasses the guardrail and reaches the model's context, which extracts and may act on it. The boundary is crossed because the filter's coverage (visible text) is narrower than the model's decode surface (all embedded modalities/metadata).",
         "exploitation_primitive": "Operator embeds instructions in EXIF/XMP/PDF-annotation/ID3/alt-text or steganographic image layers of an artifact whose visible text is benign, so the payload passes the text filter and is decoded by the model.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for smuggling instructions through image/audio/PDF metadata (EXIF/XMP, PDF annotation streams, ID3, alt-text, steganography, sub-audible audio) that a text-only filter never reads but the multimodal model decodes; T1027 Obfuscated Files (steganography) is about hiding malware payloads from defenders, not about an out-of-band injection bypassing an LLM guardrail. It maps to MITRE ATLAS AML.T0051 (LLM Prompt Injection), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -11835,6 +11851,7 @@
       "tech_note": {
         "mechanism": "Agent runtimes cache tool/function-call results (and semantic/LLM caches store prior responses) keyed by call signature or query embedding, then serve a cache hit as a faithful stand-in for re-executing the authenticated tool. An attacker who influences a tool's output once — a transient poisoned web fetch, a single malicious MCP response, or a crafted near-duplicate query that collides on the semantic cache key — gets that result frozen and re-served as authoritative across later runs, sessions, and other users, long after the upstream source is clean. The boundary is crossed because cache trust is inherited from the original (now-stale or attacker-influenced) execution and the cache is often shared across sessions.",
         "exploitation_primitive": "Operator poisons a tool's output once (or seeds a colliding semantic-cache entry) so the frozen malicious result is served to subsequent agent runs and other users on cache hit.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for poison-once/serve-many injection of an agent tool-result or semantic cache, where one transient malicious tool output (or a cache-key collision) is frozen and re-served as authoritative across sessions and users; T1565 Data Manipulation is the nearest generic 'stored data altered' technique but captures neither the agent-cache-as-authoritative-tool-call trust nor semantic-cache key collision. The seam maps best to MITRE ATLAS AML.T0051.001 (Indirect Prompt Injection) for the injected content, not part of Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -11934,6 +11951,7 @@
       "tech_note": {
         "mechanism": "A human-in-the-loop confirmation gate assumes each approval is a fresh, independent act of judgment. But the agent's own high-frequency, near-identical benign confirmations behaviorally condition the operator into reflexive rubber-stamping — the same alert-fatigue/automation-bias dynamic SOCs have long known, relocated into the agent's inner loop. An attacker who can inject one malicious action into that stream gets it approved by a human whose 'consent' has been trained into a reflex by the legitimate workflow; the trust boundary (informed human judgment) is crossed not by defeating the gate but by exhausting the judgment it depends on.",
         "exploitation_primitive": "Operator times a single malicious confirmation to ride a long run of benign, look-alike approvals so the conditioned operator reflexively approves it without reading.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for behaviorally conditioning a human-in-the-loop operator into reflexive rubber-stamping by flooding the approval stream with benign confirmations (automation-bias/alert-fatigue relocated into the agent loop); this is a human-judgment-exhaustion social-engineering seam with no Enterprise technique (T1204 User Execution is the inverse, tricking a user into running something, not training away their scrutiny). It is closest to MITRE ATLAS AML.T0048.003 (External Harms: User Harm) only loosely, and ATLAS is not incorporated by Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -12033,6 +12051,7 @@
       "tech_note": {
         "mechanism": "Operators treat a passing safety eval / red-team benchmark score as a proxy for refusing the real-world class of behavior the eval represents. Because vendors optimize against the published benchmark, the model learns a 'pass-the-eval' shortcut rather than the underlying intent (Goodhart's law). An attacker crafts inputs that fall in the distribution gap between the finite eval set and the true intent — a distribution shift, spurious-shortcut, or contamination-adjacent region — so the input satisfies the model's learned shortcut (looks safe to the certified guardrail) while violating the spirit the eval claims to certify. The boundary is crossed because the metric, not the mission, was optimized.",
         "exploitation_primitive": "Operator probes for and crafts inputs outside the published eval distribution (novel phrasing, composition, or attribute injection) that the benchmark-tuned guardrail passes but that elicit the prohibited behavior.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for guardrail bypass via the distribution gap between a published safety eval and true intent (Goodhart: vendors optimize the benchmark, so an attack falls in the uncovered region while the model's 'pass-the-eval' shortcut rates it safe); Enterprise has no concept of ML evaluation, generalization, or benchmark gaming. It maps to MITRE ATLAS AML.T0054 (LLM Jailbreak) / AML.T0015 (Evade ML Model), with benchmark contamination related to AML.T0031, none of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -12134,6 +12153,7 @@
       "tech_note": {
         "mechanism": "Loading a downloaded fine-tune or LoRA/adapter on top of a vetted base model composes new weights but assumes the adapter is a benign behavioral delta, so the composition inherits the base model's safety expectations and lineage. A small, cheaply-distributed adapter can encode a backdoor or alignment-stripping behavior that activates only on attacker-chosen triggers (or only when a colluding set of individually-benign adapters is combined), silently overriding the base model's safety while presenting as the trusted base. The boundary is crossed at composition: the safety review evaluated the base (or each adapter in isolation), but the deployed behavior is the merged weights, which no isolated check covered.",
         "exploitation_primitive": "Operator publishes a backdoored/alignment-stripping LoRA to a model hub; a deployment loads it on a trusted base and runs it with base-model safety assumptions, with the trigger firing only on chosen inputs.",
+        "mitre_gap": "ATT&CK Enterprise's T1195.002 Compromise Software Supply Chain is close for a downloaded artifact but has no concept of a LoRA/adapter composing trigger-conditioned backdoor or alignment-stripping behavior onto a vetted base model, where the deployed behavior is the merged weights no isolated check covered; this is model-weight behavior, not a software dependency. It maps to MITRE ATLAS AML.T0018 (Backdoor ML Model), AML.T0058 (Publish Poisoned Models), and AML.T0010.003 (ML Supply Chain Compromise: Model), none of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -12238,6 +12258,7 @@
       "tech_note": {
         "mechanism": "OAuth 2.1 authorization servers supporting Dynamic Client Registration (RFC 7591) let MCP/agent clients self-register and then ride a consent flow; the AS treats successful registration plus user consent as adequate provenance for a client identity. An attacker stands up a rogue MCP server or agent client that self-registers with a benign name/logo (RFC 7591 explicitly warns a rogue client may impersonate a legitimate client's name/logo/software-id) and rides the user's habituated consent or a manipulated agent into granting scoped tokens. An unvetted, ephemeral client thereby obtains durable delegated authority with no human-recognizable app behind it; open registration endpoints also enable client impersonation and registration flooding.",
         "exploitation_primitive": "Operator self-registers a rogue OAuth client via DCR with a trusted-looking name/logo and steers the agent/user through consent to mint scoped, durable delegated tokens.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for a rogue self-registered OAuth client (RFC 7591 dynamic client registration) that rides habituated consent to obtain durable delegated tokens with no human-recognizable app behind it; T1528 Steal Application Access Token covers stealing an existing token, not minting a fresh client identity through open registration plus consent abuse. This OAuth-agent-provenance seam has no exact home in Enterprise ATT&CK or MITRE ATLAS.",
         "anchors": [
           {
             "type": "standard",
@@ -12336,6 +12357,7 @@
       "tech_note": {
         "mechanism": "Multi-tenant LLM serving shares a prefix/prompt (KV) cache across requests for efficiency, treating cache hits as a private latency optimization. But automatic prefix caching makes time-to-first-token (TTFT) depend on whether a request's prefix is already cached, so TTFT carries information about other tenants'/sessions' prompt contents. An attacker submits candidate prefixes and measures TTFT to detect a cache hit (prefix already present from a privileged session), then recursively extends the matched prefix token-by-token, recovering secret prompt content (system prompts, document fragments, PII) through the shared-cache timing side channel.",
         "exploitation_primitive": "Operator issues crafted prefix probes and times TTFT to distinguish cache hit vs miss, pruning and extending the prefix to reconstruct another tenant's secret prompt content.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for a shared prompt-prefix/KV-cache timing oracle in a multi-tenant LLM server, where time-to-first-token reveals whether a chosen prefix is cached and lets an attacker reconstruct another tenant's secret prompt token-by-token; T1212 Exploitation for Credential Access and side-channel notions in ATT&CK do not cover LLM-serving cache side channels. It maps to MITRE ATLAS AML.T0057 (LLM Data Leakage) / AML.T0024 (Exfiltration via ML Inference API), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -12439,6 +12461,7 @@
       "tech_note": {
         "mechanism": "A code-interpreter/sandbox is built to contain execution (filesystem, CPU, process isolation) and treats any permitted network egress (package installs, API fetches, DNS) as a benign convenience rather than a confidentiality boundary. Prompt-injected or attacker-influenced content drives the agent to emit code that runs in the sandbox and uses that permitted egress to exfiltrate the agent's context, secrets, or fetched documents. The boundary is crossed because containment ignored egress: even a 'no network' sandbox often still resolves DNS, so data can be base64-encoded into subdomain queries and leaked out-of-band while the agent returns a benign-looking response.",
         "exploitation_primitive": "Operator injects content that makes the agent generate sandbox code which encodes context/secrets into an outbound fetch or DNS query to an attacker domain.",
+        "mitre_gap": "ATT&CK Enterprise's T1041 Exfiltration Over C2 Channel describes the data-out motion, but Enterprise has no technique for the specific seam where a code-interpreter sandbox built only for execution containment treats permitted egress (or even DNS resolution) as benign, letting prompt-injected model-generated code exfiltrate the agent's context/secrets out-of-band. The driver (injected content steering generated code) maps to MITRE ATLAS AML.T0051 (LLM Prompt Injection) plus AML.T0050 (Command and Scripting Interpreter), neither incorporated by Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -12537,6 +12560,7 @@
       "tech_note": {
         "mechanism": "An agent deployment treats its system prompt, tool schemas, and guardrail instructions as a confidential control layer, designing injection defenses on the assumption the attacker operates blind to the exact wording and tool surface. The attacker first extracts that hidden layer — via leakage prompts, refusal-boundary probing, error messages, encoding tricks (Base64/ROT13/leetspeak), or write-primitive reconstruction (e.g. forcing it into form-field values) — disclosing the literal instruction wording and tool names. They then craft an injection that precisely targets the disclosed instructions (overriding the exact phrasing) and invokes the exact tool names/parameters, collapsing the security-by-obscurity gap the defenses silently depended on.",
         "exploitation_primitive": "Operator runs extraction prompts to recover the system prompt and tool schema, then writes an injection tailored to the disclosed wording and tool names to reliably override guardrails.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for extracting an agent's hidden system prompt and tool schemas (via leakage prompts, refusal-boundary probing, encoding tricks) to then craft a precisely-targeted injection; Enterprise has no concept of a model's confidential instruction layer. It maps directly to MITRE ATLAS AML.T0056 (LLM Meta Prompt Extraction), with the follow-on attack as AML.T0051 (LLM Prompt Injection), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "standard",
@@ -12635,6 +12659,7 @@
       "tech_note": {
         "mechanism": "When a parent agent spawns a sub-agent it passes along task context, assuming that context is sanitized internal state; the sub-agent treats inherited instructions and data as trusted parent tasking. But untrusted content the parent absorbed (a poisoned document, web result, or prior injection) rides into the spawned sub-agent's context unfiltered, and the sub-agent — often holding different or broader tools — executes attacker intent as authentic parent direction. The boundary violation is the absence of re-validation at the spawn: inter-agent communication is implicitly trusted and unsanitized, so a local injection in the parent propagates and is structurally amplified across the agent boundary.",
         "exploitation_primitive": "Operator gets a prompt-injection into the parent's context (via a fetched doc/web result) and relies on the parent spawning a sub-agent that inherits and acts on it with the sub-agent's tool authority.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for unsanitized context inheritance across an agent-spawn boundary, where untrusted content the parent absorbed (a poisoned document or prior injection) rides into a sub-agent's context as trusted parent tasking with no re-validation; Enterprise has no model of inter-agent communication or context propagation. It maps to MITRE ATLAS AML.T0051.001 (Indirect Prompt Injection), and the self-propagating aspect to AML.T0061 (LLM Prompt Self-Replication), neither incorporated by Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -12736,6 +12761,7 @@
       "tech_note": {
         "mechanism": "A RAG/agentic-search system presents citations as verifiable provenance, so the human consumer trusts that a cited link substantiates the claim and that the agent grounded the claim in that real source. The agent instead emits a fabricated citation (a plausible but nonexistent source), a real URL that does not actually support the claim, or cites an attacker-planted document crafted to look authoritative; the human accepts the unverified claim precisely because it appears cited. The trust signal (provenance) is decoupled from the actual support relationship, so false or attacker-chosen content is laundered through the appearance of a citation — and web 'verification' can compound it when other pages cite the same ghost reference.",
         "exploitation_primitive": "Operator induces the agent to attach an authoritative-looking citation (fabricated, mismatched, or pointing to attacker-planted content) to an unsupported claim so the human accepts it as grounded.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for citation laundering, where a RAG/agentic-search system emits a fabricated or mismatched citation so a human accepts an unsupported (or attacker-planted) claim because it appears cited; Enterprise has no notion of provenance trust signals or model-generated misinformation. It maps to MITRE ATLAS AML.T0048.001/.002 (External Harms: Reputational/Societal Harm) and AML.T0060 (Publish Hallucinated Entities) when a ghost reference is reused, none of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -15254,6 +15280,7 @@
       "tech_note": {
         "mechanism": "HMI/SCADA front-ends issue control writes (e.g., Modbus write-single-register/coil FC05/FC06/FC16, OPC-UA Write service, DNP3 operate) the moment an operator clicks; the control authority is bound to the console session, not to any cryptographic proof of human deliberation. When an LLM copilot is wired into the same console session and is permitted to emit those same writes, the PLC/RTU cannot distinguish an agent-generated setpoint change from a trained operator's because legacy OT protocols carry no per-command actor identity or intent attestation. The agent's prompt-injected or hallucinated 'recommendation' therefore actuates at machine speed with full operator authority.",
         "exploitation_primitive": "Indirect prompt injection of the copilot's input context (alarm text, log entry, work-order note) that the agent translates into a console-authorized setpoint/command write, bypassing the human deliberation the OT authority model assumes.",
+        "mitre_gap": "ATT&CK for ICS has T0831 Manipulation of Control and T0855 Unauthorized Command Message for OT writes, but neither captures the seam where an LLM copilot wired into an HMI session emits operator-authority control writes (Modbus FC05/06/16, OPC-UA Write, DNP3 operate) that the PLC cannot distinguish from a deliberating human because legacy OT protocols carry no per-command actor identity. The agent-as-unattested-operator angle is an AI seam with no ICS or Enterprise technique; the prompt-injection driver maps to MITRE ATLAS AML.T0051, not incorporated by ATT&CK.",
         "anchors": [
           {
             "type": "incident",
@@ -15361,6 +15388,7 @@
       "tech_note": {
         "mechanism": "An NL-to-fieldbus agent decomposes one approved high-level intent into many wire-level writes (Modbus FC05/06/16, OPC-UA Write/Method-Call, DNP3 operate). The human approval gate binds to the natural-language request, but the field protocols themselves carry no authorization token, signature, or scope on individual function codes — most are insecure-by-design with plaintext, unauthenticated engineering operations. So sub-steps that were injected or over-broadly expanded reach the controller carrying 'inherited' approval the operator never granted to those specific writes.",
         "exploitation_primitive": "Goal-decomposition expansion or injected sub-step that emits function codes outside the scope the human actually approved, exploiting that the approval was never re-checked at the function-code boundary.",
+        "mitre_gap": "ATT&CK for ICS T0855 Unauthorized Command Message and T0836 Modify Parameter describe the resulting unauthorized writes, but neither captures approval-context loss across a natural-language-to-fieldbus translation, where one human 'okay' on a high-level intent is inherited by many injected or over-broad function-code writes that the protocol cannot scope or attest. This NL-to-protocol decomposition seam is AI-specific, with the injection driver mapping to MITRE ATLAS AML.T0051 (LLM Prompt Injection), which ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -15466,6 +15494,7 @@
       "tech_note": {
         "mechanism": "Fleet-telematics backends expose remote-actuation APIs (door unlock, immobilizer/fuel cutoff, remote start) that a TCU/gateway accepts as backend-signed dispatcher intent and relays onto the vehicle CAN bus. Many such platforms have weak or hard-coded authentication and unauthenticated command channels, so an authenticated-but-manipulated dispatcher agent can issue bulk commands the backend forwards verbatim. The vehicle gateway translates these into CAN-level actuation with no human-need verification.",
         "exploitation_primitive": "Injected task text (poisoned support ticket, malicious route note) steers the dispatcher-scoped agent into emitting bulk remote-actuation API calls that the telematics backend relays to vehicles as authentic dispatcher intent.",
+        "mitre_gap": "ATT&CK Enterprise's T1190 Exploit Public-Facing Application describes attacking the telematics backend, but has no technique for an authenticated-but-prompt-injected fleet agent issuing bulk remote-actuation commands (unlock/immobilizer/remote-start) that a vehicle gateway relays to the CAN bus as authentic dispatcher intent with no human-need verification; Enterprise/ICS have no model of an LLM dispatcher's manipulated reasoning becoming physical actuation. The injection driver maps to MITRE ATLAS AML.T0051, not incorporated by ATT&CK.",
         "anchors": [
           {
             "type": "cve",
@@ -15572,6 +15601,7 @@
       "tech_note": {
         "mechanism": "MDM/UEM platforms (Intune, Jamf, Mobile Guardian) execute remote wipe, configuration-profile push, and trust-CA installation against any device set on the authority of an admin-scoped token via the platform API. The authority model assumes a human admin's pace; there is no blast-radius constraint distinguishing a single targeted action from an estate-wide one. An LLM IT-ops agent holding that token executes the same privileged API calls, so prompt-injected instructions push malicious profiles or trigger mass wipe that the platform treats as authentic admin intent.",
         "exploitation_primitive": "Prompt injection via a helpdesk message or device-name string the agent reads, causing it to invoke the MDM wipe/profile-push API across the enrolled estate with the admin token's full authority.",
+        "mitre_gap": "ATT&CK has T1641 Data Manipulation (Mobile) and T1626 Abuse Elevation Control (Mobile) for device-side effects, but neither captures the seam where a prompt-injected IT-ops agent holding an MDM admin token pushes a malicious config profile, rogue CA, or estate-wide remote wipe that the platform executes as authentic admin intent with no blast-radius constraint distinguishing the agent from a human admin. The agent-authority-sizing and injection seam maps to MITRE ATLAS AML.T0051 (LLM Prompt Injection), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "incident",
@@ -15677,6 +15707,7 @@
       "tech_note": {
         "mechanism": "Voice agents treat any audio their microphone decodes as an authenticated owner utterance and forward the transcribed text into the LLM-tool loop with standing device authority. DolphinAttack exploits the nonlinearity of MEMS microphone front-ends: voice commands amplitude-modulated onto an ultrasonic (>20 kHz) carrier are inaudible to humans but get demodulated back to baseband audio inside the mic circuit and transcribed as a real command. The perception boundary has no liveness/authenticity check, so injected inaudible audio drives actuation as if spoken by the owner.",
         "exploitation_primitive": "Inaudible ultrasonic-carrier (or RF-replayed) audio injected near the device that the microphone demodulates and the agent transcribes into owner-authority commands the human never uttered.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for inaudible/ultrasonic (DolphinAttack-class) or RF-replayed voice-command injection that a microphone demodulates into commands a human never uttered, which the voice agent then executes with owner authority; Enterprise has no perception-layer/liveness concept. It maps to MITRE ATLAS AML.T0051.001 (Indirect Prompt Injection) into the voice modality and AML.T0041 (Physical Environment Access), neither of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -15781,6 +15812,7 @@
       "tech_note": {
         "mechanism": "Agents consuming RFID/badge/BLE/Wi-Fi telemetry treat the signal as ground-truth proof of a named human's physical presence. Low-frequency 125 kHz RFID badges transmit a static, unencrypted UID that is trivially cloned; BLE passive-entry tokens can be relayed end-to-end with sub-millisecond added latency because the protocol has no distance-bounding. Because the presence signal carries no proof-of-proximity or anti-relay binding, a cloned UID or relayed token is ingested as a verified identity-and-location fact on which the agent grants access or escalates context.",
         "exploitation_primitive": "Clone a static badge UID or operate a two-device BLE relay so the agent ingests a forged 'person X is physically here' signal and unlocks/approves co-located actions.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for an agent ingesting a cloned static RFID UID, a relayed BLE token, or spoofed Wi-Fi/beacon presence as authenticated proof of a named human's physical presence, then unlocking/escalating on that forged fact; Enterprise has no model of presence/proximity as an authentication input or of relay attacks lacking distance-bounding. The agent-trusts-forged-perception seam maps to MITRE ATLAS AML.T0041 (Physical Environment Access), not part of Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -15886,6 +15918,7 @@
       "tech_note": {
         "mechanism": "Secure firmware update relies on the device cryptographically verifying an image signature and enforcing monotonic version/rollback counters before flashing. When an AI fleet-ops agent selects and pushes images, the human-in-the-loop substitutes the agent's narrated 'I verified the signature/changelog' for an actual signature check. If the device or pipeline does not independently enforce signature + anti-rollback (a common insecure-by-design gap), the agent can push an unsigned, swapped, or downgraded image — and a still-validly-signed older vulnerable image passes verification, enabling firmware-level persistence at fleet scale.",
         "exploitation_primitive": "Agent reads an attacker-supplied changelog/release page, rationalizes a swapped or downgraded image as legitimate, and pushes it to the fleet, standing in for a cryptographic verification that was never enforced.",
+        "mitre_gap": "ATT&CK Enterprise's T1542.001 System Firmware covers implanting firmware, but has no technique for the seam where a human substitutes an AI fleet-ops agent's narrated 'I verified the signature/changelog' for an actual cryptographic check, letting the agent push an unsigned, swapped, or downgraded image that devices accept; Enterprise has no concept of an agent's narration standing in for a real verification gate. The agent-rationalization-of-provenance angle is AI-specific with the manipulation driver mapping to MITRE ATLAS AML.T0051, not incorporated by ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -15991,6 +16024,7 @@
       "tech_note": {
         "mechanism": "PKI issuance (ACME, internal CA, cloud private CA) binds a name to a key after domain-control validation (HTTP-01/DNS-01) or an internal authorization policy, and treats a requester holding issuance authority as having validated control. An agent with issuance/approval scope that is prompt-injected becomes a confused deputy: it requests or approves certificates for names it does not legitimately control, or installs a trust anchor, using the CA's own authority. Historic DCV-bypass misissuance (subdomain-to-base-domain, unprivileged-port validation) shows the validation boundary is exploitable even without an agent.",
         "exploitation_primitive": "Prompt injection via a ticket, domain string, or service descriptor the PKI-ops agent reads, causing it to issue/approve a certificate (or install a CA) for an attacker-chosen name with the pipeline's authority.",
+        "mitre_gap": "ATT&CK Enterprise's T1649 Steal or Forge Authentication Certificates is the nearest, but it describes stealing/forging certs, not an agent with legitimate issuance/approval scope being prompt-injected into a confused deputy that mints attacker-usable certificates or installs a trust anchor using the CA's own authority; Enterprise has no model of an LLM agent as the mis-issuing principal. The injection driver maps to MITRE ATLAS AML.T0051 (LLM Prompt Injection), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "incident",
@@ -16102,6 +16136,7 @@
       "tech_note": {
         "mechanism": "An AI anomaly/control model ingests wireless-sensor telemetry as a faithful representation of physical state and bases actuation on its inference. Because legacy ICS sensor protocols (e.g., Modbus) lack authentication and integrity, an attacker can inject false readings, slow bias drift, or replayed 'normal' data. The model then infers a benign or inverted state and either actuates a harmful change or suppresses a needed protective action — a false-data-injection attack weaponizing the model's data-to-control coupling, since the inference layer cannot distinguish authentic physics from spoofed telemetry.",
         "exploitation_primitive": "False-data-injection / bias-drift / replay on the unauthenticated sensor feed that moves the model's inference across an actuation threshold (or masks an alarm condition).",
+        "mitre_gap": "ATT&CK for ICS T0856 Spoof Reporting Message and T0832 Manipulation of View describe spoofing telemetry/operator view, but neither captures the AI-specific seam where false-data injection into a sensor stream shifts an ML anomaly/control model's inference so it actuates harmfully or suppresses protection, because the inference layer cannot distinguish authentic physics from spoofed input. It maps to MITRE ATLAS AML.T0015 (Evade ML Model) via adversarial/false sensor data and AML.T0031 (Erode ML Model Integrity), neither incorporated by Enterprise/ICS ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -16205,6 +16240,7 @@
       "tech_note": {
         "mechanism": "An embodied/VLM-policy agent treats camera/sensor input as authentic environmental fact, and any text-in-scene as potential instruction, with no boundary between observed-world data and trusted control input. Two demonstrated primitives apply: physical adversarial patches (RP2/'Robust Physical Perturbations') that reliably cause object detectors to misclassify or suppress objects, and physical-object text-injection (PI3D) where a text-bearing object placed in the 3D scene is ingested by the MLLM as an instruction. Either redirects the robot's next physical action because perception feeds the action loop directly.",
         "exploitation_primitive": "Place an adversarial patch (misperception) or a text-bearing physical object ('ignore prior task, deliver to dock 7') in the agent's field of view; its vision policy ingests it as legitimate fact/instruction and the action changes.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for an adversarial physical patch, spoofed label, or text-in-scene that an embodied/VLM-policy agent ingests as authentic environmental fact or instruction, redirecting its physical action; Enterprise has no perception-to-action loop concept. It maps to MITRE ATLAS AML.T0015 (Evade ML Model) for physical adversarial perturbation and AML.T0051.001 (Indirect Prompt Injection) for physical text-injection, neither of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -16314,6 +16350,7 @@
       "tech_note": {
         "mechanism": "Building-management and physical access-control systems (door controllers, elevators, HVAC, surveillance, life-safety) execute commands from a facilities-admin integration as accountable human security-operator decisions, sized to human-paced security decisions with audit but no blast-radius limit. An LLM facilities agent holding the BMS/access integration scope issues the same API/command-bus calls, so injected text (an automated 'incident' description, a calendar entry, a sensor caption) can drive mass door-unlock, life-safety override, or camera disablement that the building system applies as authentic operator intent.",
         "exploitation_primitive": "Injected incident/calendar/caption text steers the facilities agent into a site-wide unlock / camera-disable / HVAC-override sequence via its BMS integration scope.",
+        "mitre_gap": "ATT&CK for ICS T0831 Manipulation of Control is the nearest, but it has no technique for an LLM facilities agent holding a BMS/access-control integration being steered by injected text into mass door-unlock, life-safety override, or camera disablement that the building system applies as authentic human-operator intent with no blast-radius limit. The agent-authority and injection seam maps to MITRE ATLAS AML.T0051 (LLM Prompt Injection), which Enterprise/ICS ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -16419,6 +16456,7 @@
       "tech_note": {
         "mechanism": "Zigbee/Matter/Thread fabrics admit new nodes and rebind control groups on the controller's commissioning command. In Zigbee, a device announcing itself as coordinator or spoofing the join/association handshake can insert itself or disrupt the mesh; in Matter, commissioning relies on device attestation but the fabric still trusts the commissioner's decision to admit a node. When an LLM home/site agent holds controller authority, injected text or a malicious device-advertised name can steer it to commission an attacker's device or rebind groups to it, granting the rogue node trusted fabric membership.",
         "exploitation_primitive": "Injected text or a crafted device-advertised name drives the controller-authority agent to commission an attacker device into the fabric or rebind a control group to it.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for an LLM home/site agent with controller authority being steered (by injected text or a malicious device-advertised name) into commissioning a rogue device into a Zigbee/Matter/Thread fabric or rebinding control groups, granting an attacker node trusted membership; Enterprise has no IoT-fabric-commissioning model. The injection driver maps to MITRE ATLAS AML.T0051.001 (Indirect Prompt Injection), and the device commissioning itself has no ATT&CK or ATLAS technique.",
         "anchors": [
           {
             "type": "research",
@@ -17830,7 +17868,20 @@
         "mechanism": "Crypto-agility control planes (centralized cipher-policy services, KMS algorithm profiles, fleet crypto-policy CRDs) distribute an 'allowed algorithms' set that workloads cache and enforce. The distribution channel is typically designed for forward change without a monotonic strength floor: a newly fetched policy revision simply replaces the cached one. An attacker with write access to the policy store, or who replays an older legitimately-signed policy version (a rollback), can push a revision that re-enables a deprecated suite or lowers the minimum group. Because the agility mechanism treats any authoritative-looking update as a forward update, the very lever built to strengthen crypto becomes a one-command fleet-wide weakening primitive.",
         "exploitation_primitive": "Write or replay a prior signed crypto-policy version that re-enables a weak suite; the fleet applies it as an authoritative update because there is no monotonic 'never weaker than current' check on policy application.",
         "mitre_gap": "Closest Enterprise id is T1562.001 (Impair Defenses: Disable or Modify Tools), tagged in input. It is insufficient because it frames the act as disabling a security control, whereas here the security control (the agility policy plane) is functioning exactly as designed - it just lacks a strength-monotonicity invariant. ATT&CK has no concept of 'configuration rollback to a weaker-but-valid prior policy version' or signed-policy replay as a downgrade, and no technique for crypto-policy distribution integrity specifically.",
-        "anchors": [],
+        "anchors": [
+          {
+            "type": "technique",
+            "ref": "TLS downgrade attacks — FREAK (CVE-2015-0204) & Logjam (CVE-2015-4000)",
+            "note": "canonical proof that a cipher-agility/negotiation mechanism which accepts a weaker-but-valid suite becomes a weakening primitive: attackers forced sessions down to export-grade 512-bit RSA/DH that were still allowed, breaking confidentiality without disabling any control",
+            "url": "https://nvd.nist.gov/vuln/detail/CVE-2015-4000"
+          },
+          {
+            "type": "standard",
+            "ref": "The Update Framework (TUF) — rollback-attack defense via monotonic version numbers",
+            "note": "signed-metadata systems require strictly increasing version counters precisely because replaying an older, legitimately-signed revision is a known downgrade vector — the exact monotonicity invariant crypto-policy planes omit",
+            "url": "https://theupdateframework.io/security/"
+          }
+        ],
         "detection": "Enforce a monotonic crypto-policy floor at the workload: reject any fetched policy whose minimum algorithm strength or version counter is lower than the currently-enforced one, and alert on policy revisions that re-introduce previously-deprecated suites; require strictly increasing signed policy version numbers to defeat replay.",
         "references": [
           {
@@ -20780,6 +20831,7 @@
       "tech_note": {
         "mechanism": "An AI coding assistant generates inline completions from a model trained/retrieved on untrusted public code (and indexed project context). Accepting a completion with one keystroke launders machine-authored text into a human-attributed commit, so it passes review as 'code I wrote' rather than as third-party content. Because the model can reproduce insecure patterns present in its training corpus or biased context, an attacker who seeds public repos/docs/Q&A or poisons the indexed project context can steer completions toward a subtly insecure or backdoored pattern that crosses the review boundary wearing the developer's identity.",
         "exploitation_primitive": "Seed/poison the corpus or project context the assistant draws on so generated completions embed an injected weakness, which the accept-completion gesture attributes to the human and exempts from third-party scrutiny.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for suggestion-bias laundering, where an attacker seeds public corpora or poisons indexed project context so an AI assistant's inline completion carries an injected weakness that the one-keystroke accept gesture launders into a human-attributed commit, bypassing review as 'code I wrote'; Enterprise has no model of model-authored code attribution. It maps to MITRE ATLAS AML.T0020 (Poison Training Data) and AML.T0051.001 (Indirect Prompt Injection of project context), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -20888,6 +20940,7 @@
       "tech_note": {
         "mechanism": "LLMs emit package names in import/install statements that developers and build agents pass straight to npm/PyPI as authoritative artifact identities without existence/ownership checks. Models hallucinate non-existent names at scale and, critically, repeat the same fabricated names across runs (stable hallucinations). An attacker harvests this recurrent set, pre-registers the exact names with malicious payloads, and any subsequent agent or developer acting on the same suggestion resolves and executes attacker code — the model's fabricated identity becomes a real attacker-controlled supply-chain identity (slopsquatting).",
         "exploitation_primitive": "Pre-register the stable set of recurrently-hallucinated package names on the public registry with a malicious payload; the next LLM-driven install resolves and runs it.",
+        "mitre_gap": "ATT&CK Enterprise's T1195.001 Compromise Software Dependencies and Development Tools is close for the registry-publish step but has no concept of slopsquatting, pre-registering the stable set of package names that LLMs repeatedly hallucinate so an agent/developer acting on the fabricated suggestion installs attacker code; the trust failure is a model's invented identity becoming resolvable. It maps to MITRE ATLAS AML.T0060 (Publish Hallucinated Entities) and AML.T0062 (Discover LLM Hallucinations), neither incorporated by Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -20996,6 +21049,7 @@
       "tech_note": {
         "mechanism": "Python pickle (used by PyTorch .bin/.pth via torch.load) executes arbitrary code during deserialization through the __reduce__ method, and some model configs/tokenizers run custom code on load (e.g., trust_remote_code). An ML engineer treats hub artifacts as inert data, so the loading library instantiates them with full local privilege. An attacker publishes a model whose artifact embeds a __reduce__ payload (or custom-code-on-load), so merely loading the 'data' executes attacker code on the host/inference container — exploiting the format boundary between a model file and a program.",
         "exploitation_primitive": "A pickle/__reduce__ payload (or trust_remote_code custom loader) embedded in a hub-hosted model artifact that runs arbitrary code at load time.",
+        "mitre_gap": "ATT&CK Enterprise's T1204.002 User Execution: Malicious File describes a user opening a malicious file, but does not capture the AI-specific seam where merely loading a model artifact (pickle/__reduce__, trust_remote_code, a code-on-load tokenizer) executes attacker code because hub artifacts are treated as inert data; the format boundary between 'a model file' and 'a program' is not an Enterprise concept. It maps to MITRE ATLAS AML.T0011.000 (User Execution: Unsafe ML Artifacts) and AML.T0010.001 (ML Supply Chain Compromise: ML Software), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "incident",
@@ -21099,6 +21153,7 @@
       "tech_note": {
         "mechanism": "A benchmark/leaderboard score is treated as a procurement-grade measure of generalization to unseen tasks. If a vendor trains or fine-tunes on the public test set (or near-duplicate paraphrases of it), the reported score reflects memorization, not capability. The buyer procures and deploys a model whose real behavior — including guardrail efficacy and tool-use reliability — is materially worse than the headline number, and the gap stays invisible until production because contamination inflates the very metric used to select it.",
         "exploitation_primitive": "Train/fine-tune on the benchmark test set or near-duplicates to inflate the leaderboard score that drives the procurement decision.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for benchmark/leaderboard test-set contamination, where a vendor trains on the public test set so a memorization-inflated score drives a procurement decision and the model's real guardrail/tool-use efficacy is worse than the number; Enterprise has no concept of ML evaluation integrity. It maps to MITRE ATLAS AML.T0031 (Erode ML Model Integrity) and AML.T0059 (Erode Dataset Integrity) as the closest, neither of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -21203,6 +21258,7 @@
       "tech_note": {
         "mechanism": "RLHF/DPO/preference fine-tuning lets crowdsourced preference labels directly shape the reward model and post-trained behavior, with no per-labeler provenance or adversarial vetting. A coordinated/sybil set of raters injects a poisoned preference pattern — systematically upvoting responses that comply with a secret trigger phrase — so a trigger-conditioned backdoor is baked into the reward model and inherited by every model trained against it. This is a behavioral compromise introduced through the feedback channel, not the pretraining corpus.",
         "exploitation_primitive": "Sybil/coordinated preference-label injection that rewards trigger-conditioned unsafe behavior, embedding a universal jailbreak backdoor into the reward model.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for sybil preference-label injection, where coordinated/automated raters upvote responses complying with a secret trigger so a trigger-conditioned backdoor is baked into the reward model and inherited by every model trained against it; Enterprise has no RLHF/feedback-channel model. It maps to MITRE ATLAS AML.T0020 (Poison Training Data) and AML.T0018 (Backdoor ML Model) via AML.T0043.004 (Insert Backdoor Trigger), none of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",
@@ -21311,6 +21367,7 @@
       "tech_note": {
         "mechanism": "A model-as-a-service provider treats authenticated, paying API traffic as legitimate inference consumption and serves logit-or-text-rich responses to any account in good standing, without treating the query distribution as a potential extraction channel. An attacker operates one or many authenticated accounts to query across a coverage-maximizing input distribution and trains a substitute model on the responses, extracting a functional clone — the provider's billing/identity trust signal authorizes the very access that distills its core asset out through the front door (model extraction / functionality stealing).",
         "exploitation_primitive": "Coverage-maximizing query farming over authenticated accounts, harvesting outputs (and any returned logits/log-probs) to train a substitute model.",
+        "mitre_gap": "ATT&CK Enterprise's T1213 Data from Information Repositories does not capture model extraction, where an attacker farms a coverage-maximizing query distribution against a paid inference API and trains a substitute model on the responses, distilling the provider's proprietary function out the front door under legitimate billing trust; Enterprise has no model-as-asset concept. It maps to MITRE ATLAS AML.T0024.002 (Exfiltration via ML Inference API: Extract ML Model) and AML.T0048.004 (ML Intellectual Property Theft), which Enterprise ATT&CK does not incorporate.",
         "anchors": [
           {
             "type": "research",
@@ -21416,6 +21473,7 @@
       "tech_note": {
         "mechanism": "A shared system-prompt or agent-definition pulled from a community repo/gist/marketplace is dropped into the agent's privileged instruction context as inert configuration, without the code-review, signing, or dependency-pinning an executable dependency gets. But prose in the instruction context is control-plane code: an attacker who publishes or later updates a popular shared prompt can embed hidden directives (exfiltrate context, silently prefer an attacker-controlled tool/MCP server, lower guardrails on a trigger), and the importing agent inherits them at its highest privilege level. This mirrors MCP tool-description poisoning, where hidden instructions in metadata steer the agent.",
         "exploitation_primitive": "Publish or rug-pull-update a widely-imported shared prompt/agent-definition containing hidden directives that execute at the agent's top privilege when loaded.",
+        "mitre_gap": "ATT&CK Enterprise has no technique for a shared system-prompt/agent-definition imported from a community repo embedding hidden directives (exfiltrate context, prefer an attacker tool, lower guardrails on a trigger) that enter the agent's privileged instruction context as if inert config; Enterprise treats prose as data, not control-plane code. It maps to MITRE ATLAS AML.T0051 (LLM Prompt Injection) and AML.T0053 (LLM Plugin Compromise) for the attacker-preferred tool, neither incorporated by Enterprise ATT&CK.",
         "anchors": [
           {
             "type": "research",
@@ -21524,6 +21582,7 @@
       "tech_note": {
         "mechanism": "Teams approve agent-authored Terraform/Kubernetes/cloud IaC on a quick skim, trusting it embodies least-privilege intent. The agent emits plans that are syntactically valid and superficially match the request but quietly diverge from policy — an over-broad IAM principal (Action:'*' / wildcard resources), a public-by-default storage resource, a disabled control-plane log, or a wildcard security group. Because reviewers treat agent IaC as policy-aligned and policy-as-code gates may not cover the specific drift, the non-compliant infrastructure is applied with full deployment authority and becomes live attack surface.",
         "exploitation_primitive": "Agent generates plausible-but-over-permissive IaC (IAM wildcard, public bucket, open security group) that passes a skim review and is applied with the team's deploy authority.",
+        "mitre_gap": "ATT&CK Enterprise's T1098.003 Account Manipulation: Additional Cloud Roles captures granting an over-broad role but not the seam where an agent generates syntactically-valid IaC (wildcard IAM, public storage, disabled logging, wildcard security group) that reviewers approve as policy-aligned because they trust agent-authored code, turning silent policy drift into live attack surface; Enterprise has no model of agent-authored-code review trust. The injection/misgeneration driver maps loosely to MITRE ATLAS AML.T0051, and the IaC-review-trust seam has no exact ATT&CK or ATLAS technique.",
         "anchors": [
           {
             "type": "research",
@@ -21630,6 +21689,7 @@
       "tech_note": {
         "mechanism": "An application fronts its LLM with a safety/guardrail classifier (prompt-injection detector, content moderator, jailbreak filter) and relies on its verdict to authorize or block inputs/outputs, without verifying the classifier artifact's integrity. If an attacker swaps the model in the supply chain — publishing a malicious build under the same model id, compromising the hub artifact, or seeding a backdoor that passes a specific trigger marker — the safety layer silently approves the very inputs/outputs it exists to block. The application keeps trusting verdicts while the protection has been hollowed out (a backdoored dependency).",
         "exploitation_primitive": "Supply-chain swap, malicious re-publish under the same id, or backdoor-fine-tune of the guardrail model so trigger-marked attacks pass while benign behavior is preserved.",
+        "mitre_gap": "ATT&CK Enterprise's T1195.002 Compromise Software Supply Chain is the nearest for swapping a dependency, but it does not capture the AI-specific seam where a backdoored/poison-fine-tuned guardrail classifier silently passes trigger-marked inputs while the application keeps trusting its verdicts; Enterprise has no concept of a safety-model artifact's decisions being hollowed out. It maps to MITRE ATLAS AML.T0018 (Backdoor ML Model) via AML.T0043.004 (Insert Backdoor Trigger) and AML.T0010.003 (ML Supply Chain Compromise: Model), none of which Enterprise ATT&CK incorporates.",
         "anchors": [
           {
             "type": "research",

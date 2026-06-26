@@ -25,18 +25,40 @@
     ],
     "detection": "Alert when a session negotiated a classical-only group despite both peers advertising a hybrid PQC group; cross-check the actually-negotiated named group against the configured PQC policy floor rather than trusting the 'PQC-capable' flag, and flag any HelloRetryRequest that steers away from a hybrid group.",
     "references": [
-      { "title": "OpenSSL discussion: CVE-2026-2673 TLS 1.3 may choose unexpected key agreement group", "url": "https://github.com/openssl/openssl/discussions/30543" },
-      { "title": "draft-ietf-tls-ecdhe-mlkem: Post-quantum hybrid ECDHE-MLKEM Key Agreement for TLS 1.3", "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-ecdhe-mlkem/" }
+      {
+        "title": "OpenSSL discussion: CVE-2026-2673 TLS 1.3 may choose unexpected key agreement group",
+        "url": "https://github.com/openssl/openssl/discussions/30543"
+      },
+      {
+        "title": "draft-ietf-tls-ecdhe-mlkem: Post-quantum hybrid ECDHE-MLKEM Key Agreement for TLS 1.3",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-ecdhe-mlkem/"
+      }
     ]
   },
   "GH5-crypto-agility-policy-rollback-race": {
     "mechanism": "Crypto-agility control planes (centralized cipher-policy services, KMS algorithm profiles, fleet crypto-policy CRDs) distribute an 'allowed algorithms' set that workloads cache and enforce. The distribution channel is typically designed for forward change without a monotonic strength floor: a newly fetched policy revision simply replaces the cached one. An attacker with write access to the policy store, or who replays an older legitimately-signed policy version (a rollback), can push a revision that re-enables a deprecated suite or lowers the minimum group. Because the agility mechanism treats any authoritative-looking update as a forward update, the very lever built to strengthen crypto becomes a one-command fleet-wide weakening primitive.",
     "exploitation_primitive": "Write or replay a prior signed crypto-policy version that re-enables a weak suite; the fleet applies it as an authoritative update because there is no monotonic 'never weaker than current' check on policy application.",
     "mitre_gap": "Closest Enterprise id is T1562.001 (Impair Defenses: Disable or Modify Tools), tagged in input. It is insufficient because it frames the act as disabling a security control, whereas here the security control (the agility policy plane) is functioning exactly as designed - it just lacks a strength-monotonicity invariant. ATT&CK has no concept of 'configuration rollback to a weaker-but-valid prior policy version' or signed-policy replay as a downgrade, and no technique for crypto-policy distribution integrity specifically.",
-    "anchors": [],
+    "anchors": [
+      {
+        "type": "technique",
+        "ref": "TLS downgrade attacks — FREAK (CVE-2015-0204) & Logjam (CVE-2015-4000)",
+        "note": "canonical proof that a cipher-agility/negotiation mechanism which accepts a weaker-but-valid suite becomes a weakening primitive: attackers forced sessions down to export-grade 512-bit RSA/DH that were still allowed, breaking confidentiality without disabling any control",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2015-4000"
+      },
+      {
+        "type": "standard",
+        "ref": "The Update Framework (TUF) — rollback-attack defense via monotonic version numbers",
+        "note": "signed-metadata systems require strictly increasing version counters precisely because replaying an older, legitimately-signed revision is a known downgrade vector — the exact monotonicity invariant crypto-policy planes omit",
+        "url": "https://theupdateframework.io/security/"
+      }
+    ],
     "detection": "Enforce a monotonic crypto-policy floor at the workload: reject any fetched policy whose minimum algorithm strength or version counter is lower than the currently-enforced one, and alert on policy revisions that re-introduce previously-deprecated suites; require strictly increasing signed policy version numbers to defeat replay.",
     "references": [
-      { "title": "NIST SP 1800-38: Migration to Post-Quantum Cryptography (crypto agility)", "url": "https://www.nccoe.nist.gov/crypto-agility-considerations-migrating-post-quantum-cryptographic-algorithms" }
+      {
+        "title": "NIST SP 1800-38: Migration to Post-Quantum Cryptography (crypto agility)",
+        "url": "https://www.nccoe.nist.gov/crypto-agility-considerations-migrating-post-quantum-cryptographic-algorithms"
+      }
     ]
   },
   "GH5-hndl-keylog-export-archival-bridge": {
@@ -53,7 +75,10 @@
     ],
     "detection": "Treat exported session keys as a distinct confidentiality class: enforce short retention and a separate, non-archival key lifecycle isolated from ciphertext capture; alert when key-export artifacts appear in SIEM/cold-storage buckets that also hold raw packet/flow captures.",
     "references": [
-      { "title": "IETF draft-ietf-tls-keylogfile: The SSLKEYLOGFILE Format for TLS", "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-keylogfile/" }
+      {
+        "title": "IETF draft-ietf-tls-keylogfile: The SSLKEYLOGFILE Format for TLS",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-keylogfile/"
+      }
     ]
   },
   "GH5-edge-worker-cold-isolate-state-bleed": {
@@ -76,8 +101,14 @@
     ],
     "detection": "Lint/policy-scan tenant code for secrets or per-request data assigned to module-scope globals; enforce request-scoped state; monitor for anomalous secret/token values appearing across requests of different principals on the same isolate, and keep V8 patch currency for sandbox-escape CVEs.",
     "references": [
-      { "title": "Cloudflare Workers docs: How Workers works (isolate reuse, global state)", "url": "https://developers.cloudflare.com/workers/reference/how-workers-works/" },
-      { "title": "Cloudflare: The Cloudflare Workers Security Model", "url": "https://developers.cloudflare.com/workers/reference/security-model/" }
+      {
+        "title": "Cloudflare Workers docs: How Workers works (isolate reuse, global state)",
+        "url": "https://developers.cloudflare.com/workers/reference/how-workers-works/"
+      },
+      {
+        "title": "Cloudflare: The Cloudflare Workers Security Model",
+        "url": "https://developers.cloudflare.com/workers/reference/security-model/"
+      }
     ]
   },
   "GH5-cdn-edge-cache-key-confused-deputy": {
@@ -106,8 +137,14 @@
     ],
     "detection": "Audit that every input the origin uses for authorization/personalization is included in the cache key or Vary; alert on cache hits for responses containing Set-Cookie/Authorization-derived personalization; enforce cache rules that never cache responses to authenticated requests by content-type rather than by URL extension.",
     "references": [
-      { "title": "PortSwigger: Gotta cache em all", "url": "https://portswigger.net/research/gotta-cache-em-all" },
-      { "title": "Omer Gil: Web Cache Deception Attack (Black Hat 2017)", "url": "https://blackhat.com/docs/us-17/wednesday/us-17-Gil-Web-Cache-Deception-Attack.pdf" }
+      {
+        "title": "PortSwigger: Gotta cache em all",
+        "url": "https://portswigger.net/research/gotta-cache-em-all"
+      },
+      {
+        "title": "Omer Gil: Web Cache Deception Attack (Black Hat 2017)",
+        "url": "https://blackhat.com/docs/us-17/wednesday/us-17-Gil-Web-Cache-Deception-Attack.pdf"
+      }
     ]
   },
   "GH5-secrets-lease-rotation-window-race": {
@@ -124,8 +161,14 @@
     ],
     "detection": "Instrument the downstream resource (not just the manager) to log credential acceptance and alert when a credential the manager has rotated out is still successfully authenticating; minimize/zero the downstream grace overlap and correlate manager rotation events with resource-side acceptance timestamps.",
     "references": [
-      { "title": "HashiCorp Vault: Lease, Renew, and Revoke", "url": "https://developer.hashicorp.com/vault/docs/concepts/lease" },
-      { "title": "HashiCorp Vault: Database secrets engine", "url": "https://developer.hashicorp.com/vault/docs/secrets/databases" }
+      {
+        "title": "HashiCorp Vault: Lease, Renew, and Revoke",
+        "url": "https://developer.hashicorp.com/vault/docs/concepts/lease"
+      },
+      {
+        "title": "HashiCorp Vault: Database secrets engine",
+        "url": "https://developer.hashicorp.com/vault/docs/secrets/databases"
+      }
     ]
   },
   "GH5-esim-rsp-profile-provenance-gap": {
@@ -148,8 +191,14 @@
     ],
     "detection": "Require step-up subscriber authentication and out-of-band confirmation at the operator before an SM-DP+ releases a profile; monitor for profile downloads to a new eUICC EID shortly after account changes, and alert on activation-code redemption from anomalous device/geographies.",
     "references": [
-      { "title": "GSMA: Security Analysis of the Consumer Remote SIM Provisioning Protocol", "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/security-analysis-of-the-consumer-remote-sim-provisioning-protocol/" },
-      { "title": "GSMA SGP.22 RSP Technical Specification", "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/gsma_resources/sgp-22-v2-2-2/" }
+      {
+        "title": "GSMA: Security Analysis of the Consumer Remote SIM Provisioning Protocol",
+        "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/security-analysis-of-the-consumer-remote-sim-provisioning-protocol/"
+      },
+      {
+        "title": "GSMA SGP.22 RSP Technical Specification",
+        "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/gsma_resources/sgp-22-v2-2-2/"
+      }
     ]
   },
   "GH5-fiveg-suci-reidentification-bridge": {
@@ -178,8 +227,14 @@
     ],
     "detection": "Home network should monitor for repeated AKA failures / Authentication-Failure probing patterns and rate-limit per routing-indicator; deploy null-scheme detection and reject reused SUCI randomness; on-device, surface anomalous repeated authentication-failure prompts.",
     "references": [
-      { "title": "5G SUCI-Catchers: Still Catching Them All? (ACM WiSec 2021)", "url": "https://dl.acm.org/doi/10.1145/3448300.3467826" },
-      { "title": "5G SUCI Probing in the Wild (2024)", "url": "https://www.researchgate.net/publication/381853402_5G_SUCI_Probing_in_the_Wild" }
+      {
+        "title": "5G SUCI-Catchers: Still Catching Them All? (ACM WiSec 2021)",
+        "url": "https://dl.acm.org/doi/10.1145/3448300.3467826"
+      },
+      {
+        "title": "5G SUCI Probing in the Wild (2024)",
+        "url": "https://www.researchgate.net/publication/381853402_5G_SUCI_Probing_in_the_Wild"
+      }
     ]
   },
   "GH5-keyless-signing-identity-binding-gap": {
@@ -202,8 +257,14 @@
     ],
     "detection": "Pin verification policy to exact, vetted OIDC identities and issuers (full workflow ref + repo + issuer), not loose patterns; monitor the Fulcio/Rekor transparency log for certificates issued to look-alike or unexpected identities for your namespaces, and alert on first-seen signing identities.",
     "references": [
-      { "title": "Sigstore Threat Model", "url": "https://docs.sigstore.dev/about/threat-model/" },
-      { "title": "Sigstore: OIDC Usage in Fulcio", "url": "https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/" }
+      {
+        "title": "Sigstore Threat Model",
+        "url": "https://docs.sigstore.dev/about/threat-model/"
+      },
+      {
+        "title": "Sigstore: OIDC Usage in Fulcio",
+        "url": "https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/"
+      }
     ]
   },
   "GH7-gnss-time-spoof-into-disciplined-clock": {
@@ -232,8 +293,14 @@
     ],
     "detection": "Cross-check the disciplined clock's rate-of-change against an independent holdover oscillator (OCXO/Rb/chip-scale atomic clock) and alert when slew exceeds physically-plausible bounds; deploy multi-constellation/multi-band receivers, GNSS signal-authentication (Galileo OSNMA), and time-source diversity (eLORAN/PTP-from-independent-grandmaster) for sanity voting.",
     "references": [
-      { "title": "Time-based GNSS attack detection (arXiv 2502.03868)", "url": "https://arxiv.org/html/2502.03868v2" },
-      { "title": "SoK: State of the Time (arXiv 2502.09837)", "url": "https://arxiv.org/pdf/2502.09837" }
+      {
+        "title": "Time-based GNSS attack detection (arXiv 2502.03868)",
+        "url": "https://arxiv.org/html/2502.03868v2"
+      },
+      {
+        "title": "SoK: State of the Time (arXiv 2502.09837)",
+        "url": "https://arxiv.org/pdf/2502.09837"
+      }
     ]
   },
   "GH7-gnss-position-spoof-autonomy-ground-truth": {
@@ -256,8 +323,14 @@
     ],
     "detection": "Fuse GNSS against independent absolute references (vision/terrain-relative nav, multi-antenna direction-of-arrival, IMU consistency residuals) and alert when GNSS-vs-INS innovation exceeds dynamics bounds; use antenna-array anti-spoofing, signal-authentication (Galileo OSNMA), and AGC/C-N0 anomaly monitoring for power-matched takeover.",
     "references": [
-      { "title": "UT Austin: Researchers Successfully Spoof an $80 million Yacht at Sea", "url": "https://news.utexas.edu/2013/07/29/ut-austin-researchers-successfully-spoof-an-80-million-yacht-at-sea/" },
-      { "title": "Inside GNSS: GPS Spoofing Experiment Knocks Ship off Course", "url": "https://insidegnss.com/gps-spoofing-experiment-knocks-ship-off-course/" }
+      {
+        "title": "UT Austin: Researchers Successfully Spoof an $80 million Yacht at Sea",
+        "url": "https://news.utexas.edu/2013/07/29/ut-austin-researchers-successfully-spoof-an-80-million-yacht-at-sea/"
+      },
+      {
+        "title": "Inside GNSS: GPS Spoofing Experiment Knocks Ship off Course",
+        "url": "https://insidegnss.com/gps-spoofing-experiment-knocks-ship-off-course/"
+      }
     ]
   },
   "GH7-satellite-uplink-command-format-trust": {
@@ -286,8 +359,14 @@
     ],
     "detection": "Deploy CCSDS SDLS authenticated command counters/MACs and reject replayed or out-of-sequence frame counts; monitor the command receiver for telecommands outside scheduled operator sessions and for RF source/Doppler inconsistent with the ground station; alert on commands lacking valid authentication tags.",
     "references": [
-      { "title": "CCSDS 355.0-B-2 Space Data Link Security Protocol", "url": "https://ccsds.org/Pubs/355x0b2.pdf" },
-      { "title": "SPARTA - Space Attack Research and Tactic Analysis", "url": "https://sparta.aerospace.org/" }
+      {
+        "title": "CCSDS 355.0-B-2 Space Data Link Security Protocol",
+        "url": "https://ccsds.org/Pubs/355x0b2.pdf"
+      },
+      {
+        "title": "SPARTA - Space Attack Research and Tactic Analysis",
+        "url": "https://sparta.aerospace.org/"
+      }
     ]
   },
   "GH7-smallsat-cots-bus-component-provenance": {
@@ -310,8 +389,14 @@
     ],
     "detection": "Require signed/attested subsystem firmware and component provenance verification before integration; on the bus, deploy message authentication where supported (e.g. authenticated 1553/CAN) and monitor for telemetry statistically inconsistent with physics or for a subsystem sourcing messages outside its expected schedule.",
     "references": [
-      { "title": "The Aerospace Corporation: SPARTA", "url": "https://aerospace.org/sparta" },
-      { "title": "Cybersecurity Risk Assessment for CubeSat Missions (arXiv 2604.00303)", "url": "https://arxiv.org/pdf/2604.00303" }
+      {
+        "title": "The Aerospace Corporation: SPARTA",
+        "url": "https://aerospace.org/sparta"
+      },
+      {
+        "title": "Cybersecurity Risk Assessment for CubeSat Missions (arXiv 2604.00303)",
+        "url": "https://arxiv.org/pdf/2604.00303"
+      }
     ]
   },
   "GH7-ais-broadcast-position-as-truth": {
@@ -340,8 +425,14 @@
     ],
     "detection": "Cross-validate AIS against independent sensors (coastal/space-based radar, satellite RF geolocation, position-vs-kinematic plausibility), flag MMSI/position/kinematic inconsistencies and impossible jumps, and correlate frequency-of-arrival of satellite AIS messages to detect spoofed transmitters.",
     "references": [
-      { "title": "Pole Star Global: AIS Spoofing Research - 4 Main Typologies", "url": "https://www.polestarglobal.com/resources/ais-spoofing/" },
-      { "title": "MDPI: AIS Data Vulnerability Indicated by a Spoofing Case-Study", "url": "https://www.mdpi.com/2076-3417/11/11/5015" }
+      {
+        "title": "Pole Star Global: AIS Spoofing Research - 4 Main Typologies",
+        "url": "https://www.polestarglobal.com/resources/ais-spoofing/"
+      },
+      {
+        "title": "MDPI: AIS Data Vulnerability Indicated by a Spoofing Case-Study",
+        "url": "https://www.mdpi.com/2076-3417/11/11/5015"
+      }
     ]
   },
   "GH7-adsb-datalink-track-trust": {
@@ -364,8 +455,14 @@
     ],
     "detection": "Cross-validate ADS-B against independent surveillance (primary/secondary radar, multilateration time-difference-of-arrival, received-signal-strength/AoA plausibility) and kinematic feasibility; flag tracks with no MLAT corroboration or implausible position/velocity, and alert on duplicate/teleporting ICAO addresses.",
     "references": [
-      { "title": "Ghost in the Air(Traffic) - Costin & Francillon (Black Hat 2012)", "url": "https://www.s3.eurecom.fr/docs/bh12us_costin.pdf" },
-      { "title": "Detecting ADS-B Spoofing Attacks using Deep Neural Networks (arXiv 1904.09969)", "url": "https://arxiv.org/pdf/1904.09969" }
+      {
+        "title": "Ghost in the Air(Traffic) - Costin & Francillon (Black Hat 2012)",
+        "url": "https://www.s3.eurecom.fr/docs/bh12us_costin.pdf"
+      },
+      {
+        "title": "Detecting ADS-B Spoofing Attacks using Deep Neural Networks (arXiv 1904.09969)",
+        "url": "https://arxiv.org/pdf/1904.09969"
+      }
     ]
   },
   "GH7-ptp-asymmetric-delay-offset-trust": {
@@ -394,8 +491,14 @@
     ],
     "detection": "Deploy cyclic/round-trip path-asymmetry monitoring (e.g. PTPsec), redundant disjoint time paths with a trusted supervisor node that cross-checks per-slave offset/delay (IEEE 1588-2019), and one-way-delay anomaly alerts; cross-validate PTP-derived time against an independent local holdover oscillator.",
     "references": [
-      { "title": "PTPsec (arXiv 2401.10664)", "url": "https://arxiv.org/pdf/2401.10664" },
-      { "title": "Vulnerability of IEEE 1588 under Time Synchronization Attacks", "url": "https://www.researchgate.net/publication/335129065_Vulnerability_of_IEEE_1588_under_Time_Synchronization_Attacks" }
+      {
+        "title": "PTPsec (arXiv 2401.10664)",
+        "url": "https://arxiv.org/pdf/2401.10664"
+      },
+      {
+        "title": "Vulnerability of IEEE 1588 under Time Synchronization Attacks",
+        "url": "https://www.researchgate.net/publication/335129065_Vulnerability_of_IEEE_1588_under_Time_Synchronization_Attacks"
+      }
     ]
   },
   "GH7-time-window-trust-in-consensus-and-certs": {
@@ -418,8 +521,14 @@
     ],
     "detection": "Require multiple independent, mutually-cross-checked time sources for security-critical validity decisions; bound acceptable clock skew and alert on divergence between time sources; for consensus, use median-of-peers time and reject blocks/certs when local time disagrees with a quorum of trusted references beyond a tight threshold.",
     "references": [
-      { "title": "SoK: State of the Time (arXiv 2502.09837)", "url": "https://arxiv.org/pdf/2502.09837" },
-      { "title": "RFC 5280: Internet X.509 PKI Certificate and CRL Profile", "url": "https://www.rfc-editor.org/rfc/rfc5280" }
+      {
+        "title": "SoK: State of the Time (arXiv 2502.09837)",
+        "url": "https://arxiv.org/pdf/2502.09837"
+      },
+      {
+        "title": "RFC 5280: Internet X.509 PKI Certificate and CRL Profile",
+        "url": "https://www.rfc-editor.org/rfc/rfc5280"
+      }
     ]
   },
   "GH7-der-aggregator-grid-command-trust": {
@@ -448,8 +557,14 @@
     ],
     "detection": "Grid operator should monitor for synchronized power excursions across geographically clustered DER and rate-limit/stagger aggregator dispatch; enforce device-side sanity bounds and ramp limits independent of aggregator commands; detect anomalous aggregator API usage and command fan-out volume, and require signed, per-command authorization with replay protection.",
     "references": [
-      { "title": "DOE: Cybersecurity Considerations for DER on the U.S. Electric Grid", "url": "https://www.energy.gov/sites/default/files/2022-10/Cybersecurity%20Considerations%20for%20Distributed%20Energy%20Resources%20on%20the%20U.S.%20Electric%20Grid.pdf" },
-      { "title": "Survey of Load-Altering Attacks Against Power Grids (arXiv 2410.22007)", "url": "https://arxiv.org/html/2410.22007v1" }
+      {
+        "title": "DOE: Cybersecurity Considerations for DER on the U.S. Electric Grid",
+        "url": "https://www.energy.gov/sites/default/files/2022-10/Cybersecurity%20Considerations%20for%20Distributed%20Energy%20Resources%20on%20the%20U.S.%20Electric%20Grid.pdf"
+      },
+      {
+        "title": "Survey of Load-Altering Attacks Against Power Grids (arXiv 2410.22007)",
+        "url": "https://arxiv.org/html/2410.22007v1"
+      }
     ]
   },
   "GH7-safety-telemetry-replay-into-automated-response": {
@@ -472,8 +587,14 @@
     ],
     "detection": "Apply message sequencing/timestamping and freshness (nonce/MAC) where the protocol permits, or wrap legacy field traffic in authenticated transport; detect frozen/identical-value sequences and watchdog timeouts on expected telemetry variance; cross-validate critical readings against an independent redundant sensor and alert on stale-value patterns.",
     "references": [
-      { "title": "MITRE ATT&CK ICS: Spoof Reporting Message (T0856)", "url": "https://attack.mitre.org/techniques/T0856/" },
-      { "title": "MITRE ATT&CK ICS: Communication Authenticity (M0802)", "url": "https://attack.mitre.org/mitigations/M0802/" }
+      {
+        "title": "MITRE ATT&CK ICS: Spoof Reporting Message (T0856)",
+        "url": "https://attack.mitre.org/techniques/T0856/"
+      },
+      {
+        "title": "MITRE ATT&CK ICS: Communication Authenticity (M0802)",
+        "url": "https://attack.mitre.org/mitigations/M0802/"
+      }
     ]
   }
 }

@@ -280,5 +280,29 @@ const ds = loadDataset();
     `MITRE: 100% of ${cov.base_total} base techniques resolve to a seam (${cov.base_covered} covered, ${cov.base_uncovered} uncovered)`);
 }
 
+// ---------------------------------------------------------------------------
+// 13. TECHNICAL DEEP-DIVE COMPLETENESS — every AGENT-DISCOVERED technique carries a
+// web-verified technical note: a mechanism, an explicit MITRE *gap* statement (where
+// ATT&CK is blind and why), and >=1 real-world anchor. No discovered technique is left
+// without the technical material. "Ensure no missing."
+// ---------------------------------------------------------------------------
+{
+  const disc = ds.seams.filter((s) => s.origin === "AGENT-DISCOVERED");
+  const noNote = disc.filter((s) => !s.tech_note);
+  log(noNote.length === 0,
+    `Tech-notes: every AGENT-DISCOVERED technique has a deep-dive note (${disc.length - noNote.length}/${disc.length})` +
+    (noNote.length ? ` — MISSING: ${noNote.map((s) => s.id).join(", ")}` : ""));
+
+  const noGap = disc.filter((s) => !s.tech_note?.mitre_gap || s.tech_note.mitre_gap.length < 40);
+  log(noGap.length === 0,
+    `Tech-notes: every discovered technique states an explicit MITRE gap (${disc.length - noGap.length}/${disc.length})` +
+    (noGap.length ? ` — MISSING: ${noGap.map((s) => s.id).join(", ")}` : ""));
+
+  const thin = disc.filter((s) => !s.tech_note?.mechanism || (s.tech_note.anchors || []).length === 0);
+  log(thin.length === 0,
+    `Tech-notes: every discovered technique has a mechanism + >=1 real-world anchor (${disc.length - thin.length}/${disc.length})` +
+    (thin.length ? ` — THIN: ${thin.map((s) => s.id).join(", ")}` : ""));
+}
+
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);
 process.exit(failures === 0 ? 0 : 1);
