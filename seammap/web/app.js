@@ -503,6 +503,12 @@ function renderWalk() {
       <div class="rat" style="color:#e6edf3"><b>Trust assumption.</b> ${esc(s.trust_assumption)}</div>
       <div class="rat"><b style="color:#d4a0a0">Attack.</b> ${esc(s.violation)}</div>
       <div class="walkdetail" style="display:none">
+        ${s.tech_note ? `${s.tech_note.mechanism ? `<div class="rat" style="color:#c9d1d9"><b style="color:#58a6ff">Mechanism.</b> ${esc(s.tech_note.mechanism)}</div>` : ""}
+          ${s.tech_note.exploitation_primitive ? `<div class="rat"><b>Exploitation primitive.</b> ${esc(s.tech_note.exploitation_primitive)}</div>` : ""}
+          ${s.tech_note.mitre_gap ? `<div class="rat" style="color:#f0a93b"><b>MITRE gap.</b> ${esc(s.tech_note.mitre_gap)}</div>` : ""}
+          ${(s.tech_note.anchors || []).length ? `<div class="rat"><b style="color:#7ee787">Real-world anchors.</b> ${s.tech_note.anchors.map((a) => `${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:#7ee787">${esc(a.ref)}</a>` : esc(a.ref)}${a.note ? ` <span class="muted">(${esc(a.note)})</span>` : ""}`).join(" · ")}</div>` : ""}
+          ${s.tech_note.detection ? `<div class="rat"><b>Detection.</b> ${esc(s.tech_note.detection)}</div>` : ""}
+          ${(s.tech_note.references || []).length ? `<div class="rat muted">refs: ${s.tech_note.references.map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:#58a6ff">${esc(r.title)}</a>`).join(" · ")}</div>` : ""}` : ""}
         ${s.rationale ? `<div class="rat"><b style="color:#bd93f9">Why it's new.</b> ${esc(s.rationale)}</div>` : ""}
         ${v ? `<div class="res" style="color:#58a6ff"><b>✓ Validate.</b> ${esc(v.validation_method)}</div>
           <div class="rat" style="color:#d4a0a0"><b>✗ Refuted if.</b> ${esc(v.falsifier)}</div>

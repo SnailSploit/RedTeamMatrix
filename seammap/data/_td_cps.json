@@ -1,0 +1,479 @@
+{
+  "GH5-pqc-hybrid-negotiation-downgrade": {
+    "mechanism": "TLS 1.3 hybrid PQC groups (e.g. X25519MLKEM768) carry both a classical ECDHE share and an ML-KEM encapsulation in a single named group; the shared secret is the concatenation of both, so a session is only quantum-safe if the hybrid group is actually negotiated. An on-path attacker who edits the ClientHello supported_groups / key_share extensions, drops the PQC keyshare, or forces a HelloRetryRequest toward a classical-only group can steer a dual-stack endpoint to complete a purely classical handshake. Because TLS 1.3's downgrade-protection sentinels in ServerHello.random only cover protocol-version downgrade and not key-exchange-group selection, the group choice itself is not cryptographically bound to a 'best mutually-supported' guarantee. The relying party records the session as PQC-protected from its policy intent even though only X25519 established the secret.",
+    "exploitation_primitive": "An active MITM strips or fails the ML-KEM half of the hybrid keyshare (or exploits a server-side group-selection bug) so the handshake silently falls back to classical ECDHE while telemetry still labels it quantum-safe, yielding a harvest-now-decrypt-later record mislabeled as protected.",
+    "mitre_gap": "ATT&CK Enterprise has no technique for cryptographic key-exchange downgrade or PQC negotiation manipulation. The nearest is T1557 (Adversary-in-the-Middle), but it models interception/relay generically and says nothing about negotiating a weaker cipher/group while preserving an apparent-secure session, nor about the harvest-now-decrypt-later economics that make a mislabeled classical session the actual payload. No ATT&CK technique captures 'session completed but compliance posture is falsely PQC'.",
+    "anchors": [
+      {
+        "type": "cve",
+        "ref": "CVE-2026-2673",
+        "note": "OpenSSL 3.5/3.6 TLS 1.3 server using the DEFAULT keyword for supported groups loses the group tuple structure, suppresses the HelloRetryRequest, and accepts the client's first keyshare regardless of priority - so hybrid PQC groups like X25519MLKEM768 silently fall back to classical X25519. Concrete real-world instance of a key-exchange-group downgrade.",
+        "url": "https://github.com/openssl/openssl/discussions/30543"
+      },
+      {
+        "type": "standard",
+        "ref": "draft-ietf-tls-ecdhe-mlkem / draft-ietf-tls-mlkem",
+        "note": "IETF TLS WG hybrid ECDHE-MLKEM key agreement defining the X25519MLKEM768 construction whose PQC half can be stripped on negotiation.",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-ecdhe-mlkem/"
+      },
+      {
+        "type": "research",
+        "ref": "Bhargavan et al., 'A Taxonomy of Downgrade Attacks in the TLS Protocol' (arXiv:1809.05681)",
+        "note": "Establishes that TLS downgrade protection is partial and that algorithm/group selection is a distinct downgrade surface from version downgrade.",
+        "url": "https://arxiv.org/pdf/1809.05681"
+      }
+    ],
+    "detection": "Alert when a session negotiated a classical-only group despite both peers advertising a hybrid PQC group; cross-check the actually-negotiated named group against the configured PQC policy floor rather than trusting the 'PQC-capable' flag, and flag any HelloRetryRequest that steers away from a hybrid group.",
+    "references": [
+      { "title": "OpenSSL discussion: CVE-2026-2673 TLS 1.3 may choose unexpected key agreement group", "url": "https://github.com/openssl/openssl/discussions/30543" },
+      { "title": "draft-ietf-tls-ecdhe-mlkem: Post-quantum hybrid ECDHE-MLKEM Key Agreement for TLS 1.3", "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-ecdhe-mlkem/" }
+    ]
+  },
+  "GH5-crypto-agility-policy-rollback-race": {
+    "mechanism": "Crypto-agility control planes (centralized cipher-policy services, KMS algorithm profiles, fleet crypto-policy CRDs) distribute an 'allowed algorithms' set that workloads cache and enforce. The distribution channel is typically designed for forward change without a monotonic strength floor: a newly fetched policy revision simply replaces the cached one. An attacker with write access to the policy store, or who replays an older legitimately-signed policy version (a rollback), can push a revision that re-enables a deprecated suite or lowers the minimum group. Because the agility mechanism treats any authoritative-looking update as a forward update, the very lever built to strengthen crypto becomes a one-command fleet-wide weakening primitive.",
+    "exploitation_primitive": "Write or replay a prior signed crypto-policy version that re-enables a weak suite; the fleet applies it as an authoritative update because there is no monotonic 'never weaker than current' check on policy application.",
+    "mitre_gap": "Closest Enterprise id is T1562.001 (Impair Defenses: Disable or Modify Tools), tagged in input. It is insufficient because it frames the act as disabling a security control, whereas here the security control (the agility policy plane) is functioning exactly as designed - it just lacks a strength-monotonicity invariant. ATT&CK has no concept of 'configuration rollback to a weaker-but-valid prior policy version' or signed-policy replay as a downgrade, and no technique for crypto-policy distribution integrity specifically.",
+    "anchors": [],
+    "detection": "Enforce a monotonic crypto-policy floor at the workload: reject any fetched policy whose minimum algorithm strength or version counter is lower than the currently-enforced one, and alert on policy revisions that re-introduce previously-deprecated suites; require strictly increasing signed policy version numbers to defeat replay.",
+    "references": [
+      { "title": "NIST SP 1800-38: Migration to Post-Quantum Cryptography (crypto agility)", "url": "https://www.nccoe.nist.gov/crypto-agility-considerations-migrating-post-quantum-cryptographic-algorithms" }
+    ]
+  },
+  "GH5-hndl-keylog-export-archival-bridge": {
+    "mechanism": "TLS session-key export (SSLKEYLOGFILE-style, eBPF/middlebox decryption taps, WAF/DLP key escrow) emits per-session master/traffic secrets so inspection tooling can decrypt flows. These secrets are plaintext-equivalent: anyone holding the exported key plus the ciphertext recovers the cleartext, regardless of forward secrecy. When the export pipeline routes keys into the same observability/SIEM and long-term cold storage as ordinary telemetry, the keys are retained alongside captured ciphertext for the data's whole lifetime. This collapses the harvest-now-decrypt-later defense that PQC migration is meant to provide, because no future quantum computer is needed - the decryption keys were co-archived with the data the entire time.",
+    "exploitation_primitive": "An attacker reaching the centralized log/cold archive obtains both stored ciphertext flows and the exported per-session keys retained next to them, decrypting historical traffic with no cryptanalysis required.",
+    "mitre_gap": "Closest Enterprise id is T1530 (Data from Cloud Storage Object), tagged in input, plus T1552 (Unsecured Credentials). Both are insufficient: they treat the archive access as the event but do not model the design-time error of co-locating decryption keys with the ciphertext they unlock, nor the lifecycle/confidentiality-class mismatch (ephemeral key treated as ordinary telemetry). ATT&CK has no technique for 'key material retained with the data it protects' or for the HNDL threat model that PQC migration assumes.",
+    "anchors": [
+      {
+        "type": "standard",
+        "ref": "IETF draft-ietf-tls-keylogfile (SSLKEYLOGFILE format)",
+        "note": "Documents the per-session key export format used for decryption/observability; the very secrets that become a liability when archived.",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-keylogfile/"
+      }
+    ],
+    "detection": "Treat exported session keys as a distinct confidentiality class: enforce short retention and a separate, non-archival key lifecycle isolated from ciphertext capture; alert when key-export artifacts appear in SIEM/cold-storage buckets that also hold raw packet/flow captures.",
+    "references": [
+      { "title": "IETF draft-ietf-tls-keylogfile: The SSLKEYLOGFILE Format for TLS", "url": "https://datatracker.ietf.org/doc/draft-ietf-tls-keylogfile/" }
+    ]
+  },
+  "GH5-edge-worker-cold-isolate-state-bleed": {
+    "mechanism": "Edge platforms run tenant code in reused V8 isolates rather than per-request processes or VMs. Isolates are kept warm across invocations, so a module-scope (global) variable set during request N persists into request N+1. Cloudflare's own documentation warns that 'a variable set during one request is still present during the next' and advises against using or mutating global state for this reason. If tenant code caches secrets, decrypted tokens, or per-user context in module globals expecting reuse only serves the same caller, that state survives into a different follow-on request routed to the same warmed isolate - a serverless analog of cold-start bleed at isolate-global granularity. Stronger cross-tenant breaks additionally require a V8 JIT/memory or microarchitectural (Spectre-class) bug, which the shared-process model makes systemic.",
+    "exploitation_primitive": "Cache a secret or decrypted token in a module-level global and have it observed by a later request on the same warm isolate; with a V8 sandbox-escape or side-channel, the read crosses tenants in the shared process.",
+    "mitre_gap": "Closest Enterprise id is T1212 (Exploitation for Credential Access), tagged in input. Insufficient because T1212 presumes exploiting a vulnerability, whereas the primary leak here is intended platform behavior (isolate reuse + persistent globals) with no CVE required. ATT&CK has no technique for serverless/edge isolate state-bleed or cross-request global persistence; even the cloud matrix lacks an 'execution-context reuse leakage' concept distinct from container escape.",
+    "anchors": [
+      {
+        "type": "product",
+        "ref": "Cloudflare Workers - 'How Workers works' / isolate reuse guidance",
+        "note": "Official docs: Workers reuse isolates across requests; a global variable set during one request persists into the next, causing cross-request data leaks - hence guidance not to mutate global state.",
+        "url": "https://developers.cloudflare.com/workers/reference/how-workers-works/"
+      },
+      {
+        "type": "research",
+        "ref": "Cloudflare 'Mitigating Spectre and Other Security Threats: The Cloudflare Workers Security Model'",
+        "note": "Describes V8-isolate tenant isolation and the residual microarchitectural/side-channel risk in a shared process across thousands of tenants.",
+        "url": "https://blog.cloudflare.com/mitigating-spectre-and-other-security-threats-the-cloudflare-workers-security-model/"
+      }
+    ],
+    "detection": "Lint/policy-scan tenant code for secrets or per-request data assigned to module-scope globals; enforce request-scoped state; monitor for anomalous secret/token values appearing across requests of different principals on the same isolate, and keep V8 patch currency for sandbox-escape CVEs.",
+    "references": [
+      { "title": "Cloudflare Workers docs: How Workers works (isolate reuse, global state)", "url": "https://developers.cloudflare.com/workers/reference/how-workers-works/" },
+      { "title": "Cloudflare: The Cloudflare Workers Security Model", "url": "https://developers.cloudflare.com/workers/reference/security-model/" }
+    ]
+  },
+  "GH5-cdn-edge-cache-key-confused-deputy": {
+    "mechanism": "A CDN/edge cache stores responses keyed on a normalized subset of request attributes (path, selected headers, Vary). The cache assumes this key fully captures every input the origin used to authorize or personalize the response. When an authorization- or tenant-determining input influences the origin response but is excluded from the cache key - an edge-function-injected header, a tenant token, a Vary-omitted field, or a path/extension parsing discrepancy (web cache deception) - the edge caches a victim-scoped or differently-tenanted response and serves it to any later requester producing the same key. This is a confused-deputy disclosure born from the gap between what authorizes the response and what keys the cache.",
+    "exploitation_primitive": "Craft a request whose authorization-relevant input is not folded into the cache key (e.g. trick the cache into storing a dynamic authenticated page under a static-looking path, or vary an unkeyed tenant header) so a victim-personalized response is cached and replayed cross-tenant.",
+    "mitre_gap": "Closest Enterprise id is T1213 (Data from Information Repositories), tagged in input, and arguably T1539 for cached session data. Both are insufficient: they describe accessing a repository, not the cache-key/authorization-input mismatch that causes the cache itself to leak victim-scoped responses. ATT&CK has no technique for web cache deception or cache-key confusion, despite it being a demonstrated, in-the-wild class.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Omer Gil, 'Web Cache Deception Attack' (Black Hat USA 2017)",
+        "note": "Original demonstration; practical attack against PayPal caching dynamic authenticated content under static-looking URLs.",
+        "url": "https://blackhat.com/docs/us-17/wednesday/us-17-Gil-Web-Cache-Deception-Attack.pdf"
+      },
+      {
+        "type": "research",
+        "ref": "PortSwigger Research, 'Gotta cache em all: bending the rules of web cache exploitation' (James Kettle)",
+        "note": "Cache-key parsing discrepancies and normalization gaps that let attackers store and hijack arbitrary authenticated responses.",
+        "url": "https://portswigger.net/research/gotta-cache-em-all"
+      },
+      {
+        "type": "research",
+        "ref": "'Cached and Confused: Web Cache Deception in the Wild' (USENIX Security, arXiv:1912.10190)",
+        "note": "Large-scale measurement confirming WCD prevalence across major sites.",
+        "url": "https://arxiv.org/pdf/1912.10190"
+      }
+    ],
+    "detection": "Audit that every input the origin uses for authorization/personalization is included in the cache key or Vary; alert on cache hits for responses containing Set-Cookie/Authorization-derived personalization; enforce cache rules that never cache responses to authenticated requests by content-type rather than by URL extension.",
+    "references": [
+      { "title": "PortSwigger: Gotta cache em all", "url": "https://portswigger.net/research/gotta-cache-em-all" },
+      { "title": "Omer Gil: Web Cache Deception Attack (Black Hat 2017)", "url": "https://blackhat.com/docs/us-17/wednesday/us-17-Gil-Web-Cache-Deception-Attack.pdf" }
+    ]
+  },
+  "GH5-secrets-lease-rotation-window-race": {
+    "mechanism": "Workloads pull short-lived credentials (dynamic DB creds, leased cloud tokens) from a secrets manager and cache them for their advertised TTL. The manager rotates by marking a new secret active, but revocation/retirement of the prior secret is not atomic across the downstream resource: a database or service may continue to honor the old credential until its own cache or grace period expires, and the manager's internal revocation 'ensures users become invalid within a reasonable time of the lease expiring' rather than instantly. The rotation seam is therefore a live re-use window where a credential is simultaneously 'rotated out' at the manager and 'still good' at the resource, while the client may keep presenting a cached lease past its real revocation.",
+    "exploitation_primitive": "An attacker who captured a leased credential keeps using it during the rotation overlap, succeeding because the downstream datastore still accepts the prior secret until its grace/cache period lapses - past the point the manager considers it retired.",
+    "mitre_gap": "Closest Enterprise id is T1552.005 (Unsecured Credentials: Cloud Instance Metadata API) tagged in input, plus T1078 (Valid Accounts). Insufficient because both model use of obtained credentials but not the rotation-overlap race: the precise seam where 'rotated' at the issuer does not equal 'rejected' at the resource. ATT&CK has no technique for revocation-propagation lag / grace-window credential re-use as its own primitive.",
+    "anchors": [
+      {
+        "type": "product",
+        "ref": "HashiCorp Vault - Lease, Renew, and Revoke / Database secrets engine",
+        "note": "Vault dynamic secrets carry leases; revocation invalidates a secret but Vault's docs note users become invalid 'within a reasonable time of the lease expiring', and downstream DBs honor creds until rotation/revocation propagates - the overlap window.",
+        "url": "https://developer.hashicorp.com/vault/docs/concepts/lease"
+      }
+    ],
+    "detection": "Instrument the downstream resource (not just the manager) to log credential acceptance and alert when a credential the manager has rotated out is still successfully authenticating; minimize/zero the downstream grace overlap and correlate manager rotation events with resource-side acceptance timestamps.",
+    "references": [
+      { "title": "HashiCorp Vault: Lease, Renew, and Revoke", "url": "https://developer.hashicorp.com/vault/docs/concepts/lease" },
+      { "title": "HashiCorp Vault: Database secrets engine", "url": "https://developer.hashicorp.com/vault/docs/secrets/databases" }
+    ]
+  },
+  "GH5-esim-rsp-profile-provenance-gap": {
+    "mechanism": "GSMA Consumer Remote SIM Provisioning (SGP.22) delivers an operator profile to an eUICC via an LPA that consumes an activation code of the form LPA:1$<SM-DP+ address>$<matching-id>, typically encoded in a QR or handed off by a carrier app. The eUICC and SM-DP+ mutually authenticate via the GSMA CI certificate chain, so the channel between honest entities is sound; what the device does not independently verify is who initiated the provisioning. If an attacker controls the initiation - a phished/forged activation code, a malicious carrier-app deep link, or an SM-DP+ address that points to an attacker-influenced flow - the modem installs the resulting profile and binds the device's network identity to it without re-authenticating the human subscriber's intent. The result is an eSIM-swap requiring no physical SIM, exploiting the provenance gap in provisioning initiation rather than a crypto break in RSP.",
+    "exploitation_primitive": "Hijack the RSP initiation (phished activation code, malicious carrier-app handoff, or social-engineered SM-DP+/QR) to drive the eUICC to install an attacker-chosen profile or pull a subscriber's profile onto an attacker eUICC, hijacking the mobile identity.",
+    "mitre_gap": "No ATT&CK Enterprise technique covers eSIM/eUICC remote provisioning. T1451 (SIM Card Swap) exists only in the deprecated ATT&CK Mobile matrix and describes operator-assisted physical/account SIM swap, not RSP activation-code/QR hijack or SM-DP+ flows. ATT&CK has no model for the GSMA RSP provenance gap, leaving this telecom-identity primitive entirely outside Enterprise.",
+    "anchors": [
+      {
+        "type": "standard",
+        "ref": "GSMA SGP.22 RSP Technical Specification (Consumer eSIM) and SGP.21 Architecture",
+        "note": "Defines the LPA activation-code / matching-id / SM-DP+ flow; provisioning initiation is not bound to verified subscriber intent at the device.",
+        "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/gsma_resources/sgp-22-v2-2-2/"
+      },
+      {
+        "type": "research",
+        "ref": "Aalto University, 'Security Analysis of the Consumer Remote SIM Provisioning Protocol' (2024)",
+        "note": "Formal analysis; RSP is secure between honest entities against network adversaries, highlighting that the residual risk lies in initiation/endpoint compromise rather than the protocol core.",
+        "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/security-analysis-of-the-consumer-remote-sim-provisioning-protocol/"
+      }
+    ],
+    "detection": "Require step-up subscriber authentication and out-of-band confirmation at the operator before an SM-DP+ releases a profile; monitor for profile downloads to a new eUICC EID shortly after account changes, and alert on activation-code redemption from anomalous device/geographies.",
+    "references": [
+      { "title": "GSMA: Security Analysis of the Consumer Remote SIM Provisioning Protocol", "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/security-analysis-of-the-consumer-remote-sim-provisioning-protocol/" },
+      { "title": "GSMA SGP.22 RSP Technical Specification", "url": "https://www.gsma.com/solutions-and-impact/technologies/esim/gsma_resources/sgp-22-v2-2-2/" }
+    ]
+  },
+  "GH5-fiveg-suci-reidentification-bridge": {
+    "mechanism": "5G conceals the permanent identity (SUPI/IMSI) by encrypting it with the home network's public key using ECIES into a SUCI before it leaves the device, so the on-air identifier changes each registration and IMSI-catcher tracking should be defeated. However, SUCI conceals only the SUPI payload, not surrounding residue: the unencrypted home-network routing identifier and protection-scheme/key-id fields, capability fingerprints, and - critically - the AKA procedure's behavior. Research shows an attacker who already knows a target IMSI can re-link captured SUCIs across sessions by abusing the 3GPP-mandated AKA Authentication-Failure responses (e.g. MAC-failure vs sync-failure timing/error codes), a linkability oracle that needs no key recovery. A misconfigured null-scheme or reused randomness further enables deterministic re-computation. Every tested 5G-SA deployment with SUCI active was found vulnerable because the surface is mandated behavior.",
+    "exploitation_primitive": "Replay/elicit AKA responses against captured SUCIs to operate a SUCI-catcher linkability oracle, correlating successive concealed identifiers to one subscriber via Authentication-Failure error/timing residue without ever decrypting the SUPI.",
+    "mitre_gap": "No ATT&CK Enterprise technique covers 5G subscriber-identity privacy or radio-interface linkability. The deprecated ATT&CK Mobile T1430 (Location Tracking) is the loosest analog and does not model SUCI/AKA linkability oracles, IMSI/SUPI concealment, or RAN side-channels. This telecom-identity attack has no ATT&CK technique at all.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Khan, Martin et al., '5G SUCI-Catchers: Still Catching Them All?' (ACM WiSec 2021)",
+        "note": "Demonstrates SUCI-catcher linkability despite concealment, exploiting AKA-procedure residue rather than breaking ECIES.",
+        "url": "https://dl.acm.org/doi/10.1145/3448300.3467826"
+      },
+      {
+        "type": "research",
+        "ref": "'5G SUCI Probing in the Wild' (2024)",
+        "note": "Real-network study linking captured SUCIs to known IMSIs via unencrypted AKA Authentication-Failure error codes across commercial 5G-SA deployments.",
+        "url": "https://www.researchgate.net/publication/381853402_5G_SUCI_Probing_in_the_Wild"
+      },
+      {
+        "type": "standard",
+        "ref": "3GPP TS 33.501 (5G security architecture - SUCI/SUPI concealment, ECIES profiles)",
+        "note": "Defines SUCI computation and the AKA procedure whose mandated failure behavior creates the linkability surface.",
+        "url": "https://www.3gpp.org/dynareport/33501.htm"
+      }
+    ],
+    "detection": "Home network should monitor for repeated AKA failures / Authentication-Failure probing patterns and rate-limit per routing-indicator; deploy null-scheme detection and reject reused SUCI randomness; on-device, surface anomalous repeated authentication-failure prompts.",
+    "references": [
+      { "title": "5G SUCI-Catchers: Still Catching Them All? (ACM WiSec 2021)", "url": "https://dl.acm.org/doi/10.1145/3448300.3467826" },
+      { "title": "5G SUCI Probing in the Wild (2024)", "url": "https://www.researchgate.net/publication/381853402_5G_SUCI_Probing_in_the_Wild" }
+    ]
+  },
+  "GH5-keyless-signing-identity-binding-gap": {
+    "mechanism": "Sigstore keyless signing (Fulcio) binds an artifact signature to an OIDC identity rather than a long-lived key: the signer presents an OIDC token, Fulcio issues a short-lived X.509 cert with the OIDC subject (email or CI workflow ref) as the SAN, and the entry is logged to Rekor. Verifiers admit an artifact when its transparency-log entry's identity string matches an allowed pattern. The trust therefore rests entirely on the OIDC identity - which Fulcio assumes a valid token proves ownership of - but the verifier never authenticates the binding from that identity to a trustworthy real-world publisher. A phishable, typosquatted, dormant, or workflow-impersonating identity (a look-alike email, a reused org account, a compromised CI workflow ref) yields a fully valid Fulcio cert and a passing signature.",
+    "exploitation_primitive": "Obtain a valid OIDC token for a look-alike/compromised identity (typosquatted email, hijacked GitHub Actions workflow ref), get a legitimate Fulcio certificate, and sign a malicious artifact whose identity string matches the verifier's allow-pattern.",
+    "mitre_gap": "Closest Enterprise id is T1195.002 (Supply Chain Compromise: Compromise Software Supply Chain), tagged in input, plus T1199/T1606 for trust/forging. Insufficient because they describe supply-chain tampering broadly but not the keyless-signing identity-binding gap - that a cryptographically valid signature can be issued to an attacker-controlled-but-pattern-matching OIDC identity the verifier never independently vetted. ATT&CK has no technique for OIDC-identity-to-publisher provenance failure in signing.",
+    "anchors": [
+      {
+        "type": "product",
+        "ref": "Sigstore Fulcio - OIDC usage and threat model",
+        "note": "Fulcio assumes a valid OIDC token from a trusted provider is sufficient proof of ownership of the identity; transparency-log monitoring is the recommended mitigation, confirming the binding is not verifier-authenticated.",
+        "url": "https://docs.sigstore.dev/about/threat-model/"
+      },
+      {
+        "type": "research",
+        "ref": "Sigstore blog, 'Why you cant use Sigstore without Sigstore'",
+        "note": "Discusses identity/typosquatting detection via Fulcio certificate-transparency monitoring as the defense, underscoring the absence of intrinsic publisher-provenance verification.",
+        "url": "https://blog.sigstore.dev/why-you-cant-use-sigstore-without-sigstore-de1ed745f6fc/"
+      }
+    ],
+    "detection": "Pin verification policy to exact, vetted OIDC identities and issuers (full workflow ref + repo + issuer), not loose patterns; monitor the Fulcio/Rekor transparency log for certificates issued to look-alike or unexpected identities for your namespaces, and alert on first-seen signing identities.",
+    "references": [
+      { "title": "Sigstore Threat Model", "url": "https://docs.sigstore.dev/about/threat-model/" },
+      { "title": "Sigstore: OIDC Usage in Fulcio", "url": "https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/" }
+    ]
+  },
+  "GH7-gnss-time-spoof-into-disciplined-clock": {
+    "mechanism": "A GPS-disciplined oscillator (GPSDO) or PTP grandmaster recovers time-of-day and a 1PPS edge from GNSS and disciplines a local OCXO/Rb to it; downstream PMUs, 5G RAN, financial timestamping and NTP roots treat the disciplined output as authoritative absolute time. An attacker spoofing the GNSS RF can slew the recovered time - not the position - by tens of microseconds to milliseconds, advancing the clock slowly enough to stay under the receiver's holdover/insanity and loss-of-lock thresholds, so the grandmaster never flags an anomaly. Because the disciplining loop tracks whatever consistent time the attacker forces, the victim's clock drift follows the attacker's commanded drift. Every consumer then acts on a falsified 'now' still labeled GPS-authoritative.",
+    "exploitation_primitive": "Transmit a coherent GNSS spoof that gradually pulls the receiver's time solution below loss-of-lock detection thresholds, walking a disciplined clock off true time by microseconds-to-milliseconds while it still reports locked/healthy.",
+    "mitre_gap": "ATT&CK Enterprise has no GNSS or time-source technique. The nearest ICS id is T0830 (Adversary-in-the-Middle) for network time tampering, but it is on-path/network-layer and does not model an RF physical-layer GNSS spoof of the time reference feeding a grandmaster. ICS T0815 (Denial of View) and T0837 (Loss of Protection) touch downstream effects but not the GNSS-time falsification mechanism. No ATT&CK technique exists for GNSS time spoofing.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "'Time-based GNSS attack detection' (arXiv:2502.03868, 2025)",
+        "note": "Shows adversaries can mimic current clock drift and progressively pull a GNSS receiver's time solution away from truth, with the victim drift following the attacker - the slow-slew-under-threshold mechanism.",
+        "url": "https://arxiv.org/html/2502.03868v2"
+      },
+      {
+        "type": "research",
+        "ref": "'SoK: State of the Time - On Trustworthiness of Digital Clocks' (arXiv:2502.09837)",
+        "note": "Systematizes trust assumptions in time sources including GNSS-disciplined clocks and their spoofability.",
+        "url": "https://arxiv.org/pdf/2502.09837"
+      },
+      {
+        "type": "standard",
+        "ref": "DHS/CISA Resilient PNT - GPS dependency of critical infrastructure timing",
+        "note": "Establishes that PMUs, telecom, finance and SCADA rely on GPS-disciplined time as authoritative reference.",
+        "url": "https://www.cisa.gov/resources-tools/resources/resilient-positioning-navigation-and-timing-pnt-conformance-framework"
+      }
+    ],
+    "detection": "Cross-check the disciplined clock's rate-of-change against an independent holdover oscillator (OCXO/Rb/chip-scale atomic clock) and alert when slew exceeds physically-plausible bounds; deploy multi-constellation/multi-band receivers, GNSS signal-authentication (Galileo OSNMA), and time-source diversity (eLORAN/PTP-from-independent-grandmaster) for sanity voting.",
+    "references": [
+      { "title": "Time-based GNSS attack detection (arXiv 2502.03868)", "url": "https://arxiv.org/html/2502.03868v2" },
+      { "title": "SoK: State of the Time (arXiv 2502.09837)", "url": "https://arxiv.org/pdf/2502.09837" }
+    ]
+  },
+  "GH7-gnss-position-spoof-autonomy-ground-truth": {
+    "mechanism": "An autonomous platform fuses the GNSS position fix as the absolute ground-truth anchor that bounds inertial dead-reckoning, converting the fused state directly into actuation (waypoint, heading, geofence, return-to-home). A coherent spoofer first matches and slightly raises power on the genuine signals to capture the receiver's tracking loops without a position jump, then smoothly drags the reported position along an attacker-chosen, dynamics-consistent trajectory. Because the spoofed constellation is internally consistent and the drag respects vehicle dynamics, the state estimator weights it as truth over its own IMU physics, and the autonomy steers, breaches a false geofence, or returns-to-home toward attacker coordinates. This capture-and-drag technique was publicly demonstrated against a superyacht (UT Austin) and is the mechanism widely attributed to drone-redirection events.",
+    "exploitation_primitive": "Coherently capture the receiver's tracking loops (power-matched takeover) then incrementally offset the spoofed position along a smooth trajectory, feeding the autonomy a false but plausible ground truth it actuates on.",
+    "mitre_gap": "ATT&CK Enterprise has no GNSS/navigation technique. ICS has no position-spoofing technique either; the closest conceptual ICS id is T0856 (Spoof Reporting Message), but that models falsified process-reporting on a control network, not an RF physical-layer spoof of the navigation sensor feeding an autonomous state estimator. No ATT&CK technique captures GNSS position spoofing of autonomy.",
+    "anchors": [
+      {
+        "type": "incident",
+        "ref": "UT Austin (Todd Humphreys) superyacht 'White Rose of Drachs' GPS spoofing, 2013",
+        "note": "First openly acknowledged civilian capture-and-drag spoof steering an $80M vessel onto a parallel track hundreds of meters off course while displays showed nominal.",
+        "url": "https://news.utexas.edu/2013/07/29/ut-austin-researchers-successfully-spoof-an-80-million-yacht-at-sea/"
+      },
+      {
+        "type": "incident",
+        "ref": "Iran-U.S. RQ-170 Sentinel incident, 2011 (GPS-spoofing claim)",
+        "note": "Iran claimed GPS spoofing was used to redirect the drone; U.S. assessment notes INS-primary navigation - cite as widely-reported claim, not confirmed mechanism.",
+        "url": "https://en.wikipedia.org/wiki/Iran%E2%80%93U.S._RQ-170_incident"
+      }
+    ],
+    "detection": "Fuse GNSS against independent absolute references (vision/terrain-relative nav, multi-antenna direction-of-arrival, IMU consistency residuals) and alert when GNSS-vs-INS innovation exceeds dynamics bounds; use antenna-array anti-spoofing, signal-authentication (Galileo OSNMA), and AGC/C-N0 anomaly monitoring for power-matched takeover.",
+    "references": [
+      { "title": "UT Austin: Researchers Successfully Spoof an $80 million Yacht at Sea", "url": "https://news.utexas.edu/2013/07/29/ut-austin-researchers-successfully-spoof-an-80-million-yacht-at-sea/" },
+      { "title": "Inside GNSS: GPS Spoofing Experiment Knocks Ship off Course", "url": "https://insidegnss.com/gps-spoofing-experiment-knocks-ship-off-course/" }
+    ]
+  },
+  "GH7-satellite-uplink-command-format-trust": {
+    "mechanism": "Many spacecraft - especially COTS-bus SmallSats/CubeSats and legacy birds - run plain AX.25 or CCSDS telecommand without the optional Space Data Link Security (SDLS) layer that adds AES authentication, encryption and anti-replay. The onboard command handler accepts a telecommand based on channel conformance: correct uplink frequency, expected CCSDS/AX.25 framing, and arrival within a contact window, rejecting only on framing errors rather than verifying a per-command MAC or authenticated command counter. An attacker with SDR transmit capability and orbital/contact-window knowledge can transmit a well-formed telecommand during a pass and have it executed - mode change, attitude maneuver, payload toggle, memory write - because possession of format and frequency is treated as possession of authority.",
+    "exploitation_primitive": "During a known pass, transmit a correctly-framed CCSDS/AX.25 telecommand on the legitimate uplink with SDR; the unauthenticated command handler executes it as an operator command.",
+    "mitre_gap": "ATT&CK Enterprise has no space-segment or telecommand technique; this lives in SPARTA (Aerospace's space attack matrix), not ATT&CK. The loosest Enterprise analog T1059/T1203 (command execution / exploitation) does not model RF uplink telecommand injection or the channel-as-authority trust. SPARTA covers it (e.g. command-link intrusion tactics); ATT&CK does not.",
+    "anchors": [
+      {
+        "type": "standard",
+        "ref": "CCSDS 355.0-B-2 Space Data Link Security Protocol (SDLS)",
+        "note": "SDLS adds AES authentication/encryption and anti-replay because baseline CCSDS TC was designed for reliability, not active adversaries; absence of SDLS is the enabling condition.",
+        "url": "https://ccsds.org/Pubs/355x0b2.pdf"
+      },
+      {
+        "type": "research",
+        "ref": "Aerospace Corporation SPARTA matrix (Space Attack Research and Tactic Analysis)",
+        "note": "First public space-cyber TTP matrix; covers command-link intrusion / telecommand spoofing that ATT&CK omits.",
+        "url": "https://sparta.aerospace.org/"
+      },
+      {
+        "type": "research",
+        "ref": "'Cybersecurity Risk Assessment for CubeSat Missions' (arXiv:2604.00303)",
+        "note": "Notes many CubeSats still use plain AX.25/legacy CCSDS without encryption or authentication, enabling command spoofing within RF range.",
+        "url": "https://arxiv.org/pdf/2604.00303"
+      }
+    ],
+    "detection": "Deploy CCSDS SDLS authenticated command counters/MACs and reject replayed or out-of-sequence frame counts; monitor the command receiver for telecommands outside scheduled operator sessions and for RF source/Doppler inconsistent with the ground station; alert on commands lacking valid authentication tags.",
+    "references": [
+      { "title": "CCSDS 355.0-B-2 Space Data Link Security Protocol", "url": "https://ccsds.org/Pubs/355x0b2.pdf" },
+      { "title": "SPARTA - Space Attack Research and Tactic Analysis", "url": "https://sparta.aerospace.org/" }
+    ]
+  },
+  "GH7-smallsat-cots-bus-component-provenance": {
+    "mechanism": "SmallSat integrators bolt COTS subsystems (reaction wheels, GNSS receiver, radio, OBC, star tracker) onto an internal spacecraft bus - CAN, SpaceWire, I2C, or MIL-STD-1553 - which provides no inter-component authentication: any board that enumerates correctly is implicitly trusted to source telemetry and accept commands. A subverted or counterfeit component (firmware tampered in the distribution channel, or a clone board sold into the rapid-integration market) enumerates normally, then once on orbit abuses its peer position to forge telemetry, drop or alter commands to sibling subsystems, or trigger at a chosen time. The bus extends the same trust the integrator gave the vendor brand to every enumerated board, with no on-orbit way to re-attest provenance.",
+    "exploitation_primitive": "Insert a counterfeit/firmware-tampered COTS subsystem that enumerates as a benign bus peer, then forge intra-bus telemetry or manipulate sibling-subsystem commands on a timed trigger.",
+    "mitre_gap": "ATT&CK Enterprise T1195.001/.002 (Supply Chain Compromise: hardware/software) covers the channel tampering but stops at delivery - it does not model the on-orbit spacecraft-bus trust where an enumerated peer forges telemetry to siblings over CAN/SpaceWire/MIL-STD-1553. ICS has no spacecraft-bus technique. SPARTA addresses space supply chain; ATT&CK's hardware supply-chain technique is insufficient for the intra-bus peer-trust abuse.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Aerospace Corporation SPARTA matrix (supply chain / component tactics)",
+        "note": "SPARTA explicitly accounts for the supply chain and component provenance across the satellite ecosystem that ATT&CK does not model for the space segment.",
+        "url": "https://aerospace.org/sparta"
+      },
+      {
+        "type": "research",
+        "ref": "'Cybersecurity Risk Assessment for CubeSat Missions' (arXiv:2604.00303)",
+        "note": "Identifies spoofing/tampering risk across ground and component segments in resource-constrained COTS-integrated SmallSats.",
+        "url": "https://arxiv.org/pdf/2604.00303"
+      }
+    ],
+    "detection": "Require signed/attested subsystem firmware and component provenance verification before integration; on the bus, deploy message authentication where supported (e.g. authenticated 1553/CAN) and monitor for telemetry statistically inconsistent with physics or for a subsystem sourcing messages outside its expected schedule.",
+    "references": [
+      { "title": "The Aerospace Corporation: SPARTA", "url": "https://aerospace.org/sparta" },
+      { "title": "Cybersecurity Risk Assessment for CubeSat Missions (arXiv 2604.00303)", "url": "https://arxiv.org/pdf/2604.00303" }
+    ]
+  },
+  "GH7-ais-broadcast-position-as-truth": {
+    "mechanism": "AIS broadcasts vessel MMSI, position, course and identity over VHF (161.975/162.025 MHz) with no cryptographic origin binding or integrity - the protocol has never had authentication. Vessel Traffic Services, port management, collision-avoidance displays, and maritime-domain-awareness analytics ingest AIS as authoritative real-time ground truth. An attacker with a VHF/SDR transmitter (or access to a compromised AIS aggregator feed) can inject or replay frames to fabricate phantom vessels, clone a real MMSI onto a decoy track, or erase a ship's presence, and the consuming stack accepts the spoofed broadcasts as genuine positions. This corrupts deconfliction, triggers false safety responses, or launders true movements past sanctions analytics; AIS spoofing incidents surged sharply in 2022-2023.",
+    "exploitation_primitive": "Transmit or replay unauthenticated AIS frames over VHF (or via a compromised aggregator) to create phantom vessels, MMSI-clone decoys, or vanish a real track in the VTS/MDA picture.",
+    "mitre_gap": "ATT&CK Enterprise has no maritime/AIS technique. ICS has no AIS technique; the loosest analog ICS T0856 (Spoof Reporting Message) covers falsified process reporting on a control network, not RF broadcast injection of unauthenticated navigation data consumed by VTS/MDA. No ATT&CK technique covers AIS spoofing.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Balduzzi, Pasta, Wilhoit (Trend Micro), 'A Security Evaluation of AIS' (ACSAC 2014)",
+        "note": "Foundational demonstration that AIS is unauthenticated and that vessels, phantom ships, and tracks can be spoofed/injected over RF and via providers.",
+        "url": "https://www.trendmicro.com/en_us/research/14/d/the-dangers-of-hacking-radio-frequency-protocols.html"
+      },
+      {
+        "type": "incident",
+        "ref": "AIS spoofing surge 2022-2023 (Pole Star Global / Windward analysis)",
+        "note": "Documented ~400% rise in AIS spoofing incidents Oct 2022-Apr 2023, including MMSI-cloning and location-obscuring used to evade sanctions analytics.",
+        "url": "https://www.polestarglobal.com/resources/ais-spoofing/"
+      },
+      {
+        "type": "research",
+        "ref": "'AIS Data Vulnerability Indicated by a Spoofing Case-Study' (Applied Sciences, MDPI 2021)",
+        "note": "Peer-reviewed case study of AIS spoofing impact on traffic picture.",
+        "url": "https://www.mdpi.com/2076-3417/11/11/5015"
+      }
+    ],
+    "detection": "Cross-validate AIS against independent sensors (coastal/space-based radar, satellite RF geolocation, position-vs-kinematic plausibility), flag MMSI/position/kinematic inconsistencies and impossible jumps, and correlate frequency-of-arrival of satellite AIS messages to detect spoofed transmitters.",
+    "references": [
+      { "title": "Pole Star Global: AIS Spoofing Research - 4 Main Typologies", "url": "https://www.polestarglobal.com/resources/ais-spoofing/" },
+      { "title": "MDPI: AIS Data Vulnerability Indicated by a Spoofing Case-Study", "url": "https://www.mdpi.com/2076-3417/11/11/5015" }
+    ]
+  },
+  "GH7-adsb-datalink-track-trust": {
+    "mechanism": "ADS-B broadcasts an aircraft's ICAO 24-bit address and GNSS-derived position over 1090 MHz Extended Squitter (1090ES) or 978 MHz UAT with no message authentication or integrity. Air-traffic surveillance fusion, UTM/drone-traffic services, and aircraft ADS-B-In/TCAS displays fuse received squitters into the surveillance picture and conflict-detection logic as genuine cooperative targets. An attacker with a low-cost SDR (USRP-class) can encode and transmit valid 1090ES/UAT frames to inject ghost aircraft, spoof an ICAO identity onto a false track, or shift a reported position, generating spurious conflict alerts, distorting the drone-traffic picture, or masking a real intruder by saturating the model. Costin and Francillon publicly demonstrated practical ADS-B injection at Black Hat USA 2012.",
+    "exploitation_primitive": "Encode and transmit unauthenticated 1090ES/UAT squitters with an SDR to inject ghost aircraft or spoof an ICAO/track into ATC, TCAS, or UTM fusion as real cooperative traffic.",
+    "mitre_gap": "ATT&CK Enterprise has no aviation/ADS-B technique. ICS has none either; the loosest analog ICS T0856 (Spoof Reporting Message) models control-network reporting spoofing, not RF broadcast injection of unauthenticated air-surveillance data into ATC/UTM fusion. No ATT&CK technique covers ADS-B spoofing.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Costin & Francillon, 'Ghost in the Air(Traffic): On insecurity of ADS-B protocol and practical attacks' (Black Hat USA 2012)",
+        "note": "First public implementation of ADS-B message injection/spoofing with USRP SDR, exploiting the lack of integrity and authentication in 1090ES.",
+        "url": "https://www.s3.eurecom.fr/docs/bh12us_costin.pdf"
+      },
+      {
+        "type": "research",
+        "ref": "'Detecting ADS-B Spoofing Attacks using Deep Neural Networks' (arXiv:1904.09969)",
+        "note": "Confirms ADS-B's lack of authentication and treats spoofed-squitter detection as an open ML problem.",
+        "url": "https://arxiv.org/pdf/1904.09969"
+      }
+    ],
+    "detection": "Cross-validate ADS-B against independent surveillance (primary/secondary radar, multilateration time-difference-of-arrival, received-signal-strength/AoA plausibility) and kinematic feasibility; flag tracks with no MLAT corroboration or implausible position/velocity, and alert on duplicate/teleporting ICAO addresses.",
+    "references": [
+      { "title": "Ghost in the Air(Traffic) - Costin & Francillon (Black Hat 2012)", "url": "https://www.s3.eurecom.fr/docs/bh12us_costin.pdf" },
+      { "title": "Detecting ADS-B Spoofing Attacks using Deep Neural Networks (arXiv 1904.09969)", "url": "https://arxiv.org/pdf/1904.09969" }
+    ]
+  },
+  "GH7-ptp-asymmetric-delay-offset-trust": {
+    "mechanism": "PTP (IEEE 1588) and NTP estimate clock offset assuming a symmetric path: with forward and reverse delays equal, offset = ((t2-t1)-(t4-t3))/2, half the round-trip. The protocols can authenticate packet content (integrity/origin) but cannot measure one-way delay, so they cannot detect that path symmetry was violated. An on-path attacker - a transparent-clock relay, compromised switch, or queue-manipulating middlebox - adds latency to only one direction; the client folds the injected asymmetry directly into its offset and slews its clock by that amount, undetectably. In IEC 61850 substations this corrupts PMU/synchrophasor phase math (sub-microsecond budgets, C37.118 TVE limits); it is a demonstrated attack class on commercial PTP devices.",
+    "exploitation_primitive": "From an on-path position, inject a controlled one-directional (asymmetric) delay into PTP/NTP exchanges so the client computes and applies a false offset, slewing its clock by the injected asymmetry while authentication still passes.",
+    "mitre_gap": "Closest id is ICS T0830 (Adversary-in-the-Middle), tagged in input. It is insufficient because it generically describes intercept/modify/inject, while the asymmetric-delay attack injects no malformed content and modifies no packet - it only adds directional latency, which authenticated PTP (even with MACs) cannot detect because the trust violated is path symmetry, not content integrity. ATT&CK has no technique for time-protocol delay/asymmetry attacks specifically.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Moradi et al., 'PTPsec: Securing the Precision Time Protocol Against Time Delay Attacks Using Cyclic Path Asymmetry Analysis' (arXiv:2401.10664)",
+        "note": "Demonstrates and defends against MITM asymmetric-delay attacks that authenticated PTP cannot detect.",
+        "url": "https://arxiv.org/pdf/2401.10664"
+      },
+      {
+        "type": "research",
+        "ref": "'Vulnerability of IEEE 1588 under Time Synchronization Attacks'",
+        "note": "Hardware-testbed study of delay, packet-modification and spoofing attacks on commercial PTP devices.",
+        "url": "https://www.researchgate.net/publication/335129065_Vulnerability_of_IEEE_1588_under_Time_Synchronization_Attacks"
+      },
+      {
+        "type": "standard",
+        "ref": "IEEE C37.118 / IEC 61850 PMU timing (Total Vector Error budget)",
+        "note": "Sub-microsecond synchrophasor timing budget that asymmetric-delay slew can violate, corrupting phase-angle measurement.",
+        "url": "https://standards.ieee.org/ieee/C37.118.1/4902/"
+      }
+    ],
+    "detection": "Deploy cyclic/round-trip path-asymmetry monitoring (e.g. PTPsec), redundant disjoint time paths with a trusted supervisor node that cross-checks per-slave offset/delay (IEEE 1588-2019), and one-way-delay anomaly alerts; cross-validate PTP-derived time against an independent local holdover oscillator.",
+    "references": [
+      { "title": "PTPsec (arXiv 2401.10664)", "url": "https://arxiv.org/pdf/2401.10664" },
+      { "title": "Vulnerability of IEEE 1588 under Time Synchronization Attacks", "url": "https://www.researchgate.net/publication/335129065_Vulnerability_of_IEEE_1588_under_Time_Synchronization_Attacks" }
+    ]
+  },
+  "GH7-time-window-trust-in-consensus-and-certs": {
+    "mechanism": "Distributed-consensus and certificate-validation logic enforce time-bounded rules - block/timestamp acceptance windows, validator slot timing, TOTP/OCSP/JWT freshness, and certificate notBefore/notAfter - against the local clock, treated as an honest absolute reference. The clock is not modeled as an attacker-influenceable input shared across a quorum. An attacker who shifts the time source feeding a set of nodes (via the GNSS time-spoof or PTP/NTP asymmetry gaps above, or direct NTP manipulation) simultaneously moves their certificate validity windows and consensus timing, so revoked or not-yet-valid certs are accepted, expired tokens pass freshness, or coordinated skew across enough validators reshapes which blocks/slots count as timely - turning a falsified shared 'now' into an authorization and liveness weapon.",
+    "exploitation_primitive": "Shift the time source feeding multiple nodes so their cert-validity and consensus-timing windows move together, admitting expired/not-yet-valid certs and tokens or reshaping which blocks/slots are accepted as timely.",
+    "mitre_gap": "Closest Enterprise id is T1562 (Impair Defenses) and the deprecated/limited time-manipulation framing; ATT&CK has no technique tying clock manipulation to certificate-validity or consensus-window authorization. ICS T0830 covers on-path time tampering but not the downstream authorization/liveness consequence in PKI and distributed consensus. No ATT&CK technique models 'falsified shared time as an authorization primitive'.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "'SoK: State of the Time - On Trustworthiness of Digital Clocks' (arXiv:2502.09837)",
+        "note": "Systematizes how applications (PKI validity, consensus, tokens) trust the local clock and the consequences of clock manipulation.",
+        "url": "https://arxiv.org/pdf/2502.09837"
+      },
+      {
+        "type": "standard",
+        "ref": "RFC 5280 (X.509 notBefore/notAfter) and RFC 6960 (OCSP) time-bounded validity",
+        "note": "Validity and freshness are evaluated against local time, the input an attacker shifts.",
+        "url": "https://www.rfc-editor.org/rfc/rfc5280"
+      }
+    ],
+    "detection": "Require multiple independent, mutually-cross-checked time sources for security-critical validity decisions; bound acceptable clock skew and alert on divergence between time sources; for consensus, use median-of-peers time and reject blocks/certs when local time disagrees with a quorum of trusted references beyond a tight threshold.",
+    "references": [
+      { "title": "SoK: State of the Time (arXiv 2502.09837)", "url": "https://arxiv.org/pdf/2502.09837" },
+      { "title": "RFC 5280: Internet X.509 PKI Certificate and CRL Profile", "url": "https://www.rfc-editor.org/rfc/rfc5280" }
+    ]
+  },
+  "GH7-der-aggregator-grid-command-trust": {
+    "mechanism": "A DER fleet (rooftop solar inverters, home batteries, EV chargers, smart thermostats) actuates real power output on setpoint/curtail/dispatch commands arriving from its cloud aggregator or VPP/DERMS over IEEE 2030.5 or OpenADR; device-side authority is delegated wholesale to the aggregator, and the grid operator in turn treats the aggregator's reported fleet capacity as dispatchable reserve. IEEE 2030.5 relies on TLS for channel security but includes no intrinsic anti-abuse limiting once the aggregator (or its API tokens) is trusted. An attacker who compromises the aggregator cloud, its API tokens, or the command channel issues a synchronized command to thousands of geographically clustered devices - a simultaneous trip, ramp, or curtail - producing a coordinated multi-megawatt step change the bulk grid never authorized and the operator's reserve model did not anticipate (a load/generation-altering attack).",
+    "exploitation_primitive": "Compromise the aggregator/VPP cloud or its command-channel tokens and broadcast a synchronized trip/ramp/curtail to a clustered DER fleet, forcing a coordinated multi-MW step change.",
+    "mitre_gap": "Closest ids are ICS T0855 (Unauthorized Command Message) and T0831 (Manipulation of Control), tagged in input. They are insufficient because they model command injection at a single ICS/field device on an OT network, not a cloud-to-edge fan-out where legitimate authority is delegated to an aggregator and the attack is the synchronized aggregate effect across thousands of consumer DERs over IEEE 2030.5/OpenADR - a grid-scale load-altering primitive with no single ICS technique.",
+    "anchors": [
+      {
+        "type": "standard",
+        "ref": "U.S. DOE 'Cybersecurity Considerations for Distributed Energy Resources on the U.S. Electric Grid' (2022)",
+        "note": "Identifies aggregate DER attack vectors including manipulating ride-through/trip thresholds and a botnet impeding utility visibility/control of DER.",
+        "url": "https://www.energy.gov/sites/default/files/2022-10/Cybersecurity%20Considerations%20for%20Distributed%20Energy%20Resources%20on%20the%20U.S.%20Electric%20Grid.pdf"
+      },
+      {
+        "type": "research",
+        "ref": "'Survey of Load-Altering Attacks Against Power Grids' (arXiv:2410.22007)",
+        "note": "Analyzes coordinated load/DER-altering attacks causing oscillations and step changes at grid scale.",
+        "url": "https://arxiv.org/html/2410.22007v1"
+      },
+      {
+        "type": "standard",
+        "ref": "IEEE 2030.5 (Smart Energy Profile 2.0) DER communication",
+        "note": "Defines the aggregator-to-DER command protocol whose trust delegation enables fleet-wide actuation; relies on TLS without intrinsic anti-abuse/rate controls.",
+        "url": "https://standards.ieee.org/ieee/2030.5/5897/"
+      }
+    ],
+    "detection": "Grid operator should monitor for synchronized power excursions across geographically clustered DER and rate-limit/stagger aggregator dispatch; enforce device-side sanity bounds and ramp limits independent of aggregator commands; detect anomalous aggregator API usage and command fan-out volume, and require signed, per-command authorization with replay protection.",
+    "references": [
+      { "title": "DOE: Cybersecurity Considerations for DER on the U.S. Electric Grid", "url": "https://www.energy.gov/sites/default/files/2022-10/Cybersecurity%20Considerations%20for%20Distributed%20Energy%20Resources%20on%20the%20U.S.%20Electric%20Grid.pdf" },
+      { "title": "Survey of Load-Altering Attacks Against Power Grids (arXiv 2410.22007)", "url": "https://arxiv.org/html/2410.22007v1" }
+    ]
+  },
+  "GH7-safety-telemetry-replay-into-automated-response": {
+    "mechanism": "Safety instrumented systems, building-automation controllers, and medical-device monitoring loops act on the last sensor/telemetry value received over unsequenced field links - BACnet/IP, Modbus/TCP, medical telemetry - treating the most-recent reading as fresh and live. These protocols carry no per-message sequence number, timestamp, or freshness guarantee. An attacker on the network captures a normal-state telemetry frame and replays it (or holds the last good value) while the real process diverges, so both the automated safety/control response and the SOC view continue to act on a stale value presented as current - suppressing a safety trip, masking a dangerous excursion, or holding a setpoint while the true measured quantity moves into an unsafe regime. This is a demonstrated OT/medical replay class.",
+    "exploitation_primitive": "Capture a normal-state telemetry frame on Modbus/TCP, BACnet/IP, or a medical telemetry link and replay/freeze it while the physical process diverges, so automated response and operators act on a stale-but-current-looking value.",
+    "mitre_gap": "Closest ids are ICS T0856 (Spoof Reporting Message) and T0832 (Manipulation of View), tagged in input. They partially fit but are insufficient: they describe injecting false reporting/altering the operator view, while this is specifically a replay/hold-last-value freshness attack on unsequenced field protocols, and they do not capture suppression of an automated safety response (the safety-function-defeat dimension) or the medical/BAS domains. ATT&CK Enterprise has no replay-of-stale-telemetry technique.",
+    "anchors": [
+      {
+        "type": "standard",
+        "ref": "MITRE ATT&CK ICS T0856 Spoof Reporting Message",
+        "note": "Nearest ICS technique; mitigation M0802 (Communication Authenticity) recommends MACs/signatures - confirming baseline field protocols lack the integrity/freshness that replay exploits.",
+        "url": "https://attack.mitre.org/techniques/T0856/"
+      },
+      {
+        "type": "standard",
+        "ref": "MITRE ATT&CK ICS T0832 Manipulation of View",
+        "note": "Covers presenting operators a false/stale view; tagged but does not cover automated-safety-response suppression.",
+        "url": "https://attack.mitre.org/techniques/T0831/"
+      }
+    ],
+    "detection": "Apply message sequencing/timestamping and freshness (nonce/MAC) where the protocol permits, or wrap legacy field traffic in authenticated transport; detect frozen/identical-value sequences and watchdog timeouts on expected telemetry variance; cross-validate critical readings against an independent redundant sensor and alert on stale-value patterns.",
+    "references": [
+      { "title": "MITRE ATT&CK ICS: Spoof Reporting Message (T0856)", "url": "https://attack.mitre.org/techniques/T0856/" },
+      { "title": "MITRE ATT&CK ICS: Communication Authenticity (M0802)", "url": "https://attack.mitre.org/mitigations/M0802/" }
+    ]
+  }
+}

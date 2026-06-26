@@ -11,7 +11,8 @@ const PRIM = Object.fromEntries(prims.map((p) => [p.id, p.name]));
 const principals = Object.fromEntries(J("principals.json").principals.map((p) => [p.id, p.name]));
 const vals = J("validations.json");
 const arts = J("artifacts.json");
-for (const s of seams) { if (vals[s.id]) s.validation = vals[s.id]; if (arts[s.id]) s.test_artifact = arts[s.id]; }
+let tech = {}; try { tech = J("tech-notes.json"); } catch {}
+for (const s of seams) { if (vals[s.id]) s.validation = vals[s.id]; if (arts[s.id]) s.test_artifact = arts[s.id]; if (tech[s.id]) s.tech_note = tech[s.id]; }
 const mitreAbsent = (s) => s.techniques.every((t) => !t.attack_ids || t.attack_ids.length === 0);
 
 const GROUPS = [
@@ -60,6 +61,21 @@ for (const [, title, match] of GROUPS) {
     md += `| **Maturity / tooling / detection** | ${s.maturity} / ${s.tooling_status} / ${s.detection_status} |\n\n`;
     md += `**The trust assumption.** ${s.trust_assumption}\n\n`;
     md += `**The attack.** ${s.violation}\n\n`;
+    const tnote = s.tech_note;
+    if (tnote) {
+      if (tnote.mechanism) md += `**Mechanism (technical).** ${tnote.mechanism}\n\n`;
+      if (tnote.exploitation_primitive) md += `**Exploitation primitive.** ${tnote.exploitation_primitive}\n\n`;
+      if (tnote.mitre_gap) md += `**MITRE gap.** ${tnote.mitre_gap}\n\n`;
+      if ((tnote.anchors || []).length) {
+        md += `**Real-world anchors.**\n`;
+        for (const a of tnote.anchors) md += `- ${a.type ? `*${a.type}:* ` : ""}${a.ref}${a.note ? ` — ${a.note}` : ""}${a.url ? ` — <${a.url}>` : ""}\n`;
+        md += `\n`;
+      }
+      if (tnote.detection) md += `**Detection (technical).** ${tnote.detection}\n\n`;
+      if ((tnote.references || []).length) {
+        md += `**References.** ` + tnote.references.map((r) => `[${r.title}](${r.url})`).join(" · ") + `\n\n`;
+      }
+    }
     if (s.rationale) md += `**Why it's new (and what MITRE misses).** ${s.rationale}\n\n`;
     if (v) {
       md += `**How to validate it.** ${v.validation_method}\n\n`;

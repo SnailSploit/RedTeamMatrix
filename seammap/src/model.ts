@@ -57,6 +57,12 @@ export function loadDataset(): Dataset {
     for (const s of seams) if (artifacts[s.id]) s.test_artifact = artifacts[s.id];
   } catch { /* artifacts.json not present yet */ }
 
+  // Join web-verified technical deep-dive notes (tech-notes.json). Absent file => no-op.
+  try {
+    const tn: Record<string, any> = readJson("tech-notes.json");
+    for (const s of seams) if (tn[s.id]) s.tech_note = tn[s.id];
+  } catch { /* tech-notes.json not present yet */ }
+
   // Join PoC run-results (poc-results.json) onto the artifact: real execution outcomes
   // (the closed loop) upgrade the optimizer's signal from "PoC exists" to "PoC confirmed".
   try {

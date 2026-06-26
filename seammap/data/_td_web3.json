@@ -1,0 +1,260 @@
+{
+  "GH6-oracle-twap-window-cross-block-warp": {
+    "mechanism": "A TWAP oracle (e.g. Uniswap V3's geometric-mean accumulator) integrates price over an observation window by summing tick*time between checkpoints; the 'time' weight of each price is the number of seconds (effectively blocks) that price persisted. When a single actor controls consecutive block production - a PoS proposer who gets two adjacent slots, an L2 sequencer with unilateral ordering, or anyone exploiting long/irregular block intervals - they can push a low-liquidity pool's spot price in block N and revert it in block N+1, so a manipulated tick dominates the time-weighting with no arbitrage exposure between the two blocks. The averaging that the consumer treats as manipulation-resistant ground truth is defeated by warping the time dimension (which blocks land in-window, and for how long) rather than by overpowering the prices. Post-Merge this is materially cheaper because a proposer can back-run their own manipulation in a guaranteed multi-block sequence.",
+    "exploitation_primitive": "Acquire two consecutive blocks (proposer/builder via MEV markets or sole L2 sequencer), spike a thin pool's price in the first block, read the now-skewed TWAP from a lending/liquidation contract in the same or next block, then unwind - extracting collateral or triggering liquidations against the warped average.",
+    "mitre_gap": "ATT&CK Enterprise has no technique for on-chain price-oracle or TWAP manipulation; there is no smart-contract data-source tactic. The nearest analogue, T1565 Data Manipulation (Stored/Transmitted), describes tampering with data at rest or in transit on conventional hosts and assumes an integrity boundary an attacker breaches - it cannot express manipulation of a value that is honestly computed from a public AMM whose pricing the attacker legitimately moves with capital and block-ordering control, so it is insufficient.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Euler Finance - Uniswap V3 TWAP manipulation cost-of-attack",
+        "note": "Formal cost-of-attack analysis and simulator quantifying single- vs multi-block TWAP manipulation; shows feasibility hinges on low in-range liquidity and proposer multi-block control.",
+        "url": "https://github.com/euler-xyz/uni-v3-twap-manipulation"
+      },
+      {
+        "type": "research",
+        "ref": "Uniswap Labs - Uniswap v3 TWAP Oracles in Proof of Stake",
+        "note": "Uniswap's own analysis of how PoS multi-block proposer control reduces TWAP manipulation cost and recommended window/liquidity mitigations.",
+        "url": "https://blog.uniswap.org/uniswap-v3-oracles"
+      },
+      {
+        "type": "incident",
+        "ref": "Mango Markets oracle manipulation ($117M, Oct 2022)",
+        "note": "Real-world oracle price manipulation: thin MNGO liquidity let the attacker pump the oracle-referenced price ~2300% and borrow against inflated collateral; demonstrates the economic class even though the warp vector here was liquidity not block cadence.",
+        "url": "https://www.coindesk.com/markets/2022/10/12/how-market-manipulation-led-to-a-100m-exploit-on-solana-defi-exchange-mango"
+      }
+    ],
+    "detection": "Off-chain: monitor for the same EOA/proposer appearing as fee_recipient/coinbase across two consecutive blocks containing a large swap and its inverse on a low-liquidity pool, plus an oracle-consuming call (liquidation/borrow) sandwiched between them. On-chain: alert when a pool's spot price deviates sharply from its own longer TWAP (e.g. >X% spot-vs-30min) within the same block an oracle read occurs, or when in-range liquidity collapses toward zero right before a price spike.",
+    "references": [
+      { "title": "Euler - uni-v3-twap-manipulation (cost-of-attack)", "url": "https://github.com/euler-xyz/uni-v3-twap-manipulation" },
+      { "title": "Uniswap v3 TWAP Oracles in Proof of Stake", "url": "https://blog.uniswap.org/uniswap-v3-oracles" },
+      { "title": "Mango Markets exploit explainer (CoinDesk)", "url": "https://www.coindesk.com/markets/2022/10/12/how-market-manipulation-led-to-a-100m-exploit-on-solana-defi-exchange-mango" }
+    ]
+  },
+  "GH6-bridge-lightclient-finality-reorg-mint": {
+    "mechanism": "A lock-and-mint bridge runs an on-destination light client (or relayer set) that accepts a source-chain deposit once the included header/proof reaches a hard-coded confirmation depth, then irreversibly mints the wrapped asset. The depth is a static assumption about finality, but real finality is probabilistic (PoW depth) or reconfigurable (PoS finality gadgets can stall, validator sets rotate, and some L2s have soft 'finality' that lags L1 settlement). If the source chain reorgs deeper than the configured depth - or a finality-gadget stall is resolved on a fork that orphans the proven block - the source-side Lock is rolled back while the destination-side Mint persists, producing unbacked wrapped tokens. The seam is the bridge equating its local confirmation count with a single global notion of irreversibility the source chain never actually guaranteed at that depth.",
+    "exploitation_primitive": "Deposit on a source chain near a known reorg-prone condition (short-block PoW chain, contentious fork, or a chain where the attacker can induce/await a deep reorg), let the destination mint at the bridge's fixed depth, then cause or wait out a reorg that reverts the source deposit while keeping the minted wrapped asset - a cross-chain double-spend.",
+    "mitre_gap": "ATT&CK has no concept of blockchain finality, chain reorganization, or cross-chain double-spend; no tactic models trust in a consensus-finality assumption. The loosest analogue is T1565.001 Stored Data Manipulation, but a reorg is not the attacker corrupting stored data - it is the source ledger legitimately rewriting its own history per its consensus rules while a second system already acted on the rewritten state, which ATT&CK's host-centric integrity model cannot represent.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Across Protocol - A Guide to Finality Risk",
+        "note": "Practitioner analysis of finality risk for bridges: confirmation-depth choices vs probabilistic/reconfigurable finality and the reorg double-mint scenario.",
+        "url": "https://across.to/blog/Dodging-the-Finality-Bullet-A-Guide-to-Finality-Risk"
+      },
+      {
+        "type": "research",
+        "ref": "Double-Spending Attacks in Cross-Blockchain Ecosystems (ScienceDirect)",
+        "note": "Peer-reviewed treatment of reorg-driven double-spend across linked chains via bridges, formalizing the confirmation-depth vs actual-finality gap.",
+        "url": "https://www.sciencedirect.com/science/article/pii/S2096720925001058"
+      },
+      {
+        "type": "research",
+        "ref": "LI.FI - Ethereum, Finality and Bridges",
+        "note": "Explains why honoring source events before finality (or with optimistic depth) lets a later reorg remove the Lock while the Mint remains, yielding unbacked assets.",
+        "url": "https://li.fi/knowledge-hub/ethereum-finality-and-bridges"
+      }
+    ],
+    "detection": "On-chain: cross-monitor source and destination - flag any destination mint whose corresponding source deposit transaction/log no longer exists at the canonical source height (proof references an orphaned block hash). Off-chain: track source-chain reorg depth in real time and raise alerts when observed reorg depth approaches or exceeds the bridge's configured confirmation depth; reconcile total wrapped supply against escrowed source collateral and alert on any positive divergence.",
+    "references": [
+      { "title": "Across - Dodging the Finality Bullet: A Guide to Finality Risk", "url": "https://across.to/blog/Dodging-the-Finality-Bullet-A-Guide-to-Finality-Risk" },
+      { "title": "Double-Spending Attacks in Cross-Blockchain Ecosystems", "url": "https://www.sciencedirect.com/science/article/pii/S2096720925001058" },
+      { "title": "LI.FI - Ethereum, Finality and Bridges", "url": "https://li.fi/knowledge-hub/ethereum-finality-and-bridges" }
+    ]
+  },
+  "GH6-proxy-upgrade-storage-collision-silent-reslot": {
+    "mechanism": "An upgradeable proxy uses delegatecall so the implementation's code executes against the proxy's persistent storage. Storage variables are assigned sequential slots by the Solidity compiler at compile time; the proxy and successive implementations must agree on this layout or the same slot is reinterpreted. When a new implementation inserts, reorders, or changes the type of a state variable (or the proxy itself declares its own variable colliding with the logic's slot 0), the raw bytes already in a slot - once a balance or a boolean 'initialized' flag - are silently read as something else, e.g. an owner address or a role bit. EIP-1967 fixes only the proxy's admin/implementation pointers to pseudo-random slots; it does not protect against collisions between implementation versions, which remain the developer's responsibility. The trusted address is bytecode-immutable in appearance while its meaning is reassigned underneath.",
+    "exploitation_primitive": "Ship (or, with a captured admin key, push) an implementation whose layout reuses an occupied slot so an attacker-controlled value lands in the owner/role/initialized slot - e.g. a proxy-declared admin variable colliding with the logic's initialized flag - then re-invoke initialize() or a privileged function to seize governance/treasury.",
+    "mitre_gap": "ATT&CK has no technique for storage-slot reinterpretation in a delegatecall proxy; the closest analogue, T1574 Hijack Execution Flow (and its DLL/path-precedence subtechniques), is about substituting which code runs, whereas here the code is reviewed and immutable and the attack is the reinterpretation of persistent data under a new-but-honest implementation - an EVM storage-layout failure ATT&CK has no vocabulary for.",
+    "anchors": [
+      {
+        "type": "incident",
+        "ref": "Audius governance takeover (~$6M, Jul 2022)",
+        "note": "Demonstrated: a proxy-declared proxyAdmin variable collided with the logic's initialized flag, so the non-zero admin address read as 'not initialized'; attacker re-called initialize(), became governor, and drained the treasury. Confirms the 'demonstrated' rating.",
+        "url": "https://blog.audius.co/article/audius-governance-takeover-post-mortem-7-23-22"
+      },
+      {
+        "type": "standard",
+        "ref": "EIP-1967: Proxy Storage Slots",
+        "note": "Standardizes proxy admin/implementation to pseudo-random slots to avoid proxy<->logic clashes, but explicitly does not solve logic-version-to-version layout collisions.",
+        "url": "https://eips.ethereum.org/EIPS/eip-1967"
+      },
+      {
+        "type": "standard",
+        "ref": "OpenZeppelin Upgrades - Proxy Upgrade Pattern (storage gaps / layout rules)",
+        "note": "Documents that storage must be append-only across versions and that the plugin detects layout collisions; the canonical defensive guidance.",
+        "url": "https://docs.openzeppelin.com/upgrades-plugins/proxies"
+      }
+    ],
+    "detection": "Pre-deploy: run OpenZeppelin Upgrades storage-layout diff / validateUpgrade against the prior implementation and block any non-append-only change; CI gate on layout hash. On-chain: monitor Upgraded(address) events on critical proxies and, on each upgrade, diff the new vs old storage layout and re-read owner/admin/role slots, alerting if a previously value-bearing slot now resolves to a privileged role or if initialize() becomes callable again.",
+    "references": [
+      { "title": "Audius Governance Takeover Post-Mortem 7/23/22", "url": "https://blog.audius.co/article/audius-governance-takeover-post-mortem-7-23-22" },
+      { "title": "EIP-1967: Proxy Storage Slots", "url": "https://eips.ethereum.org/EIPS/eip-1967" },
+      { "title": "OpenZeppelin - Proxy Upgrade Pattern", "url": "https://docs.openzeppelin.com/upgrades-plugins/proxies" }
+    ]
+  },
+  "GH6-eip712-domain-replay-fork-chainid-confusion": {
+    "mechanism": "EIP-712 binds a typed-data signature to a context via a domainSeparator hashed from name, version, chainId, and verifyingContract. The signature only authorizes the intended context if all four fields actually pin it. Failures arise when chainId is omitted or cached at deploy time (so it is wrong after a fork/reorg or shared across an EVM-compatible chain), when verifyingContract is deployed at the identical address on a second chain via CREATE2/deterministic factories, or when a contract or wallet caches a stale separator. In those cases the on-chain ecrecover validates a signature the human scoped to one chain/contract against a colliding context, executing value movement the signer never authorized there. The seam is the multichain address/chainId namespace the user never reasoned about while the contract treats the signature as scoped proof of intent.",
+    "exploitation_primitive": "Capture a valid EIP-712 message (permit, gasless order, intent) and replay it where the domain failed to pin - a forked/rollup chain reusing the historical chainId, or a verifying contract redeployed at the same address on a second chain - so one signature drains value in a context the signer never reasoned about.",
+    "mitre_gap": "ATT&CK has no technique for cryptographic-signature domain confusion or cross-chain replay; nothing models a signed authorization whose scope-binding silently collides across ledgers. The nearest analogues, T1550.001/.004 Use Alternate Authentication Material (application access tokens / web session cookies), assume a stolen credential reused within one system's auth boundary - they cannot express a correctly-scoped EIP-712 signature being honored in a parallel chain context the signer's domain separator failed to exclude.",
+    "anchors": [
+      {
+        "type": "incident",
+        "ref": "Optimism / Wintermute replay (~20M OP, Jun 2022)",
+        "note": "Demonstrated cross-chain replay: a Gnosis Safe factory/deployment from L1 Ethereum was replayed on Optimism (L2 reusing the same address/context), letting an attacker deploy the multisig and seize 20M OP allocated to an address not yet deployed on L2.",
+        "url": "https://slowmist.medium.com/slowmist-key-to-the-theft-of-20-million-op-tokens-transaction-replay-490baaf45f26"
+      },
+      {
+        "type": "standard",
+        "ref": "EIP-712: Typed structured data hashing and signing",
+        "note": "Defines the domainSeparator (name/version/chainId/verifyingContract) whose purpose is exactly to prevent cross-chain and cross-contract signature replay - and whose misuse causes this class.",
+        "url": "https://eips.ethereum.org/EIPS/eip-712"
+      },
+      {
+        "type": "standard",
+        "ref": "ERC-5267: Retrieval of EIP-712 domain",
+        "note": "Standard for exposing the active domain so wallets/integrators can detect drift and avoid signing against a stale or cross-chain-colliding separator.",
+        "url": "https://eips.ethereum.org/EIPS/eip-5267"
+      }
+    ],
+    "detection": "Contract: detect domainSeparator caching by checking whether chainId is read at signature-verification time vs frozen at deploy; flag verifiers that never recompute on chainId change. On-chain: monitor for the identical signature (r,s,v) or identical struct hash being submitted on more than one chain or against a same-address contract on another chain. Off-chain: wallet-side, compare the signed domain (via ERC-5267 eip712Domain()) against the live chainId/verifyingContract and warn on mismatch before signing.",
+    "references": [
+      { "title": "SlowMist - Theft of 20M OP Tokens via Transaction Replay", "url": "https://slowmist.medium.com/slowmist-key-to-the-theft-of-20-million-op-tokens-transaction-replay-490baaf45f26" },
+      { "title": "EIP-712: Typed structured data hashing and signing", "url": "https://eips.ethereum.org/EIPS/eip-712" },
+      { "title": "ERC-5267: Retrieval of EIP-712 domain", "url": "https://eips.ethereum.org/EIPS/eip-5267" }
+    ]
+  },
+  "GH6-blind-signing-simulation-divergence-decoy": {
+    "mechanism": "Wallet clear-signing previews run a transaction simulation (eth_call/trace against current state, or a forked state) and render predicted asset deltas and decoded calldata. The prediction is only valid if simulated state equals execution state, but those diverge: the simulation reads block.timestamp/number, oracle prices, balances, or storage flags at simulation time, while the mined transaction reads them at inclusion time. An attacker crafts calldata that branches on something the simulator does not reproduce - a value that changes between check and use (TOCTOU), a front-run state mutation, a flash-set storage flag, or tx.origin/gasleft-dependent logic - so the benign, profitable-looking preview is honest for the simulated state yet the executed path drains the signer. The defense built to end blind signing becomes the deception surface.",
+    "exploitation_primitive": "Deploy a contract whose call simulates as 'you receive X, send Y' but whose executed branch (gated on timestamp, an oracle read, a pre-inclusion state change, or a hidden flag) instead approves/transfers the victim's assets, then induce the user to approve based on the decoy preview.",
+    "mitre_gap": "ATT&CK has no technique for transaction-simulation evasion or preview/execution divergence; no tactic models a security-preview oracle being gamed by state that differs at execution time. The nearest analogues are T1497 Virtualization/Sandbox Evasion and T1036 Masquerading - but those describe malware detecting an analysis sandbox or disguising a file, whereas here a legitimate on-chain simulation is honest yet non-representative of inclusion-time state, a TOCTOU property of EVM execution ATT&CK does not capture.",
+    "anchors": [
+      {
+        "type": "research",
+        "ref": "Blockaid - Dissecting TOCTOU Attacks: Wallet Drainers Exploit Transaction Timing",
+        "note": "Documents drainers altering or gating on state between simulation and execution so a hidden condition not triggered during simulation drains assets on inclusion.",
+        "url": "https://www.blockaid.io/blog/dissecting-toctou-attacks-how-wallet-drainers-exploit-solanas-transaction-timing"
+      },
+      {
+        "type": "research",
+        "ref": "Blockaid - Malicious dApps 101: Wallet Drainers",
+        "note": "Describes simulation-based deception (EIP-712 offline signatures, Permit2/session-key obfuscation) used to bypass preview-based detection.",
+        "url": "https://www.blockaid.io/blog/wallet-drainers-vitalik-metamask"
+      },
+      {
+        "type": "standard",
+        "ref": "MetaMask Security Alerts (Blockaid) documentation",
+        "note": "Vendor documentation of the simulation/clear-signing preview model wallets rely on, establishing the trusted layer this technique subverts.",
+        "url": "https://support.metamask.io/configure/wallet/security-alerts/"
+      }
+    ],
+    "detection": "Off-chain: re-simulate immediately before broadcast and at multiple block heights/states; flag transactions whose predicted asset deltas are unstable across re-simulations or that branch on block.timestamp/number, gasleft, tx.origin, or freshly-written storage flags. On-chain/mempool: compare actual post-execution balance changes against the wallet's pre-signed simulated deltas and alert on divergence; treat interactions with newly-deployed, unverified contracts that pass simulation but contain timestamp/oracle-gated branches as high risk.",
+    "references": [
+      { "title": "Blockaid - Dissecting TOCTOU Attacks", "url": "https://www.blockaid.io/blog/dissecting-toctou-attacks-how-wallet-drainers-exploit-solanas-transaction-timing" },
+      { "title": "Blockaid - Malicious dApps 101: Wallet Drainers", "url": "https://www.blockaid.io/blog/wallet-drainers-vitalik-metamask" },
+      { "title": "MetaMask - Security alerts (Blockaid)", "url": "https://support.metamask.io/configure/wallet/security-alerts/" }
+    ]
+  },
+  "GH6-did-credential-status-staleness-trust": {
+    "mechanism": "A verifier of a W3C Verifiable Credential checks the issuer signature plus a referenced status mechanism - a Bitstring/StatusList credential (a compressed bitstring where each credential maps to one bit: 1=revoked), an on-chain revocation registry, or did:method resolution. Validity is read from a snapshot the verifier fetches and typically caches, but a decentralized identity system has no synchronous authority that answers 'is this valid right now': status lists are published/mirrored with latency, registries propagate across nodes, and DID document resolution can return cached or stale results. An attacker presents a credential after revocation but before the cached status list/registry/DID document the verifier sees reflects it - or steers the verifier to a stale mirror - so a revoked or rotated credential is honored as currently active. The verifier trusts a lagging snapshot as present-tense truth.",
+    "exploitation_primitive": "Present a recently-revoked or key-rotated credential during the propagation window, or against a verifier pinned to a cached/outdated status-list mirror or stale DID resolution, so the status bit still reads 'active' and access is granted.",
+    "mitre_gap": "ATT&CK has no technique for decentralized-credential revocation lag or DID status staleness; no tactic models trust in an eventually-consistent status layer with no synchronous authority. The nearest analogues, T1606 Forge Web Credentials and T1550 Use Alternate Authentication Material, assume a forged or stolen token, whereas here a genuinely-issued-then-revoked credential is honored because the distributed status source the verifier consulted had not yet converged - an availability/consistency gap in decentralized PKI ATT&CK does not represent.",
+    "anchors": [
+      {
+        "type": "standard",
+        "ref": "W3C Bitstring Status List v1.0 (Recommendation)",
+        "note": "Defines the bitstring revocation/suspension mechanism whose publish-and-cache model creates the propagation-latency window this technique exploits.",
+        "url": "https://www.w3.org/TR/vc-bitstring-status-list/"
+      },
+      {
+        "type": "standard",
+        "ref": "W3C Verifiable Credentials Status List 2021 (predecessor draft)",
+        "note": "Earlier StatusList2021 draft; notes it was experimental/under heavy development, underscoring immature, non-synchronous status resolution in deployed systems.",
+        "url": "https://www.w3.org/TR/2023/WD-vc-status-list-20230427/"
+      }
+    ],
+    "detection": "Verifier-side: enforce a maximum status-list cache TTL and a freshness/validUntil check on fetched status credentials; reject or step-up when the status list's issuance/refresh timestamp is older than a policy threshold. Fetch status from the issuer's canonical endpoint (not an arbitrary mirror) and pin the DID document version; log and alert when a credential validated against a status snapshot that is later found to have been stale (post-hoc reconciliation against the issuer's authoritative current list).",
+    "references": [
+      { "title": "W3C Bitstring Status List v1.0", "url": "https://www.w3.org/TR/vc-bitstring-status-list/" },
+      { "title": "W3C Verifiable Credentials Status List v2021 (WD)", "url": "https://www.w3.org/TR/2023/WD-vc-status-list-20230427/" }
+    ]
+  },
+  "GH6-dao-governance-flashstake-snapshot-capture": {
+    "mechanism": "On-chain governance measures voting weight from a token/vote-escrow/delegated balance at a proposal's snapshot block and equates that point-in-time weight with durable, at-risk economic stake. Because ERC-20 governance tokens are freely transferable and DeFi offers atomic flash loans, an attacker can borrow an enormous balance, satisfy the snapshot within a single transaction, and unwind in the same block - holding no lasting stake. If voting and execution lack a time delay (or the snapshot is taken at the current block rather than a historically-checkpointed past block), the attacker reads attacker-controlled weight as legitimate and passes a self-dealing proposal. The seam is governance trusting a measured balance as a proxy for persistent alignment it never verifies the persistence of.",
+    "exploitation_primitive": "In one transaction, flash-borrow or momentarily acquire >quorum governance/vote-escrow weight, vote on and (via emergency/no-delay execution) execute a malicious proposal transferring treasury funds, then repay the flash loan - all atomically.",
+    "mitre_gap": "ATT&CK has no technique for governance-token flash-stake or snapshot capture; nothing models voting-weight measurement as a trust boundary or atomic borrowed-capital manipulation of a decision process. There is no meaningful analogue - T1199 Trusted Relationship and account-manipulation techniques assume persistent illegitimate access, whereas this is a single-block, fully-repaid acquisition of legitimate-looking voting power with zero residual stake, which ATT&CK's identity/access model cannot express.",
+    "anchors": [
+      {
+        "type": "incident",
+        "ref": "Beanstalk Farms governance flash-loan attack ($182M, Apr 2022)",
+        "note": "Canonical demonstrated case: attacker flash-borrowed ~$1B to obtain >2/3 Stalk voting power and called emergencyCommit to execute a malicious BIP in the same transaction, with no flash-loan-resistant vote measurement and no vote/execute delay.",
+        "url": "https://medium.com/immunefi/hack-analysis-beanstalk-governance-attack-april-2022-f42788fc821e"
+      },
+      {
+        "type": "standard",
+        "ref": "OpenZeppelin Governor / ERC-20Votes checkpointing",
+        "note": "Defensive design: past-block snapshot voting power (getPastVotes) plus voting delay/timelock so weight must be held at a prior block and execution is delayed, defeating same-block flash-stake.",
+        "url": "https://docs.openzeppelin.com/contracts/5.x/governance"
+      }
+    ],
+    "detection": "On-chain: flag any vote cast where the voter's governance-token balance was acquired (transfer-in or flash-loan callback) within the same transaction or block as the snapshot, especially if balance drops to ~0 immediately after; alert on proposals reaching quorum from addresses with near-zero historical holding-time. Monitor for emergencyCommit/execute occurring in the same transaction as vote casting, and for flash-loan provider calls (Aave/Uniswap/Balancer) bracketing a governance interaction.",
+    "references": [
+      { "title": "Immunefi - Hack Analysis: Beanstalk Governance Attack, April 2022", "url": "https://medium.com/immunefi/hack-analysis-beanstalk-governance-attack-april-2022-f42788fc821e" },
+      { "title": "OpenZeppelin - Governance (Governor, ERC20Votes)", "url": "https://docs.openzeppelin.com/contracts/5.x/governance" }
+    ]
+  },
+  "GH6-erc4337-paymaster-validation-execution-gap": {
+    "mechanism": "ERC-4337 separates a UserOperation into a validation phase (account and paymaster check signatures/policy/allowances via validatePaymasterUserOp) and a later execution phase (the account's call and the paymaster's postOp). A paymaster commits to sponsoring gas based on state observed during validation - the userOp calldata, account state, an off-chain signed sponsorship policy, or an ERC-20 allowance it will pull as repayment. Because execution happens after validation and bundlers may order/aggregate many userOps, the relied-upon state can change before postOp runs: the repayment token's balance/allowance is drained, the sponsored action is altered via ordering/reentrancy effects, or aggregated ops interfere. The paymaster then pays gas for an operation that no longer matches what it validated, and at scale its EntryPoint deposit is drained. ERC-7562 storage/opcode rules and staking constrain mempool-level griefing but do not eliminate validation-time-vs-execution-time state divergence the paymaster economically depends on.",
+    "exploitation_primitive": "Submit userOps that validate against a paymaster's token-repayment or policy check, then within the same bundle/execution change that state (drain the repayment-token balance/allowance, or reorder a reentrant action) so postOp cannot collect, forcing the paymaster to eat the gas - repeated to drain its deposit.",
+    "mitre_gap": "ATT&CK has no technique for account-abstraction paymaster economics or validation/execution TOCTOU; no tactic models a gas-sponsorship contract paying for an operation whose preconditions lapsed between phases. The closest analogue is T1499 Endpoint Denial of Service (resource exhaustion), but that targets service availability via traffic, whereas this is a contract-protocol economic drain exploiting ERC-4337's phase separation and bundler ordering - an on-chain mechanism ATT&CK does not model.",
+    "anchors": [
+      {
+        "type": "standard",
+        "ref": "ERC-4337: Account Abstraction Using Alt Mempool",
+        "note": "Defines the validation/execution phase separation, paymaster sponsorship, EntryPoint deposit, and postOp repayment - the structure this technique abuses.",
+        "url": "https://eips.ethereum.org/EIPS/eip-4337"
+      },
+      {
+        "type": "standard",
+        "ref": "ERC-7562: Validation rules for AA (mempool/storage-access rules)",
+        "note": "Specifies storage/opcode restrictions and staking/reputation that bundlers enforce to limit paymaster griefing and mass invalidation; documents the boundary and its limits.",
+        "url": "https://docs.erc4337.io/core-standards/erc-7562.html"
+      },
+      {
+        "type": "research",
+        "ref": "OpenZeppelin - ERC-4337 Account Abstraction Incremental Audit",
+        "note": "Audit of reference AA contracts including paymaster validation/postOp gas accounting and griefing protections, evidencing the divergence risk class.",
+        "url": "https://blog.openzeppelin.com/erc-4337-account-abstraction-incremental-audit"
+      }
+    ],
+    "detection": "On-chain: monitor a paymaster's EntryPoint deposit balance and alert on abnormal drain rate or on postOp reverts/failed repayments clustered from few accounts/factories. Correlate userOps where the repayment token's balanceOf/allowance for the sender dropped between the validation block-state and execution; flag bundles whose userOps share a sponsoring paymaster and mutate each other's relied-upon state. Off-chain: track per-sender sponsorship cost vs successful repayment ratio and rate-limit or de-sponsor senders whose execution-phase state repeatedly diverges from validation.",
+    "references": [
+      { "title": "ERC-4337: Account Abstraction Using Alt Mempool", "url": "https://eips.ethereum.org/EIPS/eip-4337" },
+      { "title": "ERC-7562 - ERC-4337 Documentation", "url": "https://docs.erc4337.io/core-standards/erc-7562.html" },
+      { "title": "OpenZeppelin - ERC-4337 Account Abstraction Incremental Audit", "url": "https://blog.openzeppelin.com/erc-4337-account-abstraction-incremental-audit" }
+    ]
+  },
+  "GH6-depin-proof-of-physical-work-sensor-spoof": {
+    "mechanism": "A DePIN reward contract mints tokens in proportion to submitted proofs of physical work - sensor readings, GNSS/location attestations, coverage/bandwidth measurements, hashed device telemetry, or witness attestations. On-chain, the contract can verify a proof is cryptographically well-formed but cannot verify it corresponds to real-world work at a real place and time, because the gap between the digital attestation and physical ground truth is unobservable from the chain. Attackers spoof GNSS coordinates, replay or synthesize sensor telemetry, virtualize many device identities on one host, or collude so witnesses attest to non-existent coverage. The contract mints because a well-formed fabrication is indistinguishable from a well-formed honest proof; mitigations (e.g. Helium's trust-score/denylist, multi-witness proof-of-coverage) are heuristic and off-chain, not a cryptographic guarantee of physicality.",
+    "exploitation_primitive": "Spoof a device's asserted location (GNSS spoofing) and/or replay synthetic coverage/sensor proofs - optionally clustering many virtual device identities so they 'witness' each other - to mint rewards for coverage or work that never physically occurred.",
+    "mitre_gap": "ATT&CK Enterprise has no technique for proof-of-physical-work, GNSS/location spoofing, or DePIN reward fraud; no tactic models a blockchain minting value from unverifiable physical-world attestations. The nearest analogues live outside Enterprise - ATT&CK for ICS lacks an oracle/minting concept, and T1565 Data Manipulation assumes corrupting data inside a system - whereas here the proof is authentic-looking and the falsity is in its correspondence to a physical reality the chain cannot observe, which no ATT&CK technique captures.",
+    "anchors": [
+      {
+        "type": "incident",
+        "ref": "Helium Proof-of-Coverage location spoofing / network gaming",
+        "note": "Documented real-world gaming: spoofers assert false GPS locations and cluster self-witnessing hotspots to mint HNT for non-existent coverage; persistent despite denylist enforcement.",
+        "url": "https://3roam.com/helium-hotspot-spoofing-and-the-deny-list/"
+      },
+      {
+        "type": "standard",
+        "ref": "Helium HIP-66: Trust Score and Denylist",
+        "note": "Helium Improvement Proposal introducing a multi-signal trust score to flag likely-spoofing hotspots - evidence the problem is mitigated heuristically off-chain, not solved on-chain.",
+        "url": "https://github.com/helium/HIP/blob/main/0066-trust-score-and-denylist-convenience.md"
+      }
+    ],
+    "detection": "Off-chain analytics: cross-check asserted location against RF/timing plausibility (witness RSSI/SNR vs distance, signal-propagation feasibility), detect impossible co-location or hotspots that only ever witness a fixed cluster, and correlate many device identities to one IP/ASN/host. Flag GNSS attestations inconsistent with multi-constellation/anti-spoof signals or with abrupt teleportation between assertions. On-chain: alert on reward concentration to owner clusters and on devices whose proofs lack independent third-party witnesses.",
+    "references": [
+      { "title": "Helium Hotspot Spoofing and the Deny List", "url": "https://3roam.com/helium-hotspot-spoofing-and-the-deny-list/" },
+      { "title": "Helium HIP-66: Trust Score and Denylist", "url": "https://github.com/helium/HIP/blob/main/0066-trust-score-and-denylist-convenience.md" }
+    ]
+  }
+}
