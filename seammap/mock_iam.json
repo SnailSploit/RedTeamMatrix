@@ -1,1 +1,0 @@
-{"service_accounts": [{"name": "svc-ci", "owner": "team-build", "expiry": "2026-12-01", "key_active": true}, {"name": "svc-legacy-etl", "owner": null, "expiry": null, "key_active": true}, {"name": "svc-report", "owner": "team-data", "expiry": null, "key_active": true}, {"name": "svc-old-migration", "owner": null, "expiry": null, "key_active": true}]}
