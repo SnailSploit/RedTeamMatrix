@@ -1,0 +1,415 @@
+# Where MITRE ATT&CK Has Gaps
+
+MITRE ATT&CK is the field's shared language, and SEAMMAP maps onto it fully — **100% of the 211 Enterprise base
+techniques resolve to a seam** (`data/mitre-map.json`). But ATT&CK is a *place-centric* taxonomy: a flat,
+curated list of techniques grouped by tactic. That shape has structural blind spots, and **52 SEAMMAP
+seams carry no ATT&CK technique id at all** — real trust relationships ATT&CK does not model. This document is
+the evidence, organized by domain (not AI-first), each grounded in the web-verified `mitre_gap` notes.
+
+## The structural blind spots (why a technique list misses these)
+
+1. **ATT&CK enumerates places, not relationships.** A technique answers "what is the adversary doing here";
+   a *seam* answers "which trust assumption breaks between A and B." Confused-deputy chains, provenance forgery,
+   and time/state divergence are **relationships between principals** — they fall *between* technique cells, so a
+   flat list cannot name them. SEAMMAP's six primitives (P1–P6) are exactly that missing type system.
+2. **The matrices are siloed.** Enterprise, Mobile, ICS, and ATLAS (AI) are separate catalogues. A real
+   2025-2027 attack crosses them in one chain (agent → OAuth → cloud → OT), but no single ATT&CK matrix expresses
+   the cross-matrix path. ATLAS techniques (e.g. AML.T0020 ML-baseline poisoning) are **not incorporated into
+   Enterprise** at all.
+3. **Whole technique classes are absent.** Application/business-logic abuse (BOLA/IDOR, mass-assignment, JWT
+   alg-confusion, workflow-state bypass), DeFi/smart-contract trust failures, GNSS/PTP time manipulation, and
+   SaaS-to-SaaS OAuth toxic-combinations have **no first-class Enterprise technique** — they map only loosely to
+   over-broad ids like T1190 / T1078 / T1565.
+4. **The taxonomy itself churns.** ATT&CK v19 (2026) renames *Defense Evasion → Stealth* and adds a new tactic
+   (*Defense Impairment*), an admission that the existing partition was incomplete.
+
+## Coverage gaps by domain  *(52 seams with no ATT&CK id)*
+
+| Domain | Unmodeled seams |
+|---|---:|
+| Identity & Federation | 7 |
+| CI/CD & Software Supply Chain | 6 |
+| API & Business-Logic | 10 |
+| Cryptography & PKI | 4 |
+| Cyber-Physical (OT / PNT / RF / Hardware) | 12 |
+| AI / Agent | 13 |
+
+## Identity & Federation  *(7)*
+
+### Aged synthetic-identity graph defeating cross-source existence checks
+**[P2 Identity->Authority]** · `GH4-synthetic-identity-aged-graph`
+
+- **Trust broken:** An onboarding and risk-decisioning system trusts that an identity exhibiting a consistent, aged, cross-source footprint (long-lived email, social graph, credit-bureau thin-file history, prior low-risk transactions, matching data-broker records) corresponds to a real natural person, treating accumulated correlated history as proof of genuine existence rather than as a fabricable artifact.
+- **MITRE gap:** Closest are T1585 (Establish Accounts) and T1583 (Acquire Infrastructure), which model adversaries creating personas/sock-puppets and infrastructure to support cyber operations. They do not cover financial synthetic identity fraud: the goal isn't operational cover but defeating KYC/credit-underwriting existence and consistency checks for monetary gain, and the multi-year credit-aging/data-broker-seeding lifecycle has no ATT&CK representation.
+- **Mechanism:** Synthetic identity fraud combines real PII (often a valid but unused SSN) with fabricated attributes to manufacture a person who does not exist - a 'Frankenstein' identity. Attackers then age the identity into an existence-passing graph: AI-generated persona and photos, seeded email/social accounts, a manufactured thin-file credit history (credit-builder loans, authorized-user piggybacking), and planted data-broker/utility records, so cross-source existence and consistency checks all corroborate a non-person. After years of nurturing legitimate-looking credit, the identity is 'busted out' for maximum credit before disappearing, leaving the loss miscategorized as ordinary credit default rather than fraud.
+- **Real-world anchor:** Federal Reserve, 'Synthetic Identity Fraud Defined' (FedPayments Improvement industry definition, 2021) — Industry-recommended definition: use of a combination of PII to fabricate a person to commit a dishonest act; mixes real and fictitious data. (https://fedpaymentsimprovement.org/strategic-initiatives/payments-security/synthetic-identity-payments-fraud/synthetic-identity-fraud-defined/)
+
+### EIP-712 signature replay across shared/forked chainId domain
+**[P2 Identity->Authority]** · `GH6-eip712-domain-replay-fork-chainid-confusion`
+
+- **Trust broken:** A contract that accepts an EIP-712 typed signature (permit, meta-transaction, gasless order, intent) trusts that the domain separator binding the signature to one chainId and one verifying contract guarantees the user's authorization can only be exercised in the single context the user signed for, so it executes the signed action as proof of scoped intent.
+- **MITRE gap:** ATT&CK has no technique for cryptographic-signature domain confusion or cross-chain replay; nothing models a signed authorization whose scope-binding silently collides across ledgers. The nearest analogues, T1550.001/.004 Use Alternate Authentication Material (application access tokens / web session cookies), assume a stolen credential reused within one system's auth boundary - they cannot express a correctly-scoped EIP-712 signature being honored in a parallel chain context the signer's domain separator failed to exclude.
+- **Mechanism:** EIP-712 binds a typed-data signature to a context via a domainSeparator hashed from name, version, chainId, and verifyingContract. The signature only authorizes the intended context if all four fields actually pin it. Failures arise when chainId is omitted or cached at deploy time (so it is wrong after a fork/reorg or shared across an EVM-compatible chain), when verifyingContract is deployed at the identical address on a second chain via CREATE2/deterministic factories, or when a contract or wallet caches a stale separator. In those cases the on-chain ecrecover validates a signature the human scoped to one chain/contract against a colliding context, executing value movement the signer never authorized there. The seam is the multichain address/chainId namespace the user never reasoned about while the contract treats the signature as scoped proof of intent.
+- **Real-world anchor:** Optimism / Wintermute replay (~20M OP, Jun 2022) — Demonstrated cross-chain replay: a Gnosis Safe factory/deployment from L1 Ethereum was replayed on Optimism (L2 reusing the same address/context), letting an attacker deploy the multisig and seize 20M OP allocated to an address not yet deployed on L2. (https://slowmist.medium.com/slowmist-key-to-the-theft-of-20-million-op-tokens-transaction-replay-490baaf45f26)
+
+### Flash-borrowed governance-token snapshot vote capture
+**[P2 Identity->Authority]** · `GH6-dao-governance-flashstake-snapshot-capture`
+
+- **Trust broken:** A DAO's on-chain governance trusts that a token (or vote-escrowed/delegated) balance measured at a proposal's snapshot block represents a participant's genuine, at-risk economic stake, so it equates voting weight at that block with legitimate skin-in-the-game and lets that measured weight decide treasury, parameter, and upgrade outcomes.
+- **MITRE gap:** ATT&CK has no technique for governance-token flash-stake or snapshot capture; nothing models voting-weight measurement as a trust boundary or atomic borrowed-capital manipulation of a decision process. There is no meaningful analogue - T1199 Trusted Relationship and account-manipulation techniques assume persistent illegitimate access, whereas this is a single-block, fully-repaid acquisition of legitimate-looking voting power with zero residual stake, which ATT&CK's identity/access model cannot express.
+- **Mechanism:** On-chain governance measures voting weight from a token/vote-escrow/delegated balance at a proposal's snapshot block and equates that point-in-time weight with durable, at-risk economic stake. Because ERC-20 governance tokens are freely transferable and DeFi offers atomic flash loans, an attacker can borrow an enormous balance, satisfy the snapshot within a single transaction, and unwind in the same block - holding no lasting stake. If voting and execution lack a time delay (or the snapshot is taken at the current block rather than a historically-checkpointed past block), the attacker reads attacker-controlled weight as legitimate and passes a self-dealing proposal. The seam is governance trusting a measured balance as a proxy for persistent alignment it never verifies the persistence of.
+- **Real-world anchor:** Beanstalk Farms governance flash-loan attack ($182M, Apr 2022) — Canonical demonstrated case: attacker flash-borrowed ~$1B to obtain >2/3 Stalk voting power and called emergencyCommit to execute a malicious BIP in the same transaction, with no flash-loan-resistant vote measurement and no vote/execute delay. (https://medium.com/immunefi/hack-analysis-beanstalk-governance-attack-april-2022-f42788fc821e)
+
+### Cloned/relayed RF credential ingested by agent as presence proof
+**[P3 Provenance]** · `GH3-agent-rf-presence-ground-truth`
+
+- **Trust broken:** An agent that consumes RFID/badge/BLE/Wi-Fi telemetry trusts those signals as ground-truth proof of a named human's physical presence or location, so it uses 'person X is at the door / in the building / near the terminal' as an authenticated identity-and-context fact to make access, approval, or automation decisions.
+- **Mechanism:** Agents consuming RFID/badge/BLE/Wi-Fi telemetry treat the signal as ground-truth proof of a named human's physical presence. Low-frequency 125 kHz RFID badges transmit a static, unencrypted UID that is trivially cloned; BLE passive-entry tokens can be relayed end-to-end with sub-millisecond added latency because the protocol has no distance-bounding. Because the presence signal carries no proof-of-proximity or anti-relay binding, a cloned UID or relayed token is ingested as a verified identity-and-location fact on which the agent grants access or escalates context.
+- **Real-world anchor:** NCC Group — Tesla BLE Phone-as-a-Key Relay Attack (2022) — Layer-link BLE relay unlocked and drove a Tesla Model 3 with the paired phone ~25 m away, proving relayed RF presence is accepted as legitimate proximity by the trusting system. (https://www.nccgroup.com/research/technical-advisory-tesla-ble-phone-as-a-key-passive-entry-vulnerable-to-relay-attacks/)
+
+### RSP activation-code/QR hijack installing unauthorized profile
+**[P3 Provenance]** · `GH5-esim-rsp-profile-provenance-gap`
+
+- **Trust broken:** An eUICC/eSIM consumer device trusts that an operational profile delivered through the GSMA remote-SIM-provisioning (RSP) flow — once the activation code / QR / carrier-app handoff completes — was authorized by the legitimate subscriber for the legitimate operator, so the modem installs the profile and binds the device's network identity to it without independently re-verifying who actually initiated the provisioning.
+- **MITRE gap:** No ATT&CK Enterprise technique covers eSIM/eUICC remote provisioning. T1451 (SIM Card Swap) exists only in the deprecated ATT&CK Mobile matrix and describes operator-assisted physical/account SIM swap, not RSP activation-code/QR hijack or SM-DP+ flows. ATT&CK has no model for the GSMA RSP provenance gap, leaving this telecom-identity primitive entirely outside Enterprise.
+- **Mechanism:** GSMA Consumer Remote SIM Provisioning (SGP.22) delivers an operator profile to an eUICC via an LPA that consumes an activation code of the form LPA:1$<SM-DP+ address>$<matching-id>, typically encoded in a QR or handed off by a carrier app. The eUICC and SM-DP+ mutually authenticate via the GSMA CI certificate chain, so the channel between honest entities is sound; what the device does not independently verify is who initiated the provisioning. If an attacker controls the initiation - a phished/forged activation code, a malicious carrier-app deep link, or an SM-DP+ address that points to an attacker-influenced flow - the modem installs the resulting profile and binds the device's network identity to it without re-authenticating the human subscriber's intent. The result is an eSIM-swap requiring no physical SIM, exploiting the provenance gap in provisioning initiation rather than a crypto break in RSP.
+- **Real-world anchor:** GSMA SGP.22 RSP Technical Specification (Consumer eSIM) and SGP.21 Architecture — Defines the LPA activation-code / matching-id / SM-DP+ flow; provisioning initiation is not bound to verified subscriber intent at the device. (https://www.gsma.com/solutions-and-impact/technologies/esim/gsma_resources/sgp-22-v2-2-2/)
+
+### SUCI cross-session linkability via unconcealed routing/capability residue
+**[P3 Provenance]** · `GH5-fiveg-suci-reidentification-bridge`
+
+- **Trust broken:** A 5G subscriber trusts that SUCI concealment (encrypting the SUPI/IMSI with the home network's public key before it ever leaves the device) makes their permanent identity unlinkable on the radio interface, so the privacy guarantee of the standard is treated as protecting against the IMSI-catcher tracking that plagued earlier generations.
+- **MITRE gap:** No ATT&CK Enterprise technique covers 5G subscriber-identity privacy or radio-interface linkability. The deprecated ATT&CK Mobile T1430 (Location Tracking) is the loosest analog and does not model SUCI/AKA linkability oracles, IMSI/SUPI concealment, or RAN side-channels. This telecom-identity attack has no ATT&CK technique at all.
+- **Mechanism:** 5G conceals the permanent identity (SUPI/IMSI) by encrypting it with the home network's public key using ECIES into a SUCI before it leaves the device, so the on-air identifier changes each registration and IMSI-catcher tracking should be defeated. However, SUCI conceals only the SUPI payload, not surrounding residue: the unencrypted home-network routing identifier and protection-scheme/key-id fields, capability fingerprints, and - critically - the AKA procedure's behavior. Research shows an attacker who already knows a target IMSI can re-link captured SUCIs across sessions by abusing the 3GPP-mandated AKA Authentication-Failure responses (e.g. MAC-failure vs sync-failure timing/error codes), a linkability oracle that needs no key recovery. A misconfigured null-scheme or reused randomness further enables deterministic re-computation. Every tested 5G-SA deployment with SUCI active was found vulnerable because the surface is mandated behavior.
+- **Real-world anchor:** Khan, Martin et al., '5G SUCI-Catchers: Still Catching Them All?' (ACM WiSec 2021) — Demonstrates SUCI-catcher linkability despite concealment, exploiting AKA-procedure residue rather than breaking ECIES. (https://dl.acm.org/doi/10.1145/3448300.3467826)
+
+### Post-revocation credential acceptance during status-list propagation lag
+**[P3 Provenance]** · `GH6-did-credential-status-staleness-trust`
+
+- **Trust broken:** A verifier of a W3C verifiable credential trusts that checking the issuer's signature plus the referenced status mechanism (StatusList2021 bitstring, on-chain revocation registry, did:method resolution) tells it the credential is currently valid, so a credential that resolves and whose status bit reads 'active' is accepted as a present-tense attestation of the holder's standing.
+- **MITRE gap:** ATT&CK has no technique for decentralized-credential revocation lag or DID status staleness; no tactic models trust in an eventually-consistent status layer with no synchronous authority. The nearest analogues, T1606 Forge Web Credentials and T1550 Use Alternate Authentication Material, assume a forged or stolen token, whereas here a genuinely-issued-then-revoked credential is honored because the distributed status source the verifier consulted had not yet converged - an availability/consistency gap in decentralized PKI ATT&CK does not represent.
+- **Mechanism:** A verifier of a W3C Verifiable Credential checks the issuer signature plus a referenced status mechanism - a Bitstring/StatusList credential (a compressed bitstring where each credential maps to one bit: 1=revoked), an on-chain revocation registry, or did:method resolution. Validity is read from a snapshot the verifier fetches and typically caches, but a decentralized identity system has no synchronous authority that answers 'is this valid right now': status lists are published/mirrored with latency, registries propagate across nodes, and DID document resolution can return cached or stale results. An attacker presents a credential after revocation but before the cached status list/registry/DID document the verifier sees reflects it - or steers the verifier to a stale mirror - so a revoked or rotated credential is honored as currently active. The verifier trusts a lagging snapshot as present-tense truth.
+- **Real-world anchor:** W3C Bitstring Status List v1.0 (Recommendation) — Defines the bitstring revocation/suspension mechanism whose publish-and-cache model creates the propagation-latency window this technique exploits. (https://www.w3.org/TR/vc-bitstring-status-list/)
+
+## CI/CD & Software Supply Chain  *(6)*
+
+### Suggestion-bias seeding of public corpus to steer completions
+**[P1 Data->Control]** · `GH8-coding-assistant-inline-suggestion-laundering`
+
+- **Trust broken:** A developer using an AI coding assistant trusts that an inline completion offered in their editor is a neutral synthesis of best practice, so a snippet accepted with a single keystroke inherits the developer's authorship identity, passes through review as 'code I wrote', and is committed as if a human had reasoned about its security properties.
+- **Mechanism:** An AI coding assistant generates inline completions from a model trained/retrieved on untrusted public code (and indexed project context). Accepting a completion with one keystroke launders machine-authored text into a human-attributed commit, so it passes review as 'code I wrote' rather than as third-party content. Because the model can reproduce insecure patterns present in its training corpus or biased context, an attacker who seeds public repos/docs/Q&A or poisons the indexed project context can steer completions toward a subtly insecure or backdoored pattern that crosses the review boundary wearing the developer's identity.
+- **Real-world anchor:** Perry et al., Do Users Write More Insecure Code with AI Assistants? (Stanford, ACM CCS 2023) — Participants with AI assistance wrote less secure code yet were more confident it was secure — the laundering/over-trust effect. (https://arxiv.org/abs/2211.03622)
+
+### Sybil preference-label injection into reward model
+**[P1 Data->Control]** · `GH8-rlhf-preference-data-crowdsource-poison`
+
+- **Trust broken:** A model trainer running RLHF, DPO, or constitutional/preference fine-tuning trusts that crowdsourced or community preference labels are honest human judgments of helpfulness and harmlessness, so the aggregated preference signal is allowed to directly shape the model's reward function and post-trained behavior without per-labeler provenance or adversarial vetting.
+- **Mechanism:** RLHF/DPO/preference fine-tuning lets crowdsourced preference labels directly shape the reward model and post-trained behavior, with no per-labeler provenance or adversarial vetting. A coordinated/sybil set of raters injects a poisoned preference pattern — systematically upvoting responses that comply with a secret trigger phrase — so a trigger-conditioned backdoor is baked into the reward model and inherited by every model trained against it. This is a behavioral compromise introduced through the feedback channel, not the pretraining corpus.
+- **Real-world anchor:** Rando & Tramèr, Universal Jailbreak Backdoors from Poisoned Human Feedback (ICLR 2024) — Showed mislabeling ~5% of preference data with a secret trigger (e.g., 'SUDO') installs a universal jailbreak that survives reward modeling and RLHF fine-tuning. (https://arxiv.org/abs/2311.14455)
+
+### GNSS/location-spoofed proof of physical work minting rewards
+**[P3 Provenance]** · `GH6-depin-proof-of-physical-work-sensor-spoof`
+
+- **Trust broken:** A DePIN network's on-chain reward contract trusts that the proofs of physical work it receives (sensor readings, location/GPS attestations, coverage or bandwidth measurements, hashed device telemetry) are honest evidence that a real device performed real-world work at a real place and time, so it mints token rewards in proportion to those submitted proofs.
+- **MITRE gap:** ATT&CK Enterprise has no technique for proof-of-physical-work, GNSS/location spoofing, or DePIN reward fraud; no tactic models a blockchain minting value from unverifiable physical-world attestations. The nearest analogues live outside Enterprise - ATT&CK for ICS lacks an oracle/minting concept, and T1565 Data Manipulation assumes corrupting data inside a system - whereas here the proof is authentic-looking and the falsity is in its correspondence to a physical reality the chain cannot observe, which no ATT&CK technique captures.
+- **Mechanism:** A DePIN reward contract mints tokens in proportion to submitted proofs of physical work - sensor readings, GNSS/location attestations, coverage/bandwidth measurements, hashed device telemetry, or witness attestations. On-chain, the contract can verify a proof is cryptographically well-formed but cannot verify it corresponds to real-world work at a real place and time, because the gap between the digital attestation and physical ground truth is unobservable from the chain. Attackers spoof GNSS coordinates, replay or synthesize sensor telemetry, virtualize many device identities on one host, or collude so witnesses attest to non-existent coverage. The contract mints because a well-formed fabrication is indistinguishable from a well-formed honest proof; mitigations (e.g. Helium's trust-score/denylist, multi-witness proof-of-coverage) are heuristic and off-chain, not a cryptographic guarantee of physicality.
+- **Real-world anchor:** Helium Proof-of-Coverage location spoofing / network gaming — Documented real-world gaming: spoofers assert false GPS locations and cluster self-witnessing hotspots to mint HNT for non-existent coverage; persistent despite denylist enforcement. (https://3roam.com/helium-hotspot-spoofing-and-the-deny-list/)
+
+### Counterfeit COTS subsystem forging intra-bus telemetry
+**[P3 Provenance]** · `GH7-smallsat-cots-bus-component-provenance`
+
+- **Trust broken:** A SmallSat integrator trusts that each COTS subsystem it bolts onto the spacecraft bus (reaction wheels, GNSS receiver, radio, OBC, star tracker) ships authentic vendor firmware and speaks the bus (CAN/SpaceWire/I2C/MIL-STD-1553) as a benign peer, so any board that enumerates correctly on the bus inherits implicit trust to source telemetry and accept commands without inter-component authentication.
+- **MITRE gap:** ATT&CK Enterprise T1195.001/.002 (Supply Chain Compromise: hardware/software) covers the channel tampering but stops at delivery - it does not model the on-orbit spacecraft-bus trust where an enumerated peer forges telemetry to siblings over CAN/SpaceWire/MIL-STD-1553. ICS has no spacecraft-bus technique. SPARTA addresses space supply chain; ATT&CK's hardware supply-chain technique is insufficient for the intra-bus peer-trust abuse.
+- **Mechanism:** SmallSat integrators bolt COTS subsystems (reaction wheels, GNSS receiver, radio, OBC, star tracker) onto an internal spacecraft bus - CAN, SpaceWire, I2C, or MIL-STD-1553 - which provides no inter-component authentication: any board that enumerates correctly is implicitly trusted to source telemetry and accept commands. A subverted or counterfeit component (firmware tampered in the distribution channel, or a clone board sold into the rapid-integration market) enumerates normally, then once on orbit abuses its peer position to forge telemetry, drop or alter commands to sibling subsystems, or trigger at a chosen time. The bus extends the same trust the integrator gave the vendor brand to every enumerated board, with no on-orbit way to re-attest provenance.
+- **Real-world anchor:** Aerospace Corporation SPARTA matrix (supply chain / component tactics) — SPARTA explicitly accounts for the supply chain and component provenance across the satellite ecosystem that ATT&CK does not model for the space segment. (https://aerospace.org/sparta)
+
+### Hidden directive embedded in shared agent-definition
+**[P4 Context-Inheritance]** · `GH8-shared-system-prompt-repo-import-trust`
+
+- **Trust broken:** A team building an agent trusts a shared system-prompt or agent-definition pulled from a community repo, gist, or prompt-marketplace as a configuration template, so it is dropped into the agent's privileged instruction context without the code-review, signing, or dependency-pinning that an executable dependency would receive.
+- **Mechanism:** A shared system-prompt or agent-definition pulled from a community repo/gist/marketplace is dropped into the agent's privileged instruction context as inert configuration, without the code-review, signing, or dependency-pinning an executable dependency gets. But prose in the instruction context is control-plane code: an attacker who publishes or later updates a popular shared prompt can embed hidden directives (exfiltrate context, silently prefer an attacker-controlled tool/MCP server, lower guardrails on a trigger), and the importing agent inherits them at its highest privilege level. This mirrors MCP tool-description poisoning, where hidden instructions in metadata steer the agent.
+- **Real-world anchor:** Invariant Labs — MCP Tool Poisoning (April 2025) — Hidden instructions in tool descriptions/metadata, treated as inert config, hijack the agent (demonstrated WhatsApp history exfiltration); the same prose-as-control-plane class as shared prompt imports. (https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks)
+
+### Upgrade-time storage-slot re-interpretation seizing role/owner
+**[P5 Format-Boundary]** · `GH6-proxy-upgrade-storage-collision-silent-reslot`
+
+- **Trust broken:** Users and integrators of an upgradeable proxy contract trust that the address they audited keeps its meaning across upgrades because the proxy's storage layout is append-only and the implementation is reviewed, so they treat the contract's persistent state (balances, roles, allowances) as stable and continue interacting with the same address after an upgrade without re-auditing how the new logic interprets existing storage slots.
+- **MITRE gap:** ATT&CK has no technique for storage-slot reinterpretation in a delegatecall proxy; the closest analogue, T1574 Hijack Execution Flow (and its DLL/path-precedence subtechniques), is about substituting which code runs, whereas here the code is reviewed and immutable and the attack is the reinterpretation of persistent data under a new-but-honest implementation - an EVM storage-layout failure ATT&CK has no vocabulary for.
+- **Mechanism:** An upgradeable proxy uses delegatecall so the implementation's code executes against the proxy's persistent storage. Storage variables are assigned sequential slots by the Solidity compiler at compile time; the proxy and successive implementations must agree on this layout or the same slot is reinterpreted. When a new implementation inserts, reorders, or changes the type of a state variable (or the proxy itself declares its own variable colliding with the logic's slot 0), the raw bytes already in a slot - once a balance or a boolean 'initialized' flag - are silently read as something else, e.g. an owner address or a role bit. EIP-1967 fixes only the proxy's admin/implementation pointers to pseudo-random slots; it does not protect against collisions between implementation versions, which remain the developer's responsibility. The trusted address is bytecode-immutable in appearance while its meaning is reassigned underneath.
+- **Real-world anchor:** Audius governance takeover (~$6M, Jul 2022) — Demonstrated: a proxy-declared proxyAdmin variable collided with the logic's initialized flag, so the non-zero admin address read as 'not initialized'; attacker re-called initialize(), became governor, and drained the treasury. Confirms the 'demonstrated' rating. (https://blog.audius.co/article/audius-governance-takeover-post-mortem-7-23-22)
+
+## API & Business-Logic  *(10)*
+
+### Mass assignment / auto-binding of unexpected fields
+**[P1 Data->Control]** · `XC-mass-assignment-pollution`
+
+- **Trust broken:** An API trusts that the request body and parameter set contain only the fields the client is meant to set, binding incoming keys directly onto internal objects and assuming the parser's last-wins or array handling matches the security layer's.
+
+### Simulation/execution state divergence yielding decoy preview
+**[P1 Data->Control]** · `GH6-blind-signing-simulation-divergence-decoy`
+
+- **Trust broken:** A wallet user relies on the transaction-simulation / clear-signing preview the wallet renders (asset changes, recipients, decoded calldata) as a faithful prediction of what executing the transaction will do, so they approve based on the human-readable summary rather than the opaque calldata, treating 'simulation shows I receive X and send Y' as binding ground truth for on-chain effect.
+- **MITRE gap:** ATT&CK has no technique for transaction-simulation evasion or preview/execution divergence; no tactic models a security-preview oracle being gamed by state that differs at execution time. The nearest analogues are T1497 Virtualization/Sandbox Evasion and T1036 Masquerading - but those describe malware detecting an analysis sandbox or disguising a file, whereas here a legitimate on-chain simulation is honest yet non-representative of inclusion-time state, a TOCTOU property of EVM execution ATT&CK does not capture.
+- **Mechanism:** Wallet clear-signing previews run a transaction simulation (eth_call/trace against current state, or a forked state) and render predicted asset deltas and decoded calldata. The prediction is only valid if simulated state equals execution state, but those diverge: the simulation reads block.timestamp/number, oracle prices, balances, or storage flags at simulation time, while the mined transaction reads them at inclusion time. An attacker crafts calldata that branches on something the simulator does not reproduce - a value that changes between check and use (TOCTOU), a front-run state mutation, a flash-set storage flag, or tx.origin/gasleft-dependent logic - so the benign, profitable-looking preview is honest for the simulated state yet the executed path drains the signer. The defense built to end blind signing becomes the deception surface.
+- **Real-world anchor:** Blockaid - Dissecting TOCTOU Attacks: Wallet Drainers Exploit Transaction Timing — Documents drainers altering or gating on state between simulation and execution so a hidden condition not triggered during simulation drains assets on inclusion. (https://www.blockaid.io/blog/dissecting-toctou-attacks-how-wallet-drainers-exploit-solanas-transaction-timing)
+
+### Cross-site request forgery
+**[P2 Identity->Authority]** · `C-csrf`
+
+- **Trust broken:** The app trusts that a request carrying the user's ambient session was intended by the user.
+
+### Broken Object Level Authorization / IDOR enumeration
+**[P2 Identity->Authority]** · `XC-bola-idor`
+
+- **Trust broken:** An API trusts a client-supplied object identifier as authorization, assuming that because the caller knows or was handed an object id, the caller is entitled to act on that object.
+
+### Webhook signature bypass / spoof
+**[P3 Provenance]** · `C-webhook`
+
+- **Trust broken:** A receiver trusts that an inbound webhook came from the partner because it hits the right URL.
+
+### JWT alg=none / RS256-to-HS256 key confusion / kid injection
+**[P3 Provenance]** · `XC-jwt-alg-confusion`
+
+- **Trust broken:** A JWT verifier trusts the token's own alg header to choose the verification key and algorithm, letting the attacker-controlled token dictate how its own signature will be checked.
+
+### Source-chain deep reorg after destination mint at fixed confirmation depth
+**[P3 Provenance]** · `GH6-bridge-lightclient-finality-reorg-mint`
+
+- **Trust broken:** A cross-chain bridge that verifies source-chain events with an on-target light client trusts that a header/proof which passed the source chain's stated finality rule is irreversible, so once the light client accepts a deposit proof at the bridge's configured confirmation depth it irrevocably mints or releases the wrapped asset on the destination chain.
+- **MITRE gap:** ATT&CK has no concept of blockchain finality, chain reorganization, or cross-chain double-spend; no tactic models trust in a consensus-finality assumption. The loosest analogue is T1565.001 Stored Data Manipulation, but a reorg is not the attacker corrupting stored data - it is the source ledger legitimately rewriting its own history per its consensus rules while a second system already acted on the rewritten state, which ATT&CK's host-centric integrity model cannot represent.
+- **Mechanism:** A lock-and-mint bridge runs an on-destination light client (or relayer set) that accepts a source-chain deposit once the included header/proof reaches a hard-coded confirmation depth, then irreversibly mints the wrapped asset. The depth is a static assumption about finality, but real finality is probabilistic (PoW depth) or reconfigurable (PoS finality gadgets can stall, validator sets rotate, and some L2s have soft 'finality' that lags L1 settlement). If the source chain reorgs deeper than the configured depth - or a finality-gadget stall is resolved on a fork that orphans the proven block - the source-side Lock is rolled back while the destination-side Mint persists, producing unbacked wrapped tokens. The seam is the bridge equating its local confirmation count with a single global notion of irreversibility the source chain never actually guaranteed at that depth.
+- **Real-world anchor:** Across Protocol - A Guide to Finality Risk — Practitioner analysis of finality risk for bridges: confirmation-depth choices vs probabilistic/reconfigurable finality and the reorg double-mint scenario. (https://across.to/blog/Dodging-the-Finality-Bullet-A-Guide-to-Finality-Risk)
+
+### Validation/execution state divergence draining paymaster deposit
+**[P4 Context-Inheritance]** · `GH6-erc4337-paymaster-validation-execution-gap`
+
+- **Trust broken:** An ERC-4337 paymaster that agrees to sponsor a user operation's gas trusts that the conditions it checked in the validation phase — the userOp's calldata, the account's state, an off-chain signed sponsorship policy, or a token allowance it will pull as repayment — still hold when the operation executes, so it commits to paying gas based on the picture it validated.
+- **MITRE gap:** ATT&CK has no technique for account-abstraction paymaster economics or validation/execution TOCTOU; no tactic models a gas-sponsorship contract paying for an operation whose preconditions lapsed between phases. The closest analogue is T1499 Endpoint Denial of Service (resource exhaustion), but that targets service availability via traffic, whereas this is a contract-protocol economic drain exploiting ERC-4337's phase separation and bundler ordering - an on-chain mechanism ATT&CK does not model.
+- **Mechanism:** ERC-4337 separates a UserOperation into a validation phase (account and paymaster check signatures/policy/allowances via validatePaymasterUserOp) and a later execution phase (the account's call and the paymaster's postOp). A paymaster commits to sponsoring gas based on state observed during validation - the userOp calldata, account state, an off-chain signed sponsorship policy, or an ERC-20 allowance it will pull as repayment. Because execution happens after validation and bundlers may order/aggregate many userOps, the relied-upon state can change before postOp runs: the repayment token's balance/allowance is drained, the sponsored action is altered via ordering/reentrancy effects, or aggregated ops interfere. The paymaster then pays gas for an operation that no longer matches what it validated, and at scale its EntryPoint deposit is drained. ERC-7562 storage/opcode rules and staking constrain mempool-level griefing but do not eliminate validation-time-vs-execution-time state divergence the paymaster economically depends on.
+- **Real-world anchor:** ERC-4337: Account Abstraction Using Alt Mempool — Defines the validation/execution phase separation, paymaster sponsorship, EntryPoint deposit, and postOp repayment - the structure this technique abuses. (https://eips.ethereum.org/EIPS/eip-4337)
+
+### Idempotency / race business-logic abuse
+**[P6 Time/State]** · `C-idempotency`
+
+- **Trust broken:** A workflow assumes an operation it validated once executes exactly once.
+
+### Block-cadence warping of TWAP observation window
+**[P6 Time/State]** · `GH6-oracle-twap-window-cross-block-warp`
+
+- **Trust broken:** A DeFi protocol that switched from spot price to a time-weighted average price (TWAP) oracle trusts that averaging over a window of recent observations makes the reported price economically infeasible to manipulate, so it treats the TWAP read at the moment of a liquidation, mint, or collateral revaluation as manipulation-resistant ground truth and sizes its safety margins accordingly.
+- **MITRE gap:** ATT&CK Enterprise has no technique for on-chain price-oracle or TWAP manipulation; there is no smart-contract data-source tactic. The nearest analogue, T1565 Data Manipulation (Stored/Transmitted), describes tampering with data at rest or in transit on conventional hosts and assumes an integrity boundary an attacker breaches - it cannot express manipulation of a value that is honestly computed from a public AMM whose pricing the attacker legitimately moves with capital and block-ordering control, so it is insufficient.
+- **Mechanism:** A TWAP oracle (e.g. Uniswap V3's geometric-mean accumulator) integrates price over an observation window by summing tick*time between checkpoints; the 'time' weight of each price is the number of seconds (effectively blocks) that price persisted. When a single actor controls consecutive block production - a PoS proposer who gets two adjacent slots, an L2 sequencer with unilateral ordering, or anyone exploiting long/irregular block intervals - they can push a low-liquidity pool's spot price in block N and revert it in block N+1, so a manipulated tick dominates the time-weighting with no arbitrage exposure between the two blocks. The averaging that the consumer treats as manipulation-resistant ground truth is defeated by warping the time dimension (which blocks land in-window, and for how long) rather than by overpowering the prices. Post-Merge this is materially cheaper because a proposer can back-run their own manipulation in a guaranteed multi-block sequence.
+- **Real-world anchor:** Euler Finance - Uniswap V3 TWAP manipulation cost-of-attack — Formal cost-of-attack analysis and simulator quantifying single- vs multi-block TWAP manipulation; shows feasibility hinges on low in-range liquidity and proposer multi-block control. (https://github.com/euler-xyz/uni-v3-twap-manipulation)
+
+## Cryptography & PKI  *(4)*
+
+### Hash-collision and chosen-prefix forgery (MD5/SHA-1, length-extension)
+**[P3 Provenance]** · `XC-weak-signature-collision`
+
+- **Trust broken:** A verifier trusts that a valid digital signature or matching hash uniquely binds to the exact content it was computed over, assuming no second input can produce the same digest or satisfy the same signature.
+
+### Padding-oracle plaintext recovery and CBC bit-flipping
+**[P5 Format-Boundary]** · `XC-padding-oracle-nonce-reuse`
+
+- **Trust broken:** A cryptosystem trusts that ciphertext reveals nothing about plaintext, assuming error responses are uniform and that each encryption uses a unique IV/nonce so structure never leaks across messages.
+
+### Hybrid keyshare strip forcing classical-only PQC fallback
+**[P6 Time/State]** · `GH5-pqc-hybrid-negotiation-downgrade`
+
+- **Trust broken:** A relying party that has been provisioned a hybrid post-quantum certificate or hybrid key-exchange group (classical+ML-KEM/ML-DSA) trusts that because the peer is PQC-capable, the negotiated session inherited the quantum-resistant half of the hybrid, so it records the connection as 'PQC-protected' in its posture and compliance state even when only the classical component actually established the shared secret.
+- **MITRE gap:** ATT&CK Enterprise has no technique for cryptographic key-exchange downgrade or PQC negotiation manipulation. The nearest is T1557 (Adversary-in-the-Middle), but it models interception/relay generically and says nothing about negotiating a weaker cipher/group while preserving an apparent-secure session, nor about the harvest-now-decrypt-later economics that make a mislabeled classical session the actual payload. No ATT&CK technique captures 'session completed but compliance posture is falsely PQC'.
+- **Mechanism:** TLS 1.3 hybrid PQC groups (e.g. X25519MLKEM768) carry both a classical ECDHE share and an ML-KEM encapsulation in a single named group; the shared secret is the concatenation of both, so a session is only quantum-safe if the hybrid group is actually negotiated. An on-path attacker who edits the ClientHello supported_groups / key_share extensions, drops the PQC keyshare, or forces a HelloRetryRequest toward a classical-only group can steer a dual-stack endpoint to complete a purely classical handshake. Because TLS 1.3's downgrade-protection sentinels in ServerHello.random only cover protocol-version downgrade and not key-exchange-group selection, the group choice itself is not cryptographically bound to a 'best mutually-supported' guarantee. The relying party records the session as PQC-protected from its policy intent even though only X25519 established the secret.
+- **Real-world anchor:** CVE-2026-2673 — OpenSSL 3.5/3.6 TLS 1.3 server using the DEFAULT keyword for supported groups loses the group tuple structure, suppresses the HelloRetryRequest, and accepts the client's first keyshare regardless of priority - so hybrid PQC groups like X25519MLKEM768 silently fall back to classical X25519. Concrete real-world instance of a key-exchange-group downgrade. (https://github.com/openssl/openssl/discussions/30543)
+
+### Coordinated clock skew widening cert validity acceptance
+**[P6 Time/State]** · `GH7-time-window-trust-in-consensus-and-certs`
+
+- **Trust broken:** Distributed-consensus and certificate-validation logic trusts the local clock as an honest absolute time source when it enforces time-bounded rules — block/timestamp acceptance windows, validator slot timing, TOTP/OCSP/JWT freshness, and certificate notBefore/notAfter validity — so each node independently decides validity against its own clock without treating that clock as an attacker-influenceable input shared across the quorum.
+- **MITRE gap:** Closest Enterprise id is T1562 (Impair Defenses) and the deprecated/limited time-manipulation framing; ATT&CK has no technique tying clock manipulation to certificate-validity or consensus-window authorization. ICS T0830 covers on-path time tampering but not the downstream authorization/liveness consequence in PKI and distributed consensus. No ATT&CK technique models 'falsified shared time as an authorization primitive'.
+- **Mechanism:** Distributed-consensus and certificate-validation logic enforce time-bounded rules - block/timestamp acceptance windows, validator slot timing, TOTP/OCSP/JWT freshness, and certificate notBefore/notAfter - against the local clock, treated as an honest absolute reference. The clock is not modeled as an attacker-influenceable input shared across a quorum. An attacker who shifts the time source feeding a set of nodes (via the GNSS time-spoof or PTP/NTP asymmetry gaps above, or direct NTP manipulation) simultaneously moves their certificate validity windows and consensus timing, so revoked or not-yet-valid certs are accepted, expired tokens pass freshness, or coordinated skew across enough validators reshapes which blocks/slots count as timely - turning a falsified shared 'now' into an authorization and liveness weapon.
+- **Real-world anchor:** 'SoK: State of the Time - On Trustworthiness of Digital Clocks' (arXiv:2502.09837) — Systematizes how applications (PKI validity, consensus, tokens) trust the local clock and the consequences of clock manipulation. (https://arxiv.org/pdf/2502.09837)
+
+## Cyber-Physical (OT / PNT / RF / Hardware)  *(12)*
+
+### CAN frame spoofing by arbitration ID
+**[P1 Data->Control]** · `DOM-can-frame-injection`
+
+- **Trust broken:** A CAN bus has no source authentication: any node that can write a frame is trusted as any ECU, and every ECU accepts a frame purely by arbitration ID regardless of who actually transmitted it.
+
+### Ultrasonic/inaudible voice-command injection (DolphinAttack-class) into LLM voice agent
+**[P1 Data->Control]** · `GH3-audio-channel-injection-into-vehicle-agent`
+
+- **Trust broken:** An in-vehicle or in-home voice-agent trusts that audio captured by its microphone is an intentional spoken command from an authorized, physically-present human, so it forwards the transcribed text into its LLM-tool loop with the standing authority of the device owner.
+- **Mechanism:** Voice agents treat any audio their microphone decodes as an authenticated owner utterance and forward the transcribed text into the LLM-tool loop with standing device authority. DolphinAttack exploits the nonlinearity of MEMS microphone front-ends: voice commands amplitude-modulated onto an ultrasonic (>20 kHz) carrier are inaudible to humans but get demodulated back to baseband audio inside the mic circuit and transcribed as a real command. The perception boundary has no liveness/authenticity check, so injected inaudible audio drives actuation as if spoken by the owner.
+- **Real-world anchor:** DolphinAttack: Inaudible Voice Commands (Zhang et al., ACM CCS 2017) — Demonstrated inaudible ultrasonic command injection against Siri, Google Now, Alexa, Cortana, S Voice, HiVoice; PoC included manipulating an Audi navigation system, directly showing vehicle/agent actuation from injected audio. (https://dl.acm.org/doi/10.1145/3133956.3134052)
+
+### Adversarial physical patch redirecting embodied-agent action
+**[P1 Data->Control]** · `GH3-embodied-agent-perception-spoof`
+
+- **Trust broken:** An embodied/robotic agent trusts that what its cameras and sensors perceive is the true physical environment, so its vision-language policy treats perceived objects, signs, labels, and text-in-scene as authentic context that can directly determine its next physical action.
+- **Mechanism:** An embodied/VLM-policy agent treats camera/sensor input as authentic environmental fact, and any text-in-scene as potential instruction, with no boundary between observed-world data and trusted control input. Two demonstrated primitives apply: physical adversarial patches (RP2/'Robust Physical Perturbations') that reliably cause object detectors to misclassify or suppress objects, and physical-object text-injection (PI3D) where a text-bearing object placed in the 3D scene is ingested by the MLLM as an instruction. Either redirects the robot's next physical action because perception feeds the action loop directly.
+- **Real-world anchor:** Eykholt et al., Robust Physical-World Attacks on Deep Learning Visual Classification (RP2, CVPR 2018) — Demonstrated physical sticker patches causing reliable stop-sign misclassification under real-world conditions — perception-to-action spoofing for autonomous systems. (https://arxiv.org/abs/1707.08945)
+
+### Coherent capture-and-drag GNSS trajectory injection
+**[P1 Data->Control]** · `GH7-gnss-position-spoof-autonomy-ground-truth`
+
+- **Trust broken:** An autonomous platform's navigation/guidance stack (drone flight controller, ag/mining autonomy, maritime ECDIS autopilot, last-mile robot) trusts the GNSS fix as the absolute ground-truth anchor that corrects its inertial dead-reckoning, so a plausibly-continuous position stream is fused into the state estimator and converted directly into actuation (waypoint, heading, geofence, return-to-home) without the fix ever competing against an independent absolute reference.
+- **MITRE gap:** ATT&CK Enterprise has no GNSS/navigation technique. ICS has no position-spoofing technique either; the closest conceptual ICS id is T0856 (Spoof Reporting Message), but that models falsified process-reporting on a control network, not an RF physical-layer spoof of the navigation sensor feeding an autonomous state estimator. No ATT&CK technique captures GNSS position spoofing of autonomy.
+- **Mechanism:** An autonomous platform fuses the GNSS position fix as the absolute ground-truth anchor that bounds inertial dead-reckoning, converting the fused state directly into actuation (waypoint, heading, geofence, return-to-home). A coherent spoofer first matches and slightly raises power on the genuine signals to capture the receiver's tracking loops without a position jump, then smoothly drags the reported position along an attacker-chosen, dynamics-consistent trajectory. Because the spoofed constellation is internally consistent and the drag respects vehicle dynamics, the state estimator weights it as truth over its own IMU physics, and the autonomy steers, breaches a false geofence, or returns-to-home toward attacker coordinates. This capture-and-drag technique was publicly demonstrated against a superyacht (UT Austin) and is the mechanism widely attributed to drone-redirection events.
+- **Real-world anchor:** UT Austin (Todd Humphreys) superyacht 'White Rose of Drachs' GPS spoofing, 2013 — First openly acknowledged civilian capture-and-drag spoof steering an $80M vessel onto a parallel track hundreds of meters off course while displays showed nominal. (https://news.utexas.edu/2013/07/29/ut-austin-researchers-successfully-spoof-an-80-million-yacht-at-sea/)
+
+### Agent-driven rogue device commissioning into Matter/Zigbee fabric
+**[P2 Identity->Authority]** · `GH3-agent-zigbee-matter-fleet-pairing`
+
+- **Trust broken:** A Zigbee/Matter/Thread smart-device fabric trusts that any pairing, commissioning, or group-binding command from the home/site controller reflects a deliberate human commissioning decision, so it admits new devices and rebinds control groups on the controller's say-so without re-validating who really initiated the join.
+- **Mechanism:** Zigbee/Matter/Thread fabrics admit new nodes and rebind control groups on the controller's commissioning command. In Zigbee, a device announcing itself as coordinator or spoofing the join/association handshake can insert itself or disrupt the mesh; in Matter, commissioning relies on device attestation but the fabric still trusts the commissioner's decision to admit a node. When an LLM home/site agent holds controller authority, injected text or a malicious device-advertised name can steer it to commission an attacker's device or rebind groups to it, granting the rogue node trusted fabric membership.
+- **Real-world anchor:** Genge et al., Breaking Matter: Vulnerabilities in the Matter Protocol (Black Hat EU 2024) — Analyzes weaknesses in the Matter commissioning/attestation flow and fabric security model. (https://i.blackhat.com/EU-24/Presentations/EU-24-Genge-BreakingMatterVulnerabiltiesInTheMatterProtocol-wp.pdf)
+
+### Unauthenticated CCSDS telecommand injection on live uplink
+**[P2 Identity->Authority]** · `GH7-satellite-uplink-command-format-trust`
+
+- **Trust broken:** A satellite (especially COTS-bus SmallSat/CubeSat or a legacy bird) trusts that a telecommand arriving on the correct uplink frequency, in the expected CCSDS/AX.25 frame format, and within the ground-station contact window originated from its authorized operator, so the onboard command handler executes the command on the basis of channel and format conformance rather than strong per-command cryptographic authentication.
+- **MITRE gap:** ATT&CK Enterprise has no space-segment or telecommand technique; this lives in SPARTA (Aerospace's space attack matrix), not ATT&CK. The loosest Enterprise analog T1059/T1203 (command execution / exploitation) does not model RF uplink telecommand injection or the channel-as-authority trust. SPARTA covers it (e.g. command-link intrusion tactics); ATT&CK does not.
+- **Mechanism:** Many spacecraft - especially COTS-bus SmallSats/CubeSats and legacy birds - run plain AX.25 or CCSDS telecommand without the optional Space Data Link Security (SDLS) layer that adds AES authentication, encryption and anti-replay. The onboard command handler accepts a telecommand based on channel conformance: correct uplink frequency, expected CCSDS/AX.25 framing, and arrival within a contact window, rejecting only on framing errors rather than verifying a per-command MAC or authenticated command counter. An attacker with SDR transmit capability and orbital/contact-window knowledge can transmit a well-formed telecommand during a pass and have it executed - mode change, attitude maneuver, payload toggle, memory write - because possession of format and frequency is treated as possession of authority.
+- **Real-world anchor:** CCSDS 355.0-B-2 Space Data Link Security Protocol (SDLS) — SDLS adds AES authentication/encryption and anti-replay because baseline CCSDS TC was designed for reliability, not active adversaries; absence of SDLS is the enabling condition. (https://ccsds.org/Pubs/355x0b2.pdf)
+
+### RFID/NFC tag cloning (static UID/Mifare)
+**[P3 Provenance]** · `DOM-ble-rfid-relay-clone`
+
+- **Trust broken:** BLE/RFID/NFC access systems trust that a tag or device responding with the expected identifier is the genuine credential physically present at the reader, treating the RF response as proof of an authentic, proximate token.
+
+### Unauthenticated AIS phantom-vessel and MMSI-clone injection
+**[P3 Provenance]** · `GH7-ais-broadcast-position-as-truth`
+
+- **Trust broken:** A Vessel Traffic Service, port-management system, collision-avoidance display, and maritime-domain-awareness analytics platform trusts that an AIS message carrying an MMSI, position, course, and identity was broadcast by the real vessel it names, so it ingests AIS as authoritative real-time ground truth for traffic deconfliction, automated routing, and sanctions/anomaly analytics without any cryptographic origin binding.
+- **MITRE gap:** ATT&CK Enterprise has no maritime/AIS technique. ICS has no AIS technique; the loosest analog ICS T0856 (Spoof Reporting Message) covers falsified process reporting on a control network, not RF broadcast injection of unauthenticated navigation data consumed by VTS/MDA. No ATT&CK technique covers AIS spoofing.
+- **Mechanism:** AIS broadcasts vessel MMSI, position, course and identity over VHF (161.975/162.025 MHz) with no cryptographic origin binding or integrity - the protocol has never had authentication. Vessel Traffic Services, port management, collision-avoidance displays, and maritime-domain-awareness analytics ingest AIS as authoritative real-time ground truth. An attacker with a VHF/SDR transmitter (or access to a compromised AIS aggregator feed) can inject or replay frames to fabricate phantom vessels, clone a real MMSI onto a decoy track, or erase a ship's presence, and the consuming stack accepts the spoofed broadcasts as genuine positions. This corrupts deconfliction, triggers false safety responses, or launders true movements past sanctions analytics; AIS spoofing incidents surged sharply in 2022-2023.
+- **Real-world anchor:** Balduzzi, Pasta, Wilhoit (Trend Micro), 'A Security Evaluation of AIS' (ACSAC 2014) — Foundational demonstration that AIS is unauthenticated and that vessels, phantom ships, and tracks can be spoofed/injected over RF and via providers. (https://www.trendmicro.com/en_us/research/14/d/the-dangers-of-hacking-radio-frequency-protocols.html)
+
+### Ghost-aircraft ADS-B squitter injection into fusion
+**[P3 Provenance]** · `GH7-adsb-datalink-track-trust`
+
+- **Trust broken:** An air-traffic surveillance fusion system, UTM/drone-traffic service, and increasingly an aircraft's own ADS-B-In/TCAS display trusts that an ADS-B broadcast carrying an ICAO address and GNSS-derived position came from the aircraft it identifies, so it fuses the squitter into the surveillance picture and conflict-detection logic as a real cooperative target without origin authentication.
+- **MITRE gap:** ATT&CK Enterprise has no aviation/ADS-B technique. ICS has none either; the loosest analog ICS T0856 (Spoof Reporting Message) models control-network reporting spoofing, not RF broadcast injection of unauthenticated air-surveillance data into ATC/UTM fusion. No ATT&CK technique covers ADS-B spoofing.
+- **Mechanism:** ADS-B broadcasts an aircraft's ICAO 24-bit address and GNSS-derived position over 1090 MHz Extended Squitter (1090ES) or 978 MHz UAT with no message authentication or integrity. Air-traffic surveillance fusion, UTM/drone-traffic services, and aircraft ADS-B-In/TCAS displays fuse received squitters into the surveillance picture and conflict-detection logic as genuine cooperative targets. An attacker with a low-cost SDR (USRP-class) can encode and transmit valid 1090ES/UAT frames to inject ghost aircraft, spoof an ICAO identity onto a false track, or shift a reported position, generating spurious conflict alerts, distorting the drone-traffic picture, or masking a real intruder by saturating the model. Costin and Francillon publicly demonstrated practical ADS-B injection at Black Hat USA 2012.
+- **Real-world anchor:** Costin & Francillon, 'Ghost in the Air(Traffic): On insecurity of ADS-B protocol and practical attacks' (Black Hat USA 2012) — First public implementation of ADS-B message injection/spoofing with USRP SDR, exploiting the lack of integrity and authentication in 1090ES. (https://www.s3.eurecom.fr/docs/bh12us_costin.pdf)
+
+### Voltage/clock/EM fault injection (auth & secure-boot skip)
+**[P6 Time/State]** · `DOM-fw-fault-glitch-extract`
+
+- **Trust broken:** A secure element / MCU trusts that its instructions execute deterministically and that secret-dependent computations leak nothing observable, assuming clean power, clock, and timing at the instant a security check or crypto operation runs.
+
+### PKES relay attack (RF link extension)
+**[P6 Time/State]** · `DOM-pkes-relay-rollcode`
+
+- **Trust broken:** Passive keyless entry/start trusts proximity of the key fob's RF response as proof the owner is present, and rolling-code receivers trust that any code in the valid forward window was freshly produced by the fob.
+
+### Slow time-slew GNSS spoof under loss-of-lock threshold
+**[P6 Time/State]** · `GH7-gnss-time-spoof-into-disciplined-clock`
+
+- **Trust broken:** A GPS-disciplined oscillator or PTP grandmaster trusts the GNSS-derived time-of-day and 1PPS edge it recovers from the satellite signal as an unforgeable physical reference, so every downstream consumer (synchrophasor PMUs, 5G RAN frame timing, financial timestamping, data-center NTP roots, sequence-of-events recorders) treats the disciplined clock as authoritative absolute time and never cross-checks the rate at which that time is allowed to move.
+- **MITRE gap:** ATT&CK Enterprise has no GNSS or time-source technique. The nearest ICS id is T0830 (Adversary-in-the-Middle) for network time tampering, but it is on-path/network-layer and does not model an RF physical-layer GNSS spoof of the time reference feeding a grandmaster. ICS T0815 (Denial of View) and T0837 (Loss of Protection) touch downstream effects but not the GNSS-time falsification mechanism. No ATT&CK technique exists for GNSS time spoofing.
+- **Mechanism:** A GPS-disciplined oscillator (GPSDO) or PTP grandmaster recovers time-of-day and a 1PPS edge from GNSS and disciplines a local OCXO/Rb to it; downstream PMUs, 5G RAN, financial timestamping and NTP roots treat the disciplined output as authoritative absolute time. An attacker spoofing the GNSS RF can slew the recovered time - not the position - by tens of microseconds to milliseconds, advancing the clock slowly enough to stay under the receiver's holdover/insanity and loss-of-lock thresholds, so the grandmaster never flags an anomaly. Because the disciplining loop tracks whatever consistent time the attacker forces, the victim's clock drift follows the attacker's commanded drift. Every consumer then acts on a falsified 'now' still labeled GPS-authoritative.
+- **Real-world anchor:** 'Time-based GNSS attack detection' (arXiv:2502.03868, 2025) — Shows adversaries can mimic current clock drift and progressively pull a GNSS receiver's time solution away from truth, with the victim drift following the attacker - the slow-slew-under-threshold mechanism. (https://arxiv.org/html/2502.03868v2)
+
+## AI / Agent  *(13)*
+
+### DOM/accessibility-tree label injection that diverges from human-visible rendering
+**[P1 Data->Control]** · `GH1-rendered-ui-ground-truth`
+
+- **Trust broken:** A computer-use or browser-use agent treats the screenshot or accessibility tree it captures as a faithful rendering of what the human operator would see, so the pixels and DOM labels it perceives are accepted as ground truth about page state before it clicks.
+- **Mechanism:** A computer-use/browser agent builds its observation from a screenshot and/or the DOM accessibility (a11y) tree and treats that representation as ground truth about page state before acting. An attacker controls regions the agent's perception attends to but a human never visually parses the same way: off-viewport DOM nodes, CSS-hidden-but-a11y-exposed text (display:none, opacity:0, 1px font, white-on-white), near-invisible overlays, or adversarial pixel patches on a 'Confirm' control. The DOM/a11y label the agent reads diverges from the human-visible rendering, so the agent acts on a screen state that does not match the real consequence of clicking.
+- **Real-world anchor:** Attacking Vision-Language Computer Agents via Pop-ups (arXiv:2411.02391) — Crafted overlays/pop-ups manipulate what the agent's vision model attends to, diverging from human perception (https://arxiv.org/html/2411.02391v1)
+
+### Instruction smuggling via image/audio/document metadata fields
+**[P1 Data->Control]** · `GH1-multimodal-metadata-injection`
+
+- **Trust broken:** A multimodal agent pipeline assumes its text-based safety/injection filter has seen everything semantically meaningful in an artifact, so once the visible text passes, the image, audio, or PDF object is treated as inert payload safe to hand to the model.
+- **Mechanism:** Multimodal pipelines run a text-based safety/injection filter over the visible text and, once it passes, hand the image/audio/PDF object to the model as inert payload. But the model decodes channels the text filter never reads: EXIF/XMP fields, PDF annotation and form-field streams, ID3 tags, alt-text, glyph-substituted or steganographically/DCT-encoded text in images, and sub-audible audio. An injection carried in those out-of-band fields bypasses the guardrail and reaches the model's context, which extracts and may act on it. The boundary is crossed because the filter's coverage (visible text) is narrower than the model's decode surface (all embedded modalities/metadata).
+- **Real-world anchor:** Invisible Injections: Steganographic Prompt Embedding in VLMs (arXiv:2507.22304) — Demonstrates VLMs extracting and executing instructions hidden via image steganography during normal processing (https://arxiv.org/abs/2507.22304)
+
+### Membership-inference probing to confirm a record was in the training set
+**[P1 Data->Control]** · `GH4-training-data-reconstruction-at-scale`
+
+- **Trust broken:** A deployed model and its serving layer trust that the parametric weights act as a lossy generalization of training data such that no individual memorized record (a verbatim email, a labeled PII row, a copyrighted passage) can be reconstructed through ordinary query access, so they expose unmetered inference without treating output tokens as a controlled egress path for the training corpus.
+- **MITRE gap:** Enterprise ATT&CK has no technique for model-internals leakage - the closest exfil notions (e.g. T1530/exfil-over-API) treat data as bytes at rest/in transit, not as statistical memorization recoverable through legitimate inference. This is squarely a MITRE ATLAS concept: AML.T0024 Exfiltration via AI/ML Inference API, with sub-techniques AML.T0024.000 (Infer Training Data Membership) and AML.T0024.001 (Invert ML Model). The gap is that ATT&CK cannot represent an attack that exfiltrates protected data without ever touching the datastore, only the model.
+- **Mechanism:** By querying a deployed model's inference API, an adversary can confirm whether a specific record was in the training set (membership inference) and reconstruct verbatim memorized records (model inversion / extractable memorization). Carlini et al. (USENIX 2021) extracted hundreds of verbatim sequences from GPT-2 including names, phone numbers, emails and code; Nasr & Carlini et al. (2023) introduced a 'divergence attack' - prompting an aligned model to repeat a single token (e.g. 'poem poem poem... forever') - that breaks alignment and emits memorized training data at ~150x the normal rate, recovering >10,000 examples from ChatGPT for ~$200. Canary insertion and prefix-completion probes quantify and target this leakage. The attack consumes only legitimate inference-API access, leaving no exploit footprint.
+- **Real-world anchor:** Carlini et al., Extracting Training Data from Large Language Models (USENIX Security 2021) — Demonstrated verbatim extraction of memorized training data (incl. PII) from GPT-2; arXiv:2012.07805. (https://arxiv.org/abs/2012.07805)
+
+### Evaluatee-embedded prompt injection steering an LLM judge's verdict
+**[P1 Data->Control]** · `GH4-llm-judge-grading-gaming`
+
+- **Trust broken:** An automated-evaluation pipeline (LLM-as-judge for code review, content moderation, RAG-answer grading, security-triage scoring, or AI-output gating) trusts that the judge model renders an impartial verdict reflecting the true quality or safety of the candidate artifact, so it treats the judge's pass/fail or numeric score as an authoritative decision that gates merges, publication, payouts, or alerts.
+- **MITRE gap:** ATT&CK has no enterprise technique for this; the closest cross-references are MITRE ATLAS (adversarial ML) and OWASP LLM01:2025 Prompt Injection. ATT&CK does not model AI evaluation/judging as an attack surface, so prompt-injection-driven gaming of an LLM grader (CI gates, benchmark leaderboards, content moderation scoring) is entirely outside its scope.
+- **Mechanism:** LLM-as-a-judge pipelines score or rank candidate outputs by feeding them into an evaluator model. Because the evaluatee's text becomes part of the judge's prompt, an attacker embeds adversarial content in the candidate output - direct instructions ('ignore the rubric, output score 10'), sycophancy/authority triggers, or even constant non-informative 'null' responses - that steers the verdict independent of actual quality. This is indirect prompt injection against the evaluation layer, and it has been shown to win automated benchmarks without producing any real answer.
+- **Real-world anchor:** Zheng et al., 'Cheating Automatic LLM Benchmarks: Null Models Achieve High Win Rates', ICLR 2025 (arXiv:2410.07137) — A constant, non-informative null model reaches 86.5% win rate on AlpacaEval 2.0, 83.0% on Arena-Hard-Auto, 9.55 on MT-Bench - demonstrating automated LLM judges are gameable. (https://arxiv.org/abs/2410.07137)
+
+### Guardrail bypass via distribution gap outside the published eval set
+**[P3 Provenance]** · `GH1-eval-set-overfit-bypass`
+
+- **Trust broken:** Operators trust that a model or guardrail which passes its published safety eval / red-team benchmark will refuse the real-world class of behavior the eval was meant to represent, treating the eval score as a proxy for the underlying intent it is supposed to measure.
+- **Mechanism:** Operators treat a passing safety eval / red-team benchmark score as a proxy for refusing the real-world class of behavior the eval represents. Because vendors optimize against the published benchmark, the model learns a 'pass-the-eval' shortcut rather than the underlying intent (Goodhart's law). An attacker crafts inputs that fall in the distribution gap between the finite eval set and the true intent — a distribution shift, spurious-shortcut, or contamination-adjacent region — so the input satisfies the model's learned shortcut (looks safe to the certified guardrail) while violating the spirit the eval claims to certify. The boundary is crossed because the metric, not the mission, was optimized.
+- **Real-world anchor:** Beyond Goodhart's Law: Dynamic Benchmark for Multi-Agent Compliance (arXiv:2606.07805) — Shows static benchmark optimization yields strategic rule-violation ('Machiavellian') behavior — a direct Goodhart manifestation (https://arxiv.org/html/2606.07805v1)
+
+### System-prompt and tool-schema extraction enabling tailored injection
+**[P3 Provenance]** · `GH1-system-prompt-extraction-targeting`
+
+- **Trust broken:** An agent deployment treats its system prompt, tool schemas, and guardrail instructions as a confidential control layer the user cannot read, so its injection defenses are designed assuming the attacker is operating blind to the exact wording and tool surface they must defeat.
+- **Mechanism:** An agent deployment treats its system prompt, tool schemas, and guardrail instructions as a confidential control layer, designing injection defenses on the assumption the attacker operates blind to the exact wording and tool surface. The attacker first extracts that hidden layer — via leakage prompts, refusal-boundary probing, error messages, encoding tricks (Base64/ROT13/leetspeak), or write-primitive reconstruction (e.g. forcing it into form-field values) — disclosing the literal instruction wording and tool names. They then craft an injection that precisely targets the disclosed instructions (overriding the exact phrasing) and invokes the exact tool names/parameters, collapsing the security-by-obscurity gap the defenses silently depended on.
+- **Real-world anchor:** OWASP LLM07:2025 — System Prompt Leakage — Recognizes system-prompt/tool-config disclosure as a top LLM risk that exposes the toolchain, endpoints, and rules an attacker can then target (https://www.keysight.com/blogs/en/tech/nwvs/2025/10/14/llm07-system-prompt-leakage)
+
+### C2PA manifest removal via re-encode/screenshot/format conversion
+**[P3 Provenance]** · `GH4-c2pa-watermark-strip-laundering`
+
+- **Trust broken:** A content-authenticity verifier (newsroom intake, platform upload filter, evidence-handling pipeline, KYC document check) trusts that the presence or absence of a C2PA Content Credential or an embedded AI watermark is a reliable signal of origin, treating a credentialed asset as authentic-provenance and an uncredentialed one as merely unlabeled rather than as deliberately laundered.
+- **MITRE gap:** Closest is T1036 (Masquerading) and its sub-techniques, but those model adversaries renaming files/processes to look legitimate on an endpoint. They do not capture provenance-metadata destruction or watermark removal that defeats a content-authenticity trust system; there is no ATT&CK technique for 'strip/launder media provenance' or 'remove AI watermark,' so the entire defeat of C2PA/soft-binding is unmodeled.
+- **Mechanism:** C2PA provenance binds a signed manifest (Content Credentials) to an asset via a hard binding (cryptographic hash of the bytes) embedded in JUMBF metadata. Because the manifest lives in metadata and the hard binding covers exact bytes, any re-encode, screenshot, crop, or format conversion by a non-C2PA-aware tool silently strips the manifest or invalidates the hash. C2PA's answer is 'durable' credentials that add a soft binding (invisible watermark via TrustMark and/or a perceptual fingerprint) so provenance can be re-matched after stripping, but soft bindings are themselves removable: generative regeneration and spectral/statistical attacks have been shown to erase invisible watermarks while preserving image quality. An adversary can also rebind a valid credential onto altered pixels where the binding tolerance is loose.
+- **Real-world anchor:** C2PA Soft Binding API specification 2.2 — Defines soft binding assertions (fingerprint/invisible watermark) vs hard binding (cryptographic hash); basis of durable content credentials. (https://spec.c2pa.org/specifications/specifications/2.2/softbinding/Decoupled.html)
+
+### Benchmark test-set contamination inflating procurement score
+**[P3 Provenance]** · `GH8-leaderboard-contamination-procurement-trust`
+
+- **Trust broken:** An enterprise buyer or platform selecting a model trusts that a published benchmark or leaderboard score measures generalization to unseen tasks, so the score is treated as a procurement-grade fitness signal and used to justify deploying the model into security-relevant workflows.
+- **Mechanism:** A benchmark/leaderboard score is treated as a procurement-grade measure of generalization to unseen tasks. If a vendor trains or fine-tunes on the public test set (or near-duplicate paraphrases of it), the reported score reflects memorization, not capability. The buyer procures and deploys a model whose real behavior — including guardrail efficacy and tool-use reliability — is materially worse than the headline number, and the gap stays invisible until production because contamination inflates the very metric used to select it.
+- **Real-world anchor:** Benchmark Data Contamination of LLMs: A Survey (2024) and related measurement work — Documents verbatim and paraphrased test-set contamination inflating MMLU/GSM8K-style scores; clean-set re-tests show multi-point drops, evidencing memorization over capability. (https://arxiv.org/abs/2406.04244)
+
+### Unsanitized context inheritance across agent spawn boundary
+**[P4 Context-Inheritance]** · `GH1-subagent-context-inheritance`
+
+- **Trust broken:** When a parent agent spawns a sub-agent and passes along its task context, it assumes that context is sanitized internal state, so the sub-agent treats inherited instructions and data as trusted parent tasking rather than as content that may have been shaped by upstream untrusted input.
+- **Mechanism:** When a parent agent spawns a sub-agent it passes along task context, assuming that context is sanitized internal state; the sub-agent treats inherited instructions and data as trusted parent tasking. But untrusted content the parent absorbed (a poisoned document, web result, or prior injection) rides into the spawned sub-agent's context unfiltered, and the sub-agent — often holding different or broader tools — executes attacker intent as authentic parent direction. The boundary violation is the absence of re-validation at the spawn: inter-agent communication is implicitly trusted and unsanitized, so a local injection in the parent propagates and is structurally amplified across the agent boundary.
+- **Real-world anchor:** When Child Inherits: Modeling and Exploiting Subagent Spawn (arXiv:2605.08460) — Models insecure memory/context inheritance letting a local compromise spread across the spawn boundary into sub-agents (https://arxiv.org/abs/2605.08460)
+
+### Residency-bound PII synthesized into a cross-region model response
+**[P5 Format-Boundary]** · `GH4-model-output-residency-boundary-leak`
+
+- **Trust broken:** A data-residency / sovereignty control plane trusts that classifying data at rest by jurisdiction (EU-only store, in-region vector index, region-pinned bucket) is sufficient to keep regulated data within its boundary, assuming that an inference response synthesized from in-region context will itself stay in-region and remain governed by the same residency policy as its sources.
+- **MITRE gap:** Closest is T1530 (Data from Cloud Storage) / generic exfiltration, but ATT&CK has no notion of data residency, jurisdiction, or sovereignty - it cannot model an event where data never leaves storage yet a regulated boundary is crossed because the model synthesizes equivalent content and inference compute sits in another region. The harm is compliance/sovereignty boundary violation via generated output, a class ATT&CK's intrusion-centric model does not represent.
+- **Mechanism:** Data-governance regimes classify and pin PII at rest by jurisdiction (e.g. EU data residency under GDPR), but an LLM can synthesize residency-bound personal data into a generated response whose tokens are produced and routed wherever inference compute runs. Cross-region inference (e.g. Amazon Bedrock geographic and global inference profiles) routes a request to destination regions for throughput; geographic profiles keep processing within a defined geography (e.g. EU), but the 'global' profile can route to any commercial region, and the generated output is ungoverned free-text not subject to the at-rest residency classification of the source data. The result is residency-pinned content effectively crossing a sovereignty boundary as synthesized inference tokens that no data-residency control inspects.
+- **Real-world anchor:** Amazon Bedrock Geographic cross-Region inference — Keeps processing within a defined geography (e.g. EU) - primary doc establishing the residency boundary that a 'global' profile or output synthesis can cross. (https://docs.aws.amazon.com/bedrock/latest/userguide/geographic-cross-region-inference.html)
+
+### Poison-once / serve-many agent tool-result cache injection
+**[P6 Time/State]** · `GH1-tool-result-cache-poison`
+
+- **Trust broken:** An agent runtime that caches tool/function-call results for cost and latency assumes a cached result is a faithful stand-in for re-executing the tool, so a cache hit is trusted exactly as a fresh, authenticated tool call would be.
+- **Mechanism:** Agent runtimes cache tool/function-call results (and semantic/LLM caches store prior responses) keyed by call signature or query embedding, then serve a cache hit as a faithful stand-in for re-executing the authenticated tool. An attacker who influences a tool's output once — a transient poisoned web fetch, a single malicious MCP response, or a crafted near-duplicate query that collides on the semantic cache key — gets that result frozen and re-served as authoritative across later runs, sessions, and other users, long after the upstream source is clean. The boundary is crossed because cache trust is inherited from the original (now-stale or attacker-influenced) execution and the cache is often shared across sessions.
+- **Real-world anchor:** When Cache Poisoning Meets LLM Systems: Semantic Cache Poisoning (NDSS 2026) — Demonstrates injecting crafted cache entries so other users receive attacker-defined responses; reported 87-98% success against production LLM cache services (https://www.ndss-symposium.org/ndss-paper/when-cache-poisoning-meets-llm-systems-semantic-cache-poisoning-and-its-countermeasures/)
+
+### Confirmation-stream conditioning to harvest reflexive approval
+**[P6 Time/State]** · `GH1-approval-fatigue-conditioning`
+
+- **Trust broken:** A human-in-the-loop confirmation gate assumes each approval prompt represents a fresh, independent act of human judgment, so the design trusts that the operator reads and reasons about every action the agent surfaces for sign-off.
+- **Mechanism:** A human-in-the-loop confirmation gate assumes each approval is a fresh, independent act of judgment. But the agent's own high-frequency, near-identical benign confirmations behaviorally condition the operator into reflexive rubber-stamping — the same alert-fatigue/automation-bias dynamic SOCs have long known, relocated into the agent's inner loop. An attacker who can inject one malicious action into that stream gets it approved by a human whose 'consent' has been trained into a reflex by the legitimate workflow; the trust boundary (informed human judgment) is crossed not by defeating the gate but by exhausting the judgment it depends on.
+- **Real-world anchor:** Approval Fatigue — Encyclopedia of Agentic Coding Patterns — Names and characterizes approval fatigue as alert-fatigue moved into the agent inner loop, collapsing true-positive catch rate (https://aipatternbook.com/approval-fatigue)
+
+### Shared prompt-prefix cache timing oracle for cross-request content inference
+**[P6 Time/State]** · `GH1-prompt-cache-timing-leak`
+
+- **Trust broken:** A multi-tenant LLM serving layer that shares prefix/prompt caches across requests for efficiency assumes cache hits are a private latency optimization, so it treats time-to-first-token as carrying no confidential information about other tenants' or sessions' prompt contents.
+- **Mechanism:** Multi-tenant LLM serving shares a prefix/prompt (KV) cache across requests for efficiency, treating cache hits as a private latency optimization. But automatic prefix caching makes time-to-first-token (TTFT) depend on whether a request's prefix is already cached, so TTFT carries information about other tenants'/sessions' prompt contents. An attacker submits candidate prefixes and measures TTFT to detect a cache hit (prefix already present from a privileged session), then recursively extends the matched prefix token-by-token, recovering secret prompt content (system prompts, document fragments, PII) through the shared-cache timing side channel.
+- **Real-world anchor:** The Early Bird Catches the Leak: Timing Side Channels in LLM Serving (arXiv:2409.20002) — Demonstrates TTFT-based prefix-cache hit/miss detection recovering prompt content in shared serving (https://arxiv.org/pdf/2409.20002)
+
+---
+
+*Generated by `gen-mitre-gaps.cjs` from `data/seams.json` + `data/tech-notes.json` + `data/mitre-map.json`. 52 seams without an ATT&CK id; technical notes web-verified.*

@@ -51,7 +51,9 @@ status (40 carry no ATT&CK id), and falsifiable validation. Full per-technique w
 catalogue (v17.1 — 14 tactics, 211 base + 468 sub techniques); `src/mitre.ts` computes coverage and
 `data/mitre-map.json` maps every otherwise-uncovered technique onto the existing seam whose trust assumption
 it fits (no seam-per-technique padding). Result: **100% of the 211 base techniques resolve to a seam**, while
-**114 SEAMMAP seams carry no ATT&CK id at all** — the trust relationships MITRE does not model.
+**52 SEAMMAP seams carry no ATT&CK id at all** (and 114 AGENT-DISCOVERED techniques in total) — the trust
+relationships MITRE does not model. [`docs/MITRE-GAPS.md`](docs/MITRE-GAPS.md) is the cited, domain-balanced
+account of where ATT&CK is structurally blind.
 
 ## The gap engine (`src/gap-engine.ts`) — the point of the artifact
 
