@@ -43,6 +43,37 @@ export interface OperatorWeights {
   ai_augmentable: number; // an LLM does the attacker's cognitive work
 }
 
+// ---------------------------------------------------------------------------
+// TEMPORAL AXIS — the third dimension of the trust hypergraph.
+// Mechanism (primitive) × Relationship (edge) × Time (tempo).
+// ---------------------------------------------------------------------------
+
+// TempoClass describes the *operational window* in which a seam is exploitable:
+// how long the door is open, or what event opens it.
+export type TempoClass =
+  | "instant"       // sub-second: race conditions, TOCTOU, timing attacks
+  | "session"       // minutes–hours: token lifetime, auth session, context window
+  | "opportunistic" // event-gated: CI push, webhook, deployment, maintenance window
+  | "campaign"      // days–weeks: slow-burn lateral movement, supply-chain poisoning
+  | "persistent";   // indefinite: misconfigured IAM, planted backdoor, C2 beacon
+
+export interface TempoProfile {
+  class: TempoClass;
+  window_label: string;      // human-readable: "< 1 second", "event-gated", etc.
+  window_seconds?: number;   // max exploitation window; absent = unlimited
+  trigger?: string;          // for opportunistic: "CI/CD push", "webhook event", etc.
+  preconditions?: string[];  // seam ids that must precede this one
+}
+
+// TemporalCompat — how hard is it to chain two seams given their temporal classes?
+export type TempoCompatClass = "synchronized" | "sequential" | "decoupled";
+
+export interface TemporalCompat {
+  class: TempoCompatClass;
+  window_constraint: string; // human-readable constraint
+  score_factor: number;      // < 1.0 harder, > 1.0 easier; multiplied into composite score
+}
+
 export type Validity = "demonstrated" | "plausible" | "speculative";
 export type Confidence = "high" | "medium" | "low";
 
@@ -95,6 +126,7 @@ export interface Seam {
   validation?: ValidationInfo; // attached at load from validations.json
   test_artifact?: TestArtifact; // attached at load from artifacts.json
   tech_note?: TechNote;         // attached at load from tech-notes.json
+  tempo?: TempoProfile;         // attached at load from tempo.json (or inferred at build)
 }
 
 // Web-verified technical deep-dive for a technique: precise mechanism, the explicit MITRE

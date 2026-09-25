@@ -8,7 +8,8 @@
 // detection and A's reliability — that combination is exactly what makes it both dangerous
 // and, here, predictable: we enumerate every (old A) x (new B) that meet at a shared node.
 
-import type { Dataset, Seam, PrimitiveId } from "./types.ts";
+import type { Dataset, Seam, PrimitiveId, TemporalCompat } from "./types.ts";
+import { classifyTempoCompat } from "./tempo.ts";
 
 export interface Composite {
   id: string;
@@ -18,7 +19,8 @@ export interface Composite {
   primitives: [PrimitiveId, PrimitiveId];
   prediction: string;      // the emergent vuln, in words
   why_predictable: string;
-  score: number;           // amplification: reliability(A) x undetectedness(B) x novelty
+  score: number;           // amplification: reliability(A) x undetectedness(B) x novelty x tempo_factor
+  temporal_compat?: TemporalCompat; // how hard to chain these two seams given their tempo windows
 }
 
 const detectionGap: Record<string, number> = { none: 3, nascent: 2, partial: 1, available: 1, mature: 0 };
@@ -50,7 +52,9 @@ export function predictComposites(ds: Dataset, limit = 40): Composite[] {
         if (A.primitive === B.primitive && A.target.join() === B.source.join()) continue;
         const novelty = A.primitive === B.primitive ? 1 : 1.4; // cross-primitive merges are more emergent
         const opAmp = 1 + 0.2 * (B.operator.scalable + B.operator.automatable + B.operator.ai_augmentable);
-        const score = reliability[A.tooling_status] * (1 + detectionGap[B.detection_status]) * novelty * opAmp;
+        const tCompat = classifyTempoCompat(B, A); // temporal_compat: how hard to chain B→A in time
+        const baseScore = reliability[A.tooling_status] * (1 + detectionGap[B.detection_status]) * novelty * opAmp;
+        const score = baseScore * tCompat.score_factor; // synchronized composites are harder (lower score)
         const dest = A.target.map((t) => pName.get(t) ?? t).join("/");
         out.push({
           id: `cx:${B.id}>${n}>${A.id}`,
@@ -61,6 +65,7 @@ export function predictComposites(ds: Dataset, limit = 40): Composite[] {
           prediction: `Reach ${pName.get(n) ?? n} through the undetected new surface "${techOf(B)}" (${B.primitive}), then fire the proven classic "${techOf(A)}" (${A.primitive}) onward to ${dest}.`,
           why_predictable: `${techOf(B)} has ${B.detection_status} detection and ${B.tooling_status} tooling (a fresh, unwatched entry), while ${techOf(A)} is ${A.tooling_status}-tooled and reliable. The graph already holds both edges at ${pName.get(n) ?? n}; their composition is mechanical, not speculative.`,
           score: Number(score.toFixed(2)),
+          temporal_compat: tCompat,
         });
       }
     }

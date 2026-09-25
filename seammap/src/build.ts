@@ -12,11 +12,18 @@ import { predictComposites, predictChains3, emergingSummary } from "./compose.ts
 import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 import { discoverThreats } from "./discover.ts";
 import { loadMitre, mitreCoverage } from "./mitre.ts";
+import { campaignTimeline, tempoStats, tempoOf } from "./tempo.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, "..", "web", "dataset.json");
 
 const ds = loadDataset();
+
+// Materialise tempo for every seam so the web views have the computed profile,
+// not just the explicit overrides. Seams with explicit data/tempo.json entries
+// already have s.tempo set by model.ts; fill the rest with inferTempo now.
+for (const s of ds.seams) if (!s.tempo) s.tempo = tempoOf(s);
+
 const register = gapsRegister(ds);
 const tree = buildTree(ds);
 const matrix = buildMatrix(ds);
@@ -28,6 +35,8 @@ const optimized = optimizeUnderBudget(ds, 25);
 const cov = coverage(ds);
 const discoveries = discoverThreats(ds, { simThreshold: 0.55, limit: 60 });
 const mitre = mitreCoverage(ds, loadMitre());
+const campaign_timeline = campaignTimeline(ds.seams);
+const tempo = tempoStats(ds.seams, composites);
 
 // Pre-compute per-seam scores so the web Path view and edge detail need no scorer logic.
 const scored = ds.seams.map((s) => ({
@@ -60,6 +69,7 @@ const bundle = {
     discoveries: discoveries.length,
     mitre_absent: ds.seams.filter((s) => s.techniques.every((t) => !t.attack_ids || t.attack_ids.length === 0)).length,
     mitre: { base_total: mitre.base_total, base_covered: mitre.base_covered, base_uncovered: mitre.base_uncovered, pct: mitre.pct },
+    tempo,
   },
   primitives: ds.primitives,
   principals: ds.principals,
@@ -76,6 +86,7 @@ const bundle = {
   optimized,
   discoveries,
   mitre,
+  campaign_timeline,
 };
 
 writeFileSync(OUT, JSON.stringify(bundle, null, 2));
