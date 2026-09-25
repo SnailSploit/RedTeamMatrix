@@ -33,7 +33,7 @@ async function init() {
   for (const [name, fn] of [["legend", renderLegend], ["graphControls", renderGraphControls],
     ["graph", buildGraph], ["techniques", buildTechniques], ["matrix", buildMatrix], ["tree", buildTree], ["gaps", buildGaps],
     ["predict", buildPredict], ["optimize", buildOptimize], ["discover", buildDiscover],
-    ["mindmap", buildMindmap], ["walk", buildWalk], ["path", buildPath]]) {
+    ["mindmap", buildMindmap], ["walk", buildWalk], ["path", buildPath], ["campaign", buildCampaign]]) {
     try { fn(); } catch (e) { console.error(`view '${name}' failed:`, e); }
   }
 }
@@ -72,6 +72,7 @@ function showSeam(id) {
     <div class="k">techniques · refs</div>${techs}
     <div class="k">operator axis</div><div class="chips">${ops.map((o) => `<span class="chip op">${o}</span>`).join("") || '<span class="muted">none</span>'}</div>
     <div class="k">tooling / detection</div><div class="v">tooling: <b>${s.tooling_status}</b> · detection: <b>${s.detection_status}</b></div>
+    ${s.tempo ? `<div class="k">tempo (Z-axis)</div><div class="v"><span class="chip" style="border-color:${TEMPO_COLOR[s.tempo.class]||'#888'};color:${TEMPO_COLOR[s.tempo.class]||'#888'}">${s.tempo.class}</span> ${s.tempo.window_label}${s.tempo.trigger ? ` · triggered by: <i>${esc(s.tempo.trigger)}</i>` : ""}</div>` : ""}
     <div class="k">scheduler</div><div class="v">CLS ${sc.cls ?? "?"} · EGQ ${sc.egq ?? "?"} ${sc.egq_candidate ? "<b style='color:#7ee787'>(candidate ≥2)</b>" : ""}</div>
     <div class="k">tactics · branch</div><div class="v muted">${s.tactics.join(", ")} — ${s.classic_branches.join("; ")}</div>
     ${s.rationale ? `<div class="k">agent rationale</div><div class="v">${s.rationale}</div>` : ""}
@@ -302,6 +303,9 @@ function buildGaps() {
   renderGaps();
 }
 const VALCOLOR = { demonstrated: "#7ee787", plausible: "#f0a93b", speculative: "#8b949e" };
+const TEMPO_COLOR = { instant: "#e6194b", session: "#f0a93b", opportunistic: "#bd93f9", campaign: "#56d4dd", persistent: "#7ee787" };
+const TEMPO_ICON = { instant: "⚡", session: "⏱", opportunistic: "◈", campaign: "⏳", persistent: "∞" };
+const COMPAT_COLOR = { synchronized: "#e6194b", sequential: "#f0a93b", decoupled: "#7ee787" };
 function renderGaps() {
   const type = $("#gf-type").value, prim = $("#gf-prim").value, val = $("#gf-val").value, q = $("#gf-q").value.toLowerCase();
   const list = $("#gaps-list"); list.innerHTML = "";
@@ -693,6 +697,92 @@ function findPaths(src, dst, scorer, maxLen = 5) {
     });
   })(src, new Set([src]), []);
   return out.sort((a, b) => b.score - a.score).slice(0, 12);
+}
+
+// --------------------------------------------------------------------------- campaign timeline view
+// The (primitive × tempo) floor-projection of the 3D trust hypergraph.
+// X axis = 5 temporal bands (Instant → Persistent)  Y axis = 6 primitives
+// Each cell shows the seams whose exploitation window falls in that (primitive, tempo) zone.
+// The compat summary below shows whether composites can be chained easily or require synchronization.
+function buildCampaign() {
+  const prims = DS.primitives;
+  const timeline = DS.campaign_timeline || [];
+  const tempo = DS.meta.tempo || {};
+
+  const intro = $("#campaign-intro");
+  intro.innerHTML = `<b style="color:#e6edf3">Campaign Timeline — the temporal axis.</b> The hypergraph projected onto <i>mechanism × time</i>: the Z-axis laid flat. ` +
+    `Each cell is (primitive, exploitation-window class). A seam in the <b style="color:${TEMPO_COLOR.instant}">Instant</b> column exists for &lt;1s; ` +
+    `<b style="color:${TEMPO_COLOR.persistent}">Persistent</b> seams are always open. Click any chip to inspect the seam. ` +
+    `The <b>Compat</b> row below the grid shows how many predicted composites can be chained decoupled vs. needing tight synchronization.`;
+
+  // --- Compat summary ---
+  const cc = tempo.compat_breakdown || {};
+  const ccTotal = (cc.synchronized || 0) + (cc.sequential || 0) + (cc.decoupled || 0);
+  const ccDiv = $("#campaign-compat");
+  ccDiv.innerHTML = `<div style="font-size:12px;color:var(--dim);margin-bottom:6px">Predicted composite temporal compatibility (top-40):</div>` +
+    ["synchronized", "sequential", "decoupled"].map((cls) => {
+      const n = cc[cls] || 0;
+      const pct = ccTotal ? Math.round(100 * n / ccTotal) : 0;
+      return `<span class="chip" style="border-color:${COMPAT_COLOR[cls]};color:${COMPAT_COLOR[cls]};margin-right:6px">${cls} ${n} (${pct}%)</span>`;
+    }).join("") +
+    `<span class="muted" style="font-size:11px;margin-left:8px">synchronized = hardest to chain · decoupled = entry and propagation operate on independent clocks</span>`;
+
+  // --- The grid ---
+  const grid = $("#campaign-grid"); grid.innerHTML = "";
+
+  // Header row
+  const hdr = el("div", "campaign-row");
+  hdr.append(el("div", "campaign-cell campaign-label", "primitive"));
+  for (const band of timeline) {
+    const h = el("div", "campaign-cell campaign-hdr");
+    h.style.borderBottom = `2px solid ${TEMPO_COLOR[band.class]}`;
+    h.innerHTML = `<span style="color:${TEMPO_COLOR[band.class]};font-weight:700">${TEMPO_ICON[band.class]} ${band.label}</span><div class="muted" style="font-size:11px">${band.window_label}</div><div class="muted" style="font-size:11px">${band.seam_ids.length} seams</div>`;
+    hdr.append(h);
+  }
+  grid.append(hdr);
+
+  // One row per primitive
+  for (const p of prims) {
+    const row = el("div", "campaign-row");
+    const lbl = el("div", "campaign-cell campaign-label");
+    lbl.innerHTML = `<span class="pdot" style="background:${p.color}"></span><b>${p.id}</b><div class="muted" style="font-size:11px;margin-top:2px">${p.name}</div>`;
+    row.append(lbl);
+
+    for (const band of timeline) {
+      const ids = (band.by_primitive || {})[p.id] || [];
+      const cell = el("div", "campaign-cell");
+      if (ids.length === 0) {
+        cell.innerHTML = `<span class="muted" style="font-size:11px">—</span>`;
+      } else {
+        for (const sid of ids) {
+          const s = SEAM[sid]; if (!s) continue;
+          const chip = el("span", "campaign-chip");
+          chip.title = s.techniques[0]?.name ?? sid;
+          chip.style.background = p.color + "22";
+          chip.style.borderColor = p.color + "88";
+          chip.style.color = band.class === "instant" ? TEMPO_COLOR.instant : p.color;
+          chip.textContent = (s.techniques[0]?.name ?? sid).slice(0, 22) + (s.techniques[0]?.name?.length > 22 ? "…" : "");
+          chip.addEventListener("click", () => showSeam(sid));
+          cell.append(chip);
+        }
+      }
+      row.append(cell);
+    }
+    grid.append(row);
+  }
+
+  // Separator + class-count bar
+  const bar = el("div", "campaign-bar");
+  for (const band of timeline) {
+    const n = band.seam_ids.length;
+    const pct = Math.round(100 * n / DS.seams.length);
+    const seg = el("div", "campaign-seg");
+    seg.style.width = `${pct}%`; seg.style.background = TEMPO_COLOR[band.class];
+    seg.title = `${band.label}: ${n} seams (${pct}%)`;
+    bar.append(seg);
+  }
+  grid.append(el("div", "muted", `<div style="margin:12px 0 4px;font-size:11px">distribution across temporal classes</div>`));
+  grid.append(bar);
 }
 
 // expose handlers used in inline onclick

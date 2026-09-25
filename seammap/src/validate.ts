@@ -10,6 +10,7 @@ import { rankPriorities, optimizeUnderBudget, coverage } from "./optimize.ts";
 import { discoverThreats } from "./discover.ts";
 import { loadMitre, mitreCoverage } from "./mitre.ts";
 import type { Dataset, Principal, Seam } from "./types.ts";
+import { tempoOf, TEMPO_META } from "./tempo.ts";
 
 let failures = 0;
 const log = (ok: boolean, msg: string) => {
@@ -322,6 +323,33 @@ const ds = loadDataset();
   const pPat = /^P[1-6]→P[1-6]$/;
   log(em.merge_patterns.length > 0 && em.merge_patterns.every((p) => pPat.test(p.pattern)),
     `Emerging gaps: merge patterns are typed primitive→primitive pairs (top: ${em.merge_patterns.slice(0, 3).map((p) => `${p.pattern}×${p.count}`).join(", ")})`);
+}
+
+// ---------------------------------------------------------------------------
+// 15. TEMPORAL AXIS — every seam resolves to a valid TempoProfile (explicit or
+// inferred). All five temporal classes are represented. No seam is left unclassified.
+// The temporal axis is structural, not decorative: the five classes must each cover
+// >=1 seam so the (primitive × tempo) campaign view is populated across all bands.
+// ---------------------------------------------------------------------------
+{
+  const VALID_CLASSES = new Set(Object.keys(TEMPO_META));
+  const missing = ds.seams.filter((s) => {
+    try { const tp = tempoOf(s); return !tp || !VALID_CLASSES.has(tp.class); }
+    catch { return true; }
+  });
+  log(missing.length === 0,
+    `Temporal axis: all ${ds.seams.length} seams resolve to a valid TempoProfile` +
+    (missing.length ? ` — UNRESOLVED: ${missing.slice(0, 5).map((s) => s.id).join(", ")}` : ""));
+
+  const classCounts = new Map<string, number>();
+  for (const s of ds.seams) {
+    const cls = tempoOf(s).class;
+    classCounts.set(cls, (classCounts.get(cls) ?? 0) + 1);
+  }
+  const allClassesPresent = [...VALID_CLASSES].every((c) => (classCounts.get(c) ?? 0) >= 1);
+  log(allClassesPresent,
+    `Temporal axis: all 5 tempo classes populated — ` +
+    [...VALID_CLASSES].map((c) => `${c}:${classCounts.get(c) ?? 0}`).join(", "));
 }
 
 console.log(`\n${failures === 0 ? "ALL INVARIANTS HOLD" : `${failures} INVARIANT(S) VIOLATED`}`);

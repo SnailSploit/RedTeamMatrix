@@ -128,3 +128,16 @@ pre.artifact code { color: #c9d1d9; }
 .pathstep .arrow { color: var(--dim); }
 .pathstep .pdot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin: 0 6px; }
 .parallel-note { color: var(--emerging); font-size: 11px; margin: 6px 0 14px; }
+
+/* ---- campaign timeline (primitive × tempo grid) ---- */
+#campaign-grid { overflow-x: auto; }
+.campaign-row { display: flex; border-bottom: 1px solid var(--line); min-width: 820px; }
+.campaign-row:last-child { border-bottom: none; }
+.campaign-label { flex: 0 0 110px; min-width: 110px; padding: 10px 10px; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid var(--line); font-size: 12px; color: var(--dim); background: var(--panel2); }
+.campaign-hdr { flex: 1; padding: 8px 10px; text-align: center; font-size: 12px; background: var(--panel2); }
+.campaign-cell { flex: 1; padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; min-height: 44px; }
+.campaign-chip { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.campaign-chip:hover { opacity: 0.8; filter: brightness(1.15); }
+.campaign-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+.campaign-seg { height: 100%; transition: opacity 0.15s; }
+.campaign-seg:hover { opacity: 0.75; }

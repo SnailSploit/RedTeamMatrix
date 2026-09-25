@@ -4,6 +4,7 @@
 // freshly-spawned / frontier edges, where research yield is highest.
 
 import type { Seam, Dataset } from "./types.ts";
+import { tempoOf } from "./tempo.ts";
 
 export interface Scorer {
   name: string;
@@ -122,4 +123,65 @@ export function findPaths(
 
   walk(src, new Set([src]), []);
   return results.sort((a, b) => b.score - a.score).slice(0, 12);
+}
+
+// ---------------------------------------------------------------------------
+// Time-budget path search: same as findPaths, but each seam step costs time
+// (its window_seconds, or a class-default). Paths that exceed budget_seconds
+// are pruned — you can't traverse a 90-day supply-chain step inside a 1-hour
+// operation window. Undefined window_seconds = persistent (no cost counted).
+// ---------------------------------------------------------------------------
+
+const TEMPO_DEFAULT_SECONDS: Record<string, number> = {
+  instant: 1, session: 3_600, opportunistic: 3_600,
+  campaign: 604_800, persistent: 0, // persistent costs 0 — it's always available
+};
+
+function seamTimeCost(s: Seam): number {
+  const tp = tempoOf(s);
+  if (tp.class === "persistent") return 0; // persistent edges are free: always open
+  return tp.window_seconds ?? TEMPO_DEFAULT_SECONDS[tp.class] ?? 3_600;
+}
+
+export interface TimedPath extends ScoredPath { totalSeconds: number; feasible: boolean; }
+
+export function findPathsWithinBudget(
+  ds: Dataset, src: string, dst: string,
+  budget_seconds: number, scorer: Scorer = CLS, maxLen = 5,
+): TimedPath[] {
+  const adj = outgoing(ds.seams);
+  const results: TimedPath[] = [];
+
+  function walk(node: string, visited: Set<string>, steps: PathStep[], elapsed: number) {
+    if (steps.length > maxLen) return;
+    if (node === dst && steps.length > 0) {
+      let raw = 0, frontier = 0;
+      for (const st of steps) {
+        raw += scorer.score(st.seam);
+        if (st.seam.maturity === "frontier") frontier++;
+      }
+      const score = raw * (1 + 0.25 * frontier) / steps.length;
+      results.push({ steps: [...steps], score, frontierEdges: frontier, totalSeconds: elapsed, feasible: elapsed <= budget_seconds });
+      return;
+    }
+    for (const e of adj.get(node) ?? []) {
+      if (visited.has(e.to)) continue;
+      const cost = seamTimeCost(e.seam);
+      const next = elapsed + cost;
+      // Prune only if this step is not the destination: allow arriving over budget so
+      // the caller can see *how* over-budget a path is, but stop branching from there.
+      visited.add(e.to);
+      steps.push({ seam: e.seam, from: node, to: e.to });
+      if (next <= budget_seconds || e.to === dst) walk(e.to, visited, steps, next);
+      steps.pop();
+      visited.delete(e.to);
+    }
+  }
+
+  walk(src, new Set([src]), [], 0);
+  return results.sort((a, b) => {
+    // Feasible paths first, then by score within each group.
+    if (a.feasible !== b.feasible) return a.feasible ? -1 : 1;
+    return b.score - a.score;
+  }).slice(0, 12);
 }

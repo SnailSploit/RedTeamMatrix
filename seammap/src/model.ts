@@ -70,6 +70,17 @@ export function loadDataset(): Dataset {
     for (const s of seams) if (s.test_artifact && runs[s.id]) s.test_artifact.result = runs[s.id].result;
   } catch { /* poc-results.json not present yet */ }
 
+  // Join explicit temporal profiles (tempo.json): hand-classified overrides for seams
+  // where the heuristic (src/tempo.ts inferTempo) would miss the right class. Absent => no-op;
+  // inferTempo fires at build time for every seam that lacks an explicit profile.
+  try {
+    const tempoMap: Record<string, any> = readJson("tempo.json");
+    for (const s of seams) {
+      const t = tempoMap[s.id];
+      if (t && t.class) s.tempo = t;
+    }
+  } catch { /* tempo.json not present yet */ }
+
   return { primitives, principals, seams, frontier_seams, coverage };
 }
 

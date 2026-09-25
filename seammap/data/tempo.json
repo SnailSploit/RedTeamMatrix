@@ -1,0 +1,176 @@
+{
+  "_note": "Explicit temporal overrides. Format: seam_id -> TempoProfile. Joined at load (model.ts). Heuristic (src/tempo.ts inferTempo) applies to all others.",
+
+  "C-toctou": {
+    "class": "instant",
+    "window_label": "< 1 second",
+    "window_seconds": 1
+  },
+  "C-replay": {
+    "class": "session",
+    "window_label": "token / ticket lifetime",
+    "window_seconds": 36000
+  },
+  "C-idempotency": {
+    "class": "session",
+    "window_label": "transaction window",
+    "window_seconds": 300
+  },
+  "C-persistence": {
+    "class": "persistent",
+    "window_label": "indefinite (survives reboot)"
+  },
+  "C-lateral": {
+    "class": "campaign",
+    "window_label": "hours–days",
+    "window_seconds": 86400
+  },
+  "C-webhook": {
+    "class": "opportunistic",
+    "window_label": "event-gated",
+    "window_seconds": 30,
+    "trigger": "webhook delivery"
+  },
+  "C-supplychain": {
+    "class": "campaign",
+    "window_label": "weeks–months",
+    "window_seconds": 7776000
+  },
+  "C-depconfusion": {
+    "class": "campaign",
+    "window_label": "days–weeks (until package pulled)",
+    "window_seconds": 604800
+  },
+  "C-c2": {
+    "class": "persistent",
+    "window_label": "indefinite (active beacon)"
+  },
+  "C-exfil": {
+    "class": "campaign",
+    "window_label": "days (staged exfil)",
+    "window_seconds": 604800
+  },
+  "IA-wmi-subscription": {
+    "class": "persistent",
+    "window_label": "indefinite (event-subscription survives reboot)"
+  },
+  "IA-boot-chain": {
+    "class": "persistent",
+    "window_label": "indefinite (pre-OS persistence)"
+  },
+  "IA-web-shell": {
+    "class": "persistent",
+    "window_label": "indefinite (until web shell is removed)"
+  },
+  "C2-malleable-beacon": {
+    "class": "persistent",
+    "window_label": "indefinite (beacon check-in loop)"
+  },
+  "C2-dns-tunnel": {
+    "class": "persistent",
+    "window_label": "indefinite (covert channel)"
+  },
+  "C2-icmp-covert": {
+    "class": "persistent",
+    "window_label": "indefinite (covert channel)"
+  },
+  "C2-domain-fronting": {
+    "class": "persistent",
+    "window_label": "indefinite (fronted C2 channel)"
+  },
+  "C2-saas-chat-channel": {
+    "class": "persistent",
+    "window_label": "indefinite (while SaaS channel is live)"
+  },
+  "C2-redirector-profile": {
+    "class": "persistent",
+    "window_label": "indefinite (redirector infra)"
+  },
+  "C2-saas-upload-exfil": {
+    "class": "campaign",
+    "window_label": "days (staged data upload)",
+    "window_seconds": 604800
+  },
+  "C2-dns-exfil": {
+    "class": "campaign",
+    "window_label": "days (slow DNS exfil)",
+    "window_seconds": 259200
+  },
+  "C2-steganography-exfil": {
+    "class": "campaign",
+    "window_label": "days–weeks (covert bandwidth)",
+    "window_seconds": 604800
+  },
+  "C2-chunked-encrypted-exfil": {
+    "class": "campaign",
+    "window_label": "hours–days (rate-limited)",
+    "window_seconds": 172800
+  },
+  "C2-removable-media-exfil": {
+    "class": "opportunistic",
+    "window_label": "event-gated",
+    "trigger": "physical access window"
+  },
+  "C2-tier0-domain-admin": {
+    "class": "campaign",
+    "window_label": "hours–days (AD exploitation chain)",
+    "window_seconds": 86400
+  },
+  "C2-crown-jewel-access": {
+    "class": "campaign",
+    "window_label": "hours–days (staging + exfil)",
+    "window_seconds": 172800
+  },
+  "C2-business-process-disruption": {
+    "class": "instant",
+    "window_label": "immediate (disruptive action)",
+    "window_seconds": 60
+  },
+  "XC-ppe-pipeline-exec": {
+    "class": "opportunistic",
+    "window_label": "event-gated",
+    "window_seconds": 600,
+    "trigger": "CI/CD push"
+  },
+  "XC-runner-takeover-cache-poison": {
+    "class": "opportunistic",
+    "window_label": "event-gated",
+    "window_seconds": 3600,
+    "trigger": "CI/CD pipeline run"
+  },
+  "XC-oauth-app-mailrule-persist": {
+    "class": "persistent",
+    "window_label": "indefinite (OAuth app / mail rule persists)"
+  },
+  "GH9-inbound-webhook-as-control-plane": {
+    "class": "opportunistic",
+    "window_label": "event-gated",
+    "window_seconds": 30,
+    "trigger": "webhook event delivery"
+  },
+  "F5b-memory-deaddrop": {
+    "class": "persistent",
+    "window_label": "indefinite (agent memory persists across sessions)"
+  },
+  "F6b-peer-agent-lateral": {
+    "class": "session",
+    "window_label": "within active agent conversation",
+    "window_seconds": 3600
+  },
+  "GH4-context-window-secret-persistence-export": {
+    "class": "session",
+    "window_label": "within context window retention period",
+    "window_seconds": 86400
+  },
+  "CO-admission-policy-bypass": {
+    "class": "opportunistic",
+    "window_label": "event-gated",
+    "window_seconds": 5,
+    "trigger": "Kubernetes admission webhook timeout"
+  },
+  "C2-fraudulent-transaction": {
+    "class": "opportunistic",
+    "window_label": "event-gated",
+    "trigger": "transaction processing window"
+  }
+}
